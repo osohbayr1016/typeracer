@@ -74,6 +74,7 @@ export function App() {
   const [myId, setMyId] = useState('');
   const [raceResult, setRaceResult] = useState<number | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
+  const onlineInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (startedAt === null || finishedAt !== null) return;
@@ -95,6 +96,20 @@ export function App() {
   const accuracy = accuracyPercent(Math.max(0, strokes - mistakes), strokes);
   const progress = progressPercent(correct, prompt.text);
   const myPlayer = snapshot?.players.find(p => p.id === myId);
+  const onlineWpm = myPlayer && snapshot?.startAt
+    ? wordsPerMinute(myPlayer.progress, Math.max(1, (myPlayer.completedAt ?? now) - snapshot.startAt)) : 0;
+  const onlineAccuracy = myPlayer ? accuracyPercent(Math.max(0, myPlayer.strokes - myPlayer.mistakes), myPlayer.strokes) : 100;
+  useEffect(() => {
+    if (mode === 'multiplayer' && snapshot?.phase === 'racing') onlineInputRef.current?.focus();
+  }, [mode, snapshot?.phase]);
+  useEffect(() => {
+    if (mode !== 'practice' || finishedAt === null) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Enter' && !(event.target instanceof HTMLButtonElement)) resetPractice();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mode, finishedAt, language, prompt.id]);
   function resetPractice(nextLanguage = language) {
     const pool = PROMPTS[nextLanguage].filter(item => item.id !== prompt.id);
     const next = pool[Math.floor(Math.random() * pool.length)] || choosePrompt(nextLanguage);
@@ -185,71 +200,154 @@ export function App() {
   }
 
   return <div className="app-shell" style={{ '--accent': SKINS[skin].color } as CSSProperties}>
-    <aside className="sidebar">
-      <div className="brand"><div className="brand-mark">TR</div><div><strong>TYPE<span>RACER</span></strong><small>MONGOLIA / BETA</small></div></div>
-      <div className="nav-label">ТОГЛОХ ГОРИМ</div>
-      <button className={'nav-item ' + (mode === 'practice' ? 'selected' : '')} onClick={() => setMode('practice')}><span className="nav-glyph">⌨</span> Бичих дасгал <i>01</i></button>
-      <button className={'nav-item ' + (mode === 'multiplayer' ? 'selected' : '')} onClick={() => setMode('multiplayer')}><span className="nav-glyph">↗</span> Найзуудтай уралдах <i>02</i></button>
-      <div className="nav-label secondary">ТУН УДАХГҮЙ</div>
-      <div className="nav-item disabled"><span>◈</span> Ranked / Улсын аварга <em>SOON</em></div>
-      <div className="nav-item disabled"><span>♛</span> Тэмцээн <em>SOON</em></div>
-      <div className="sidebar-bottom"><div className="online-indicator"><b/> БЕТА ХУВИЛБАР</div><p>Монгол кирилл бичгийн уралдаан</p></div>
-    </aside>
-    <div className="content">
-      <header className="topbar"><div className="topbar-left"><span className="topbar-dot"/> <span className="active-page">{mode === 'practice' ? 'ХУРДАА СОРИХ' : 'LIVE MULTIPLAYER'}</span><span className="slash">/</span> MONGOLIAN TYPE RACING</div><div className="topbar-right"><span className="level-label">ДАСГАЛЫН XP</span><strong>✦ {xp.toLocaleString()}</strong><span className="guest-avatar">G</span></div></header>
-      <main className="main">
-        <div className="intro"><div><div className="eyebrow"><span className="intro-dot"/> МОНГОЛЫН БИЧИХ ХУРДНЫ УРАЛДААН</div><h1>Үсэг бүр <span>ялалт руу.</span></h1><p>Хурдтай бич. Алдаагүй уралд. Рекордоо ахиул.</p></div><div className="hero-mark" aria-hidden="true"><span>READY</span><strong>GO!</strong><i>↗</i></div></div>
-        <div className="stats-grid">
-          <div className="stat-card"><span>⚡ ОДООГИЙН ХУРД</span><div><strong>{mode === 'practice' ? wpm : (myPlayer && snapshot?.startAt ? wordsPerMinute(myPlayer.progress, Math.max(1, (myPlayer.completedAt || now) - snapshot.startAt)) : 0)}</strong> <small>WPM</small></div></div>
-          <div className="stat-card"><span>◎ НАРИЙВЧЛАЛ</span><div><strong>{mode === 'practice' ? accuracy : (myPlayer ? accuracyPercent(myPlayer.progress, myPlayer.strokes) : 100)}</strong> <small>%</small></div></div>
-          <div className="stat-card"><span>◷ ХУВИЙН РЕКОРД</span><div><strong>{best}</strong> <small>WPM</small></div></div>
-          <div className="stat-card"><span>◈ ТҮВШИН</span><div><strong>{Math.floor(xp / 250) + 1}</strong> <small>LOCAL</small></div></div>
+    <header className="topbar">
+      <div className="shell header-layout">
+        <a className="brand" href="/" aria-label="TypeRacer Mongolia нүүр">
+          <span className="brand-mark">↗</span>
+          <span className="brand-name">TYPE<span>RACER</span><small>MONGOLIA</small></span>
+        </a>
+        <nav className="main-nav" aria-label="Тоглох горим">
+          <button className={'nav-item ' + (mode === 'practice' ? 'selected' : '')}
+            aria-current={mode === 'practice' ? 'page' : undefined}
+            onClick={() => { if (mode === 'multiplayer') disconnect(); setMode('practice'); }}>
+            Бичих дасгал
+          </button>
+          <button className={'nav-item ' + (mode === 'multiplayer' ? 'selected' : '')}
+            aria-current={mode === 'multiplayer' ? 'page' : undefined}
+            onClick={() => setMode('multiplayer')}>
+            Найзуудтай уралдах
+          </button>
+        </nav>
+        <div className="header-right">
+          <span className="beta-label">БЕТА</span>
+          {mode === 'practice'
+            ? <button className="primary-button header-cta" onClick={() => inputRef.current?.focus()}>УРАЛДАХ →</button>
+            : <button className="primary-button header-cta" onClick={() => { disconnect(); setMode('practice'); window.setTimeout(() => inputRef.current?.focus(), 20); }}>ДАСГАЛ ХИЙХ →</button>}
         </div>
-        {mode === 'practice' ? <>
-          <section className="game-panel">
-            <div className="panel-head"><div><span className="live-pill"><b/> SOLO RACE</span><h2>Гараанаас бариа хүртэл</h2></div><div className="panel-actions"><div className="segmented"><button className={language === 'mn' ? 'active' : ''} onClick={() => resetPractice('mn')}>МОН</button><button className={language === 'en' ? 'active' : ''} onClick={() => resetPractice('en')}>ENG</button></div><button className="text-button" onClick={() => resetPractice()}>↻ Шинэ текст</button></div></div>
-            <div className="track-wrap"><div className="track-top"><span>ЭХЛЭЛ · 0%</span><span>БАРИА · 100%</span></div><Lane name="ТАНЫ МАШИН" progress={progress} color={SKINS[skin].color} icon={SKINS[skin].icon} subtitle={progress + '%'} isYou/></div>
-            <div className="typing-area" onClick={() => inputRef.current?.focus()}>
-              <div className="typing-label"><span>ДООРХ ӨГҮҮЛБЭРИЙГ БИЧНЭ ҮҮ</span><span>{correct} / {target.length} CHARACTERS</span></div>
-              <PhraseView prompt={prompt} typed={typed}/>
-              <input ref={inputRef} autoFocus autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false} value={typed} onPaste={e => e.preventDefault()} onChange={updateTyping} aria-label="Энд бичиж эхлээрэй" className="typing-input" placeholder={finishedAt ? 'Дараагийн текстээ сонгоно уу' : 'Энд бичиж эхлээрэй...'} disabled={finishedAt !== null}/>
-              {finishedAt !== null && <div className="finish-banner"><span>🏁 Баяр хүргэе! {wpm} WPM · {accuracy}%</span><button className="primary-button" onClick={() => resetPractice()}>ДАХИН УРАЛДАХ →</button></div>}
+      </div>
+    </header>
+
+    <main className="shell main">
+      <div className="page-heading">
+        <div className="page-heading-copy">
+          <div className="eyebrow">{mode === 'practice' ? 'БИЧИХ ДАСГАЛ' : 'НАЙЗУУДТАЙ УРАЛДАХ'} <span className="eyebrow-sep">/</span> MONGOLIA</div>
+          <h1>Үсэг бүр <span>ялалт руу.</span></h1>
+          <p>{mode === 'practice'
+            ? 'Өгүүлбэрийг зөв бич. Машинаа барианд хүргэ. Рекордоо ахиул.'
+            : 'Нэг өрөөнд цуглараад Монгол хэлээр хэн хурдан бичихээ сориорой.'}</p>
+        </div>
+        {mode === 'practice' && <div className="heading-pb" aria-label={'Хувийн дээд хурд ' + best + ' WPM'}>
+          <span>ХУВИЙН ДЭЭД</span><strong>{best}</strong><small>WPM</small>
+        </div>}
+      </div>
+
+      {mode === 'practice' ? <>
+        <section className="race-panel" aria-label="Ганцаарчилсан бичих уралдаан">
+          <div className="race-panel-head">
+            <div className="race-title"><span className="race-indicator"/> <h2>Бичих уралдаан</h2><span className="race-chip">SOLO RACE</span></div>
+            <div className="panel-actions">
+              <div className="segmented" role="group" aria-label="Хэл сонгох">
+                <button className={language === 'mn' ? 'active' : ''} aria-pressed={language === 'mn'} onClick={() => resetPractice('mn')}>Монгол</button>
+                <button className={language === 'en' ? 'active' : ''} aria-pressed={language === 'en'} onClick={() => resetPractice('en')}>English</button>
+              </div>
+              <button className="text-button" onClick={() => resetPractice()} aria-label="Шинэ текст">↻ Шинэ текст</button>
             </div>
-            <div className="game-foot"><span>Алдаа гарвал Backspace ашиглаарай. Ө, Ү үсгийг мартуузай.</span><span>{elapsed > 0 ? (elapsed / 1000).toFixed(1) + 's' : 'READY'}</span></div>
-          </section>
-          <div className="below-grid">
-            <section className="mini-panel"><div className="mini-title">ГАРАА СОНГО <span>FREE COSMETICS</span></div><div className="skin-row">{(Object.keys(SKINS) as Skin[]).map(key => <button key={key} aria-pressed={skin === key} className={'skin-card ' + (skin === key ? 'chosen' : '')} onClick={() => updateSkin(key)}><span className="skin-icon" style={{ background: SKINS[key].color + '18' }}><img src={SKINS[key].icon} alt="" draggable={false}/></span><strong>{SKINS[key].label}</strong><small>{skin === key ? '✓ SELECTED' : 'SELECT'}</small></button>)}</div></section>
-            <section className="mini-panel lesson"><div className="mini-title">ӨНӨӨДРИЙН ДАСГАЛ <span>TIP</span></div><div className="lesson-row"><div className="lesson-icon">Ө</div><div><strong>Монгол гарын байрлал</strong><p>Ө, Ү үсгийг тогтвортой дарах дасгал хий. Хурдаас өмнө зөв бичилт чухал.</p></div></div></section>
           </div>
-        </> : <>
-          <section className="game-panel multiplayer-panel">
-            <div className="panel-head"><div><span className="live-pill"><b/> LIVE GUEST ROOM</span><h2>Найзуудтайгаа уралд</h2></div><span className="private-note">UNRANKED · 2–6 RACERS</span></div>
-            {status === 'disconnected' && <div className="lobby-start">
-              <div className="lobby-illustration"><img src="/cars/blue-sprint.svg" alt="Blue Sprint"/><span>VS</span><img src="/cars/coral-gt.svg" alt="Coral GT"/></div>
-              <p>Өрөө үүсгээд найздаа кодоо явуул. Одоогоор зөвхөн зочны уралдаан ажиллана.</p>
-              <label className="field-label" htmlFor="nickname">ТОГЛОГЧИЙН НЭР</label><input id="nickname" className="field" value={nickname} maxLength={20} onChange={e => setNickname(e.target.value)} aria-label="Тоглогчийн нэр"/>
-              <button className="primary-button full" onClick={() => void createRoom()}>+ ШИНЭ ӨРӨӨ ҮҮСГЭХ</button>
-              <div className="divider-text">ЭСВЭЛ КОДООР НЭВТРЭХ</div>
-              <div className="join-row"><input className="field" maxLength={8} value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase().replace(/[^A-F0-9]/g, ''))} placeholder="8 ОРОНТОЙ КОД" aria-label="Өрөөний код"/><button className="secondary-button" onClick={() => connectRoom(joinCode)}>НЭВТРЭХ →</button></div>
+          <div className="track-wrap">
+            <div className="track-meta"><span>START</span><span className="track-heading">THE TRACK</span><span>FINISH</span></div>
+            <Lane name="ТА" progress={progress} color={SKINS[skin].color} icon={SKINS[skin].icon} subtitle={progress + '%'} isYou />
+          </div>
+          <div className="typing-area" onClick={() => inputRef.current?.focus()}>
+            <div className="typing-label"><span>ДООРХ ТЕКСТИЙГ БИЧНЭ ҮҮ</span><span>{correct} / {target.length} ҮСЭГ</span></div>
+            <PhraseView prompt={prompt} typed={typed}/>
+            <input ref={inputRef} autoFocus autoCapitalize="off" autoCorrect="off" autoComplete="off"
+              spellCheck={false} value={typed} onPaste={e => e.preventDefault()} onChange={updateTyping}
+              aria-label="Энд бичиж эхлээрэй" className="typing-input"
+              placeholder={finishedAt !== null ? 'Барианд орлоо!' : 'Энд бичиж эхлээрэй...'} disabled={finishedAt !== null}/>
+            {finishedAt !== null && <div className="finish-banner" role="status"><strong>Барианд орлоо! {wpm} WPM · {accuracy}%</strong><button className="primary-button" onClick={() => resetPractice()}>ДАХИН УРАЛДАХ →</button></div>}
+          </div>
+          <div className="race-stats" aria-label="Уралдааны үзүүлэлт">
+            <div><strong>{wpm}</strong><span>WPM</span></div>
+            <div><strong>{accuracy}<small>%</small></strong><span>Нарийвчлал</span></div>
+            <div><strong>{progress}<small>%</small></strong><span>Замын явц</span></div>
+            <div><strong>{elapsed > 0 ? (elapsed / 1000).toFixed(1) : '0.0'}<small>s</small></strong><span>Хугацаа</span></div>
+          </div>
+        </section>
+        <p className="help-note">Алдаа гарвал Backspace дарж засна. Монгол хэлний Ө, Ү үсгийг зөв ашиглаарай.</p>
+
+        <section className="garage-panel" aria-label="Машинаа сонгох">
+          <div className="garage-heading">
+            <div><h2>Миний гараж</h2><p>Үнэгүй машинууд — тоглолтын хурданд нөлөөлөхгүй.</p></div>
+            <span className="garage-count">3 машин</span>
+          </div>
+          <div className="skin-row">
+            {(Object.keys(SKINS) as Skin[]).map(key => <button key={key} aria-pressed={skin === key}
+              className={'skin-card ' + (skin === key ? 'chosen' : '')} onClick={() => updateSkin(key)}>
+              <img src={SKINS[key].icon} alt="" draggable={false}/>
+              <span>{SKINS[key].label}</span>
+              <small>{skin === key ? '✓ Сонгосон' : 'Сонгох'}</small>
+            </button>)}
+          </div>
+        </section>
+      </> : <>
+        <section className="race-panel multiplayer-panel" aria-label="Найзуудтай уралдах">
+          <div className="race-panel-head">
+            <div className="race-title"><span className="race-indicator"/><h2>Найзуудтайгаа уралд</h2><span className="race-chip">LIVE · 2–6</span></div>
+            <span className="unranked-label">Зочны өрөө</span>
+          </div>
+
+          {status === 'disconnected' && <div className="lobby-start">
+            <div className="lobby-intro"><h3>Өрөө үүсгэх</h3><p>Нэрээ оруулаад өрөө нээнэ. Найздаа урилгын холбоосоо явуулж уралдаарай.</p></div>
+            <label className="field-label" htmlFor="nickname">ТОГЛОГЧИЙН НЭР</label>
+            <input id="nickname" className="field" value={nickname} maxLength={20}
+              onChange={e => setNickname(e.target.value)} aria-label="Тоглогчийн нэр"/>
+            <button className="primary-button full" onClick={() => void createRoom()}>+ ШИНЭ ӨРӨӨ ҮҮСГЭХ</button>
+            <div className="divider-text">ЭСВЭЛ НЭГДЭХ</div>
+            <label className="field-label" htmlFor="join-code">ӨРӨӨНИЙ КОД</label>
+            <div className="join-row"><input id="join-code" className="field" maxLength={8} value={joinCode}
+              onChange={e => setJoinCode(e.target.value.toUpperCase().replace(/[^A-F0-9]/g, ''))}
+              placeholder="Жишээ: A3BF29C1" aria-label="Өрөөний код"/>
+              <button className="secondary-button" onClick={() => connectRoom(joinCode)}>НЭВТРЭХ →</button>
+            </div>
+          </div>}
+          {status === 'connecting' && <p className="connection-note">Өрөөнд холбогдож байна…</p>}
+          {status === 'connected' && snapshot && <div className="room-active">
+            <div className="room-info"><div><small>ӨРӨӨНИЙ КОД</small><strong>{code}</strong></div>
+              <button className="secondary-button" onClick={() => void copyCode()}>↗ Холбоос хуулах</button></div>
+            <div className="room-meta" aria-live="polite">{snapshot.players.length} / 6 тоглогч · {snapshot.phase === 'waiting' ? 'Бэлэн болохыг хүлээж байна' : snapshot.phase === 'countdown' ? 'Уралдаан эхлэх гэж байна' : snapshot.phase === 'racing' ? 'Уралдаж байна' : 'Дууссан'}</div>
+            <div className="multiplayer-track">
+              {snapshot.players.map((player, index) => <Lane key={player.id} name={player.name} isYou={player.id === myId}
+                progress={progressPercent(player.progress, snapshot.prompt.text)}
+                color={player.id === myId ? SKINS[skin].color : ['#ec6b55', '#66788f', '#3679e8'][index % 3]}
+                icon={player.id === myId ? SKINS[skin].icon : ['/cars/coral-gt.svg', '/cars/graphite-r.svg', '/cars/blue-sprint.svg'][index % 3]}
+                subtitle={player.completedAt ? 'FINISHED' : player.ready ? 'READY' : 'WAITING'}/>)}
+            </div>
+            {snapshot.phase === 'waiting' && <div className="ready-area">
+              <p>Бүх тоглогч бэлэн болмогц 3 секундын дараа уралдаан эхэлнэ.</p>
+              <button className="primary-button" onClick={ready} disabled={myPlayer?.ready}>{myPlayer?.ready ? '✓ БЭЛЭН' : 'БЭЛЭН БОЛОХ →'}</button>
             </div>}
-            {status === 'connecting' && <p className="connection-note">Сервертэй холбогдож байна...</p>}
-            {status === 'connected' && snapshot && <div className="room-active">
-              <div className="room-info"><div><small>ROOM CODE</small><strong>{code}</strong></div><button className="secondary-button" onClick={() => void copyCode()}>↗ УРИЛГА ХУУЛАХ</button></div>
-              <div className="room-meta">{snapshot.players.length} / 6 ТОГЛОГЧ · {snapshot.phase === 'waiting' ? 'БЭЛЭН БАЙДЛЫГ ХҮЛЭЭЖ БАЙНА' : snapshot.phase.toUpperCase()}</div>
-              <div className="multiplayer-track">{snapshot.players.map((player, index) => <Lane key={player.id} name={player.name} isYou={player.id === myId} progress={progressPercent(player.progress, snapshot.prompt.text)} color={player.id === myId ? SKINS[skin].color : ['#ec6b55', '#66788f', '#3679e8'][index % 3]} icon={player.id === myId ? SKINS[skin].icon : ['/cars/coral-gt.svg', '/cars/graphite-r.svg', '/cars/blue-sprint.svg'][index % 3]} subtitle={player.completedAt ? 'FINISHED' : player.ready ? 'READY' : 'WAITING'}/>)}</div>
-              {snapshot.phase === 'waiting' && <div className="ready-area"><p>Хоёр ба түүнээс олон тоглогч бэлэн болбол 3 секундийн дараа уралдаан эхэлнэ.</p><button className="primary-button" onClick={ready} disabled={myPlayer?.ready}>{myPlayer?.ready ? '✓ БЭЛЭН' : 'БЭЛЭН БОЛОХ →'}</button></div>}
-              {(snapshot.phase === 'countdown' || snapshot.phase === 'racing' || snapshot.phase === 'finished') && <div className="online-type"><div className="typing-label"><span>{snapshot.phase === 'countdown' ? 'БЭЛДЭЭРЭЙ...' : 'ТЕКСТЭЭ БИЧЭЭРЭЙ'}</span><span>{myPlayer?.progress || 0} / {characters(snapshot.prompt.text).length}</span></div><PhraseView prompt={snapshot.prompt} typed="" progress={myPlayer?.progress || 0}/><input className="typing-input" aria-label="Онлайн уралдааны бичих хэсэг" placeholder={snapshot.phase === 'racing' ? 'Энд бичнэ үү...' : 'Уралдаан эхлэхийг хүлээнэ үү'} readOnly={snapshot.phase !== 'racing'} onPaste={e => e.preventDefault()} onChange={submitOnlineInput} onCompositionEnd={e => { const element = e.currentTarget; const value = characters(element.value); element.value = ''; if (snapshot.phase === 'racing') for (const key of value.slice(0,8)) socketRef.current?.send(JSON.stringify({ type: 'key', key })); }}/></div>}
-              {snapshot.phase === 'finished' && <div className="finish-banner"><span>🏁 Уралдаан дууслаа{raceResult !== null ? ' · ' + raceResult + ' WPM' : ''}</span><button className="secondary-button" onClick={disconnect}>ӨРӨӨНӨӨС ГАРАХ</button></div>}
-              <button className="leave-link" onClick={disconnect}>✕ ӨРӨӨНӨӨС ГАРАХ</button>
+            {(snapshot.phase === 'countdown' || snapshot.phase === 'racing' || snapshot.phase === 'finished') &&
+              <div className="online-type">
+                <div className="typing-label"><span>{snapshot.phase === 'countdown' ? 'БЭЛДЭЭРЭЙ…' : 'ДООРХ ТЕКСТИЙГ БИЧНЭ ҮҮ'}</span><span>{myPlayer?.progress || 0} / {characters(snapshot.prompt.text).length}</span></div>
+                <PhraseView prompt={snapshot.prompt} typed="" progress={myPlayer?.progress || 0}/>
+                <input ref={onlineInputRef} className="typing-input" aria-label="Онлайн уралдааны бичих хэсэг"
+                  placeholder={snapshot.phase === 'racing' ? 'Энд бичнэ үү...' : 'Эхлэхийг хүлээнэ үү'}
+                  readOnly={snapshot.phase !== 'racing'} onPaste={e => e.preventDefault()} onChange={submitOnlineInput}
+                  onCompositionEnd={e => { const element = e.currentTarget; const value = characters(element.value); element.value = ''; if (snapshot.phase === 'racing') for (const key of value.slice(0,8)) socketRef.current?.send(JSON.stringify({ type: 'key', key })); }}/>
+              </div>}
+            {(snapshot.phase === 'racing' || snapshot.phase === 'finished') && <div className="race-stats">
+              <div><strong>{onlineWpm}</strong><span>WPM</span></div>
+              <div><strong>{onlineAccuracy}<small>%</small></strong><span>Нарийвчлал</span></div>
+              <div><strong>{myPlayer ? progressPercent(myPlayer.progress, snapshot.prompt.text) : 0}<small>%</small></strong><span>Замын явц</span></div>
             </div>}
-            {status === 'disconnected' && !!code && <div className="connection-note">Холболт тасарсан. Дахин нэвтэрнэ үү.</div>}
-            {!!error && <p className="error-note" role="alert">{error}</p>}
-            <div className="game-foot"><span>🔒 Албан ёсны рейтинг, шагнал, төлбөр идэвхгүй. Зочны уралдааны үр дүн хадгалагдахгүй.</span></div>
-          </section>
-          <section className="safety-panel"><b>FAIR PLAY FIRST</b><p>Харилцагчийн илгээсэн WPM-ийг сервер шууд хүлээн авдаггүй. Онлайн тоглолтын зөв товч бүрийг сервер шалгана. Гэхдээ энэ нь бот, автоматжуулалтыг бүрэн зогсоохгүй тул ranked тэмцээн нээгдээгүй.</p></section>
-        </>}
-        <footer><span>© 2026 TYPERACER MONGOLIA · OPEN BETA</span><span>МОНГОЛ КИРИЛЛ БИЧГИЙН СОЁЛЫГ ХӨГЖҮҮЛЬЕ</span></footer>
-      </main>
-    </div>
+            {snapshot.phase === 'finished' && <div className="finish-banner" role="status"><strong>Уралдаан дууслаа{raceResult !== null ? ' · ' + raceResult + ' WPM' : ''}</strong><button className="primary-button" onClick={disconnect}>ДАХИН УРАЛДАХ</button></div>}
+            <button className="leave-link" onClick={disconnect}>← Өрөөнөөс гарах</button>
+          </div>}
+          {!!error && <p className="error-note" role="alert">{error}</p>}
+        </section>
+        <p className="help-note">Зочны уралдаан. Албан ёсны рейтинг, шагнал болон үр дүнгийн хадгалалт идэвхгүй.</p>
+      </>}
+      <footer>TypeRacer Mongolia · Beta</footer>
+    </main>
   </div>;
 }

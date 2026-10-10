@@ -45,3 +45,24 @@ test('two browsers can create, join, ready and start a guest race', async ({ bro
     await Promise.all([creator.close(), joiner.close()]);
   }
 });
+
+test('responsive race page and garage work without extra dashboard controls', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: /Үсэг бүр/ })).toBeVisible();
+  await expect(page.locator('.track-wrap .lane-car')).toHaveAttribute('src', '/cars/blue-sprint.svg');
+  const car = page.getByRole('button', { name: /Coral GT/ });
+  await car.click();
+  await expect(page.locator('.track-wrap .lane-car')).toHaveAttribute('src', '/cars/coral-gt.svg');
+  await page.reload();
+  await expect(page.locator('.track-wrap .lane-car')).toHaveAttribute('src', '/cars/coral-gt.svg');
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+  await expect(page.locator('.typing-area .typing-input')).toBeVisible();
+});
+
+test('friend invitation URL prefills room code', async ({ page }) => {
+  await page.goto('/?room=ABCDEF12');
+  await expect(page.getByRole('button', { name: 'НЭВТРЭХ →' })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Өрөөний код' })).toHaveValue('ABCDEF12');
+});
