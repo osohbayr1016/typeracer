@@ -2,29 +2,23 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { PROMPTS, ROOM_CAPACITY } from '@typeracer/shared';
 import { validRoomCode } from './logic';
+import { originAllowed } from './origin';
 export { RaceRoom } from './room';
 
 type Env = {
   RACE_ROOMS: DurableObjectNamespace;
-  FRONTEND_ORIGIN: string;
 };
 const app = new Hono<{ Bindings: Env }>();
-const localOrigins = new Set(['http://localhost:5173', 'http://127.0.0.1:5173']);
-
-function originAllowed(origin: string | undefined, configured: string): boolean {
-  if (!origin) return true;
-  return origin === configured || localOrigins.has(origin);
-}
 app.use('/api/*', async (c, next) => {
   const origin = c.req.header('Origin');
-  if (!originAllowed(origin, c.env.FRONTEND_ORIGIN)) return c.json({ error: 'Origin not allowed' }, 403);
+  if (!originAllowed(origin, c.req.url)) return c.json({ error: 'Origin not allowed' }, 403);
   await next();
 });
 app.use('/api/*', (c, next) => {
   // Upgraded WebSocket responses have immutable headers. Never pass them through CORS.
   if (c.req.header('Upgrade')?.toLowerCase() === 'websocket') return next();
   return cors({
-    origin: (origin, ctx) => originAllowed(origin, ctx.env.FRONTEND_ORIGIN) ? origin : '',
+    origin: (origin, ctx) => originAllowed(origin, ctx.req.url) ? origin : '',
     allowMethods: ['GET', 'POST', 'OPTIONS'],
     allowHeaders: ['Content-Type'],
     maxAge: 3600
