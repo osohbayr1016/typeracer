@@ -15,7 +15,7 @@ const PAGE_URLS: Record<Page, string> = {
   multiplayer: '/multiplayer', multiplayerRace: '/multiplayer/race'
 };
 function routeFromLocation(): Page {
-  const path = window.location.pathname.replace(/\\/$/, '') || '/';
+  const path = window.location.pathname.replace(/\/$/, '') || '/';
   if (new URLSearchParams(window.location.search).has('room')) return 'multiplayer';
   return (Object.entries(PAGE_URLS).find(([, url]) => url === path)?.[0] || 'home') as Page;
 }
@@ -92,7 +92,6 @@ export function App() {
   const [snapshot, setSnapshot] = useState<RoomSnapshot | null>(null);
   const [myId, setMyId] = useState('');
   const [raceResult, setRaceResult] = useState<number | null>(null);
-  const [lastRaceCar, setLastRaceCar] = useState<string>(CARS.sunset.icon);
   const socketRef = useRef<WebSocket | null>(null);
   const onlineInputRef = useRef<HTMLInputElement>(null);
 
@@ -153,7 +152,6 @@ export function App() {
     }
     setTyped(value);
     if (value === prompt.text) {
-      setLastRaceCar(CARS[skin].icon);
       const end = Date.now();
       setFinishedAt(end);
       const score = wordsPerMinute(target.length, Math.max(1, end - (startedAt ?? end)));
@@ -364,7 +362,7 @@ export function App() {
         <div className="flow-heading multiplayer-heading">
           <button className="back-link" onClick={() => navigate('play')}>← CHOOSE MODE</button>
           <span className="section-kicker">MULTIPLAYER / PRIVATE FRIEND LOBBY</span>
-          <h1>{page === 'multiplayerRace' ? 'THE <span>RACE.</span>' : 'RACE <span>LOBBY.</span>'}</h1>
+          <h1>{page === 'multiplayerRace' ? <>THE <span>RACE.</span></> : <>RACE <span>LOBBY.</span></>}</h1>
           <p>2–6 тоглогч · Урилгын код · Бүгд бэлэн болмогц уралдаан эхэлнэ.</p>
         </div>
         <section className="race-panel multiplayer-panel" aria-label="Найзуудтай уралдах">
