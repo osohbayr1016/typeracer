@@ -79,6 +79,11 @@ export function App() {
     return () => window.clearInterval(id);
   }, [startedAt, finishedAt]);
   useEffect(() => () => socketRef.current?.close(), []);
+  useEffect(() => {
+    if (snapshot?.phase !== 'racing') return;
+    const id = window.setInterval(() => setNow(Date.now()), 125);
+    return () => window.clearInterval(id);
+  }, [snapshot?.phase]);
   const target = useMemo(() => characters(prompt.text), [prompt]);
   const entered = useMemo(() => characters(typed), [typed]);
   const correct = entered.filter((letter, index) => letter === target[index]).length;
