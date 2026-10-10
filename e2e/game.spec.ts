@@ -50,12 +50,12 @@ test('responsive race page and garage work without extra dashboard controls', as
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: /Хурд, нарийвчлалаа сорь/ })).toBeVisible();
-  await expect(page.locator('.track-wrap .lane-car')).toHaveAttribute('src', '/cars/coral-gt.svg');
+  await expect(page.locator('.track-wrap .lane.you .lane-car')).toHaveAttribute('src', '/cars/coral-gt.svg');
   const car = page.getByRole('button', { name: /Blue Sprint/ });
   await car.click();
-  await expect(page.locator('.track-wrap .lane-car')).toHaveAttribute('src', '/cars/blue-sprint.svg');
+  await expect(page.locator('.track-wrap .lane.you .lane-car')).toHaveAttribute('src', '/cars/blue-sprint.svg');
   await page.reload();
-  await expect(page.locator('.track-wrap .lane-car')).toHaveAttribute('src', '/cars/blue-sprint.svg');
+  await expect(page.locator('.track-wrap .lane.you .lane-car')).toHaveAttribute('src', '/cars/blue-sprint.svg');
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(1);
   await expect(page.locator('.typing-area .typing-input')).toBeVisible();
