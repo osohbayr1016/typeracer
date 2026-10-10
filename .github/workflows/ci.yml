@@ -1,12 +1,14 @@
-name: CI
+name: Verify and deploy Cloudflare staging
 on:
-  pull_request:
   push:
-    branches: [main, feat/mongolian-racer-mvp]
+    branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
+
 jobs:
   verify:
+    name: Typecheck, unit tests and Chromium
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -14,23 +16,27 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install -g npm@11.6.2
-      - run: |
-          npm install --no-audit --no-fund || {
-            cat /home/runner/.npm/_logs/*-debug-0.log | tail -n 140
-            exit 1
-          }
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
-      - run: npm run build:worker -w backend
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+      - name: Install npm 11
+        run: npm install -g npm@11.6.2
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+      - name: Build frontend and workspaces
+        run: npm run build
+      - name: Validate Worker bundle
+        run: npm run build:worker -w backend
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Browser E2E (solo and two-player WebSocket)
+        run: npm run test:e2e
 
   deploy-staging:
-    name: Deploy Cloudflare staging after tests
+    name: Publish and smoke-test live staging
     needs: verify
-    if: github.event_name == 'push' && github.ref == 'refs/heads/feat/mongolian-racer-mvp'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     concurrency:
@@ -39,9 +45,12 @@ jobs:
     env:
       CLOUDFLARE_READY: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' && secrets.CLOUDFLARE_API_TOKEN != '' }}
     steps:
-      - name: Check staging credentials
+      - name: Report if Cloudflare access is not configured
         if: env.CLOUDFLARE_READY != 'true'
-        run: echo "::notice::Staging not deployed. Set GitHub Actions secrets CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN, then push a new commit to this branch."
+        run: |
+          echo "::warning::Cloudflare deployment not attempted: CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN is missing."
+          echo "## Cloudflare staging NOT deployed" >> "$GITHUB_STEP_SUMMARY"
+          echo "Add Cloudflare GitHub Actions secrets, then select Run workflow on main. No new commit needed." >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@v4
         if: env.CLOUDFLARE_READY == 'true'
       - uses: actions/setup-node@v4
@@ -51,12 +60,12 @@ jobs:
       - name: Install npm 11
         if: env.CLOUDFLARE_READY == 'true'
         run: npm install -g npm@11.6.2
-      - name: Install and build frontend
+      - name: Install and build website
         if: env.CLOUDFLARE_READY == 'true'
         run: |
           npm install --no-audit --no-fund
           npm run build -w frontend
-      - name: Deploy single Worker + website + Durable Object
+      - name: Deploy website, API and Durable Object
         id: deploy
         if: env.CLOUDFLARE_READY == 'true'
         uses: cloudflare/wrangler-action@v4
@@ -66,12 +75,12 @@ jobs:
           workingDirectory: backend
           command: deploy
           packageManager: npm
-      - name: Smoke test public staging endpoint
+      - name: Verify live website and real-time two-player race
         if: steps.deploy.outcome == 'success'
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
         run: |
-          test -n "$DEPLOYMENT_URL" || { echo "::error::Deployment URL unavailable (is workers.dev enabled?)"; exit 1; }
+          test -n "$DEPLOYMENT_URL" || { echo "::error::No deployment URL; check your workers.dev subdomain."; exit 1; }
           node scripts/smoke.mjs "$DEPLOYMENT_URL"
-          echo "### Playable staging URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Cloudflare staging deployed and smoke-tested" >> "$GITHUB_STEP_SUMMARY"
           echo "$DEPLOYMENT_URL" >> "$GITHUB_STEP_SUMMARY"

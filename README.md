@@ -2,7 +2,7 @@
 
 A Mongolian Cyrillic typing-race game, built with the same main stack as the author's `standoff-` project: **TypeScript, npm workspaces, React + Vite, Hono, Cloudflare Workers, Durable Objects and WebSockets**.
 
-**Status:** Solo and guest races work in development. This is a **staging/unranked beta**, not yet a ranked, payment-ready, or production-secure competition platform.
+**Status:** Solo and guest races work in development. This is a **staging/unranked beta**, not yet a ranked, payment-ready, or production-secure competition platform. All game code is on **main**; no pull request or merge step is needed.
 
 ## Features available now
 
@@ -20,7 +20,7 @@ A Mongolian Cyrillic typing-race game, built with the same main stack as the aut
 Requires Node.js **22+** and npm **11.6.2**.
 
 ```bash
-git clone -b feat/mongolian-racer-mvp https://github.com/osohbayr1016/typeracer.git
+git clone https://github.com/osohbayr1016/typeracer.git
 cd typeracer
 npm install -g npm@11.6.2
 npm install
@@ -64,16 +64,16 @@ The smoke test validates the HTML site, API health, Mongolian prompts, creation 
 
 ## Deploy to Cloudflare automatically via GitHub Actions
 
-The CI workflow verifies typechecks, unit tests, build and browser tests. On a **push to `feat/mongolian-racer-mvp`**, a subsequent staging job will deploy the site only when both Cloudflare credentials are configured.
+The CI workflow verifies typechecks, unit tests, build and browser tests. On a **push to `main`**, a subsequent staging job will deploy the site only when both Cloudflare credentials are configured. You can also deploy without another commit using the **Run workflow** button on GitHub Actions (choose main) after adding the secrets.
 
 1. In Cloudflare dashboard, locate your **Account ID** (not Zone ID). Create an account-scoped API token with permissions sufficient to deploy/create Workers and their Durable Objects, scoped to your intended account only.
 2. In [this repo's GitHub Actions secrets settings](https://github.com/osohbayr1016/typeracer/settings/secrets/actions), create:
    - `CLOUDFLARE_ACCOUNT_ID` — Cloudflare account ID.
    - `CLOUDFLARE_API_TOKEN` — limited-scope Cloudflare API token.
 3. **Never paste the token into code, README, issues, PR descriptions, chat, or a public environment variable.**
-4. Push a new commit to the feature branch to trigger CI. The workflow runs the deploy only after the verification job succeeds.
+4. Open [GitHub Actions](https://github.com/osohbayr1016/typeracer/actions), select **Verify and deploy Cloudflare staging**, and choose **Run workflow → main**. This triggers verification and deployment without any additional Git commit.
 5. Check [GitHub Actions](https://github.com/osohbayr1016/typeracer/actions) for the **Deploy Cloudflare staging after tests** job. On success, its job summary contains the public URL and a hosted smoke-test result.
-6. If the job says credentials are missing, no deployment occurred. GitHub does not retroactively run an earlier workflow when you add secrets; push a new commit or explicitly rerun the workflow as allowed by GitHub.
+6. If the job says credentials are missing, no deployment occurred. Use **Run workflow → main** after adding secrets; no commit is needed. The live smoke test now connects two WebSockets, readies both players, observes synchronized start, types five characters and verifies the other client receives progress.
 
 **No Cloudflare API token is in the repository.** Configuration lives in `backend/wrangler.jsonc`, and `frontend/dist` is built and uploaded as static assets in the same release. `VITE_API_URL` is intentionally left unset for same-origin requests.
 
