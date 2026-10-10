@@ -15,9 +15,18 @@ export class RaceRoom {
   private startAt: number | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(_state: DurableObjectState, _env: unknown) {}
+  constructor(private readonly state: DurableObjectState, _env: unknown) {}
 
   async fetch(request: Request): Promise<Response> {
+    // Only an API-created room can accept players. Durable storage survives DO eviction.
+    if (new URL(request.url).pathname === '/create' && request.method === 'POST') {
+      await this.state.storage.put('createdAt', Date.now());
+      return new Response('created', { status: 201 });
+    }
+    const createdAt = await this.state.storage.get<number>('createdAt');
+    if (!createdAt || Date.now() - createdAt > 3_600_000) {
+      return new Response('Room not found or expired', { status: 404 });
+    }
     if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') {
       return new Response('WebSocket upgrade required', { status: 426 });
     }
