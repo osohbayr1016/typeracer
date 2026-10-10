@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -51,7 +51,7 @@ jobs:
           echo "::warning::Cloudflare deployment not attempted: CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN is missing."
           echo "## Cloudflare staging NOT deployed" >> "$GITHUB_STEP_SUMMARY"
           echo "Add Cloudflare GitHub Actions secrets, then select Run workflow on main. No new commit needed." >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: env.CLOUDFLARE_READY == 'true'
       - uses: actions/setup-node@v4
         if: env.CLOUDFLARE_READY == 'true'
