@@ -17,7 +17,7 @@ test('two browsers can create, join, ready and start a guest race', async ({ bro
   const creator = await browser.newPage();
   const joiner = await browser.newPage();
   try {
-    await Promise.all([creator.goto('/'), joiner.goto('/')]);
+    await Promise.all([creator.goto('http://127.0.0.1:5173'), joiner.goto('http://127.0.0.1:5173')]);
     await creator.getByRole('button', { name: /Найзуудтай уралдах/ }).click();
     await creator.getByRole('button', { name: /ШИНЭ ӨРӨӨ ҮҮСГЭХ/ }).click();
     const codeNode = creator.locator('.room-info strong');
