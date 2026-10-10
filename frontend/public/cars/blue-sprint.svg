@@ -12,4 +12,8 @@
 <circle cx="74" cy="90" r="20" fill="#15263b" stroke="#0e1b2b" stroke-width="3"/><circle cx="74" cy="90" r="11" fill="#e5edf3" stroke="#97a9b9" stroke-width="3"/><circle cx="74" cy="90" r="4" fill="#8497a8"/>
 <circle cx="200" cy="90" r="20" fill="#15263b" stroke="#0e1b2b" stroke-width="3"/><circle cx="200" cy="90" r="11" fill="#e5edf3" stroke="#97a9b9" stroke-width="3"/><circle cx="200" cy="90" r="4" fill="#8497a8"/>
 <path d="M47 53 L45 43 L71 44 L78 55" fill="#17449f" stroke="#17449f" stroke-width="3" stroke-linejoin="round"/>
+<path d="M105 54 L167 54 L174 79 L102 79 Z" fill="#f4f5f2" stroke="#202326" stroke-width="2.5"/>
+<text x="137" y="74" fill="#141719" font-family="Arial,sans-serif" font-style="italic" font-weight="900" font-size="21" text-anchor="middle">03</text>
+<path d="M15 88 L26 88 M222 88 L247 88" stroke="#161a1c" stroke-width="4"/>
+<path d="M94 30 L169 27" stroke="#fff" stroke-width="2" opacity=".65"/>
 </svg>
