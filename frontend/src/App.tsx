@@ -130,9 +130,9 @@ export function App() {
     setTyped(''); setStrokes(0); setMistakes(0); setStartedAt(null); setFinishedAt(null); setNow(Date.now());
     window.setTimeout(() => inputRef.current?.focus(), 10);
   }
-  function updateTyping(event: ChangeEvent<HTMLInputElement>) {
-    if (finishedAt !== null || (event.nativeEvent as InputEvent).isComposing) return;
-    const value = normalizeText(event.target.value);
+  function updateTypingValue(rawValue: string) {
+    if (finishedAt !== null) return;
+    const value = normalizeText(rawValue);
     if (characters(value).length > target.length) return;
     if (startedAt === null && value.length > 0) setStartedAt(Date.now());
     const input = characters(value);
@@ -156,6 +156,10 @@ export function App() {
         return prev + points;
       });
     }
+  }
+  function updateTyping(event: ChangeEvent<HTMLInputElement>) {
+    if ((event.nativeEvent as InputEvent).isComposing) return;
+    updateTypingValue(event.target.value);
   }
   function updateSkin(value: Skin) {
     if ((value === 'lime' && xp < 250) || (value === 'phantom' && xp < 650)) return;
@@ -287,7 +291,7 @@ export function App() {
             <div className="typing-input-row">
               <input ref={inputRef} autoFocus autoCapitalize="off" autoCorrect="off" autoComplete="off"
                 spellCheck={false} value={typed} onPaste={e => e.preventDefault()} onChange={updateTyping}
-                onCompositionEnd={e => { const el = e.currentTarget; if (el.value !== typed) updateTyping({ target: el, nativeEvent: { isComposing: false } } as ChangeEvent<HTMLInputElement>); }}
+                onCompositionEnd={e => updateTypingValue(e.currentTarget.value)}
                 aria-label="Энд бичиж эхлээрэй" className="typing-input"
                 placeholder={finishedAt !== null ? 'Барианд орлоо!' : 'Энд бичиж эхлээрэй...'} disabled={finishedAt !== null}/>
               <button className="restart-shortcut" onClick={e => { e.stopPropagation(); resetPractice(); }} aria-label="Шинэ уралдаан эхлүүлэх">↻ <span>Restart</span></button>
