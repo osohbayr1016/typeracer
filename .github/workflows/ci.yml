@@ -14,7 +14,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --no-audit --no-fund
+      - run: npm install -g npm@11.6.2
+      - run: |
+          npm install --no-audit --no-fund || {
+            cat /home/runner/.npm/_logs/*-debug-0.log | tail -n 140
+            exit 1
+          }
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
