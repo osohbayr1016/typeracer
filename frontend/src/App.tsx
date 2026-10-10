@@ -56,6 +56,8 @@ export function App() {
   const [language, setLanguage] = useState<Language>('mn');
   const [prompt, setPrompt] = useState<Prompt>(() => choosePrompt('mn', 0));
   const [typed, setTyped] = useState('');
+  const [strokes, setStrokes] = useState(0);
+  const [mistakes, setMistakes] = useState(0);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [finishedAt, setFinishedAt] = useState<number | null>(null);
   const [now, setNow] = useState(Date.now());
@@ -86,10 +88,11 @@ export function App() {
   }, [snapshot?.phase]);
   const target = useMemo(() => characters(prompt.text), [prompt]);
   const entered = useMemo(() => characters(typed), [typed]);
-  const correct = entered.filter((letter, index) => letter === target[index]).length;
+  const firstMismatch = entered.findIndex((letter, index) => letter !== target[index]);
+  const correct = firstMismatch === -1 ? entered.length : firstMismatch;
   const elapsed = startedAt === null ? 0 : (finishedAt ?? now) - startedAt;
   const wpm = wordsPerMinute(correct, elapsed);
-  const accuracy = accuracyPercent(correct, entered.length);
+  const accuracy = accuracyPercent(Math.max(0, strokes - mistakes), strokes);
   const progress = progressPercent(correct, prompt.text);
   const myPlayer = snapshot?.players.find(p => p.id === myId);
   function resetPractice(nextLanguage = language) {
@@ -97,7 +100,7 @@ export function App() {
     const next = pool[Math.floor(Math.random() * pool.length)] || choosePrompt(nextLanguage);
     setLanguage(nextLanguage);
     setPrompt(next);
-    setTyped(''); setStartedAt(null); setFinishedAt(null); setNow(Date.now());
+    setTyped(''); setStrokes(0); setMistakes(0); setStartedAt(null); setFinishedAt(null); setNow(Date.now());
     window.setTimeout(() => inputRef.current?.focus(), 10);
   }
   function updateTyping(event: ChangeEvent<HTMLInputElement>) {
@@ -105,6 +108,12 @@ export function App() {
     const value = normalizeText(event.target.value);
     if (characters(value).length > target.length) return;
     if (startedAt === null && value.length > 0) setStartedAt(Date.now());
+    const input = characters(value);
+    if (input.length > entered.length) {
+      const additions = input.slice(entered.length);
+      setStrokes(count => count + additions.length);
+      setMistakes(count => count + additions.filter((letter, offset) => letter !== target[entered.length + offset]).length);
+    }
     setTyped(value);
     if (value === prompt.text) {
       const end = Date.now();
