@@ -1,18 +1,24 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties } from 'react';
+import { HomePage } from './pages/HomePage';
+import { PlayPage } from './pages/PlayPage';
+import { GaragePage } from './pages/GaragePage';
+import { ResultsPage } from './pages/ResultsPage';
+import { CARS, type Skin } from './pages/cars';
 import {
   accuracyPercent, characters, choosePrompt, normalizeText, progressPercent,
   PROMPTS, wordsPerMinute, type Language, type Prompt, type RoomSnapshot
 } from '@typeracer/shared';
 
-type Mode = 'practice' | 'multiplayer';
-type Skin = 'mint' | 'sunset' | 'purple' | 'lime' | 'phantom';
-const SKINS: Record<Skin, { color: string; label: string; icon: string }> = {
-  mint: { color: '#3679e8', label: 'Blue Sprint', icon: '/cars/blue-sprint.svg' },
-  sunset: { color: '#ec6b55', label: 'Coral GT', icon: '/cars/coral-gt.svg' },
-  purple: { color: '#c8cdd6', label: 'Graphite R', icon: '/cars/graphite-r.svg' },
-  lime: { color: '#c8e64a', label: 'Volt', icon: '/cars/volt.svg' },
-  phantom: { color: '#65666e', label: 'Phantom', icon: '/cars/phantom.svg' }
+type Page = 'home' | 'play' | 'race' | 'garage' | 'results' | 'multiplayer' | 'multiplayerRace';
+const PAGE_URLS: Record<Page, string> = {
+  home: '/', play: '/play', race: '/race', garage: '/garage', results: '/results',
+  multiplayer: '/multiplayer', multiplayerRace: '/multiplayer/race'
 };
+function routeFromLocation(): Page {
+  const path = window.location.pathname.replace(/\/$/, '') || '/';
+  if (new URLSearchParams(window.location.search).has('room')) return 'multiplayer';
+  return (Object.entries(PAGE_URLS).find(([, url]) => url === path)?.[0] || 'home') as Page;
+}
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 const roomCodePattern = /^[A-F0-9]{8}$/;
 function storedNumber(key: string): number {
@@ -22,7 +28,7 @@ function storedNumber(key: string): number {
 function storedSkin(): Skin {
   try {
     const value = localStorage.getItem('racer.skin');
-    return value && value in SKINS ? value as Skin : 'sunset';
+    return value && value in CARS ? value as Skin : 'sunset';
   } catch { return 'sunset'; }
 }
 function PhraseView({ prompt, typed, progress = null }: {
@@ -62,7 +68,8 @@ function Lane({ name, progress, color, icon, subtitle, isYou, position = 1 }: {
 }
 
 export function App() {
-  const [mode, setMode] = useState<Mode>(() => new URLSearchParams(window.location.search).has('room') ? 'multiplayer' : 'practice');
+  const [page, setPage] = useState<Page>(routeFromLocation);
+  const [countdown, setCountdown] = useState<number | null>(() => routeFromLocation() === 'race' ? 3 : null);
   const [language, setLanguage] = useState<Language>('mn');
   const [prompt, setPrompt] = useState<Prompt>(() => choosePrompt('mn', 0));
   const [typed, setTyped] = useState('');
@@ -75,7 +82,9 @@ export function App() {
   const [xp, setXp] = useState(() => storedNumber('racer.xp'));
   const [skin, setSkin] = useState<Skin>(storedSkin);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [nickname, setNickname] = useState('Зочин');
+  const [nickname, setNickname] = useState(() => {
+    try { return localStorage.getItem('racer.nickname')?.slice(0, 20) || 'Зочин'; } catch { return 'Зочин'; }
+  });
   const [joinCode, setJoinCode] = useState(() => (new URLSearchParams(window.location.search).get('room') || '').toUpperCase().replace(/[^A-F0-9]/g, '').slice(0, 8));
   const [code, setCode] = useState('');
   const [status, setStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
@@ -112,23 +121,23 @@ export function App() {
     ? wordsPerMinute(myPlayer.progress, Math.max(1, (myPlayer.completedAt ?? now) - snapshot.startAt)) : 0;
   const onlineAccuracy = myPlayer ? accuracyPercent(Math.max(0, myPlayer.strokes - myPlayer.mistakes), myPlayer.strokes) : 100;
   useEffect(() => {
-    if (mode === 'multiplayer' && snapshot?.phase === 'racing') onlineInputRef.current?.focus();
-  }, [mode, snapshot?.phase]);
+    if (page === 'multiplayerRace' && snapshot?.phase === 'racing') onlineInputRef.current?.focus();
+  }, [page, snapshot?.phase]);
   useEffect(() => {
-    if (mode !== 'practice' || finishedAt === null) return;
+    if (page !== 'results' || finishedAt === null) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Enter' && !(event.target instanceof HTMLButtonElement)) resetPractice();
+      if (event.key === 'Enter' && !(event.target instanceof HTMLButtonElement)) startSolo();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [mode, finishedAt, language, prompt.id]);
-  function resetPractice(nextLanguage = language) {
+  }, [page, finishedAt, language, prompt.id]);
+  function resetPractice(nextLanguage = language, shouldFocus = true) {
     const pool = PROMPTS[nextLanguage].filter(item => item.id !== prompt.id);
     const next = pool[Math.floor(Math.random() * pool.length)] || choosePrompt(nextLanguage);
     setLanguage(nextLanguage);
     setPrompt(next);
     setTyped(''); setStrokes(0); setMistakes(0); setStartedAt(null); setFinishedAt(null); setNow(Date.now());
-    window.setTimeout(() => inputRef.current?.focus(), 10);
+    if (shouldFocus) window.setTimeout(() => inputRef.current?.focus(), 10);
   }
   function updateTypingValue(rawValue: string) {
     if (finishedAt !== null) return;
@@ -162,7 +171,7 @@ export function App() {
     updateTypingValue(event.target.value);
   }
   function updateSkin(value: Skin) {
-    if ((value === 'lime' && xp < 250) || (value === 'phantom' && xp < 650)) return;
+    if (xp < CARS[value].unlockAt) return;
     setSkin(value);
     try { localStorage.setItem('racer.skin', value); } catch { /* storage unavailable */ }
   }
@@ -213,58 +222,105 @@ export function App() {
   }
   function ready() { socketRef.current?.send(JSON.stringify({ type: 'ready' })); }
   async function copyCode() {
-    try { await navigator.clipboard.writeText(window.location.origin + '/?room=' + code); } catch { setError('Урилгын холбоосыг гараар хуулна уу.'); }
+    try { await navigator.clipboard.writeText(window.location.origin + '/multiplayer?room=' + code); } catch { setError('Урилгын холбоосыг гараар хуулна уу.'); }
   }
 
-  return <div className="app-shell" style={{ '--accent': SKINS[skin].color } as CSSProperties}>
+
+  useEffect(() => {
+    const onPopstate = () => {
+      const next = routeFromLocation();
+      if (next !== 'multiplayer' && next !== 'multiplayerRace' && socketRef.current) {
+        socketRef.current.close();
+        socketRef.current = null;
+        setStatus('disconnected'); setSnapshot(null); setCode(''); setMyId(''); setRaceResult(null);
+      }
+      setPage(next);
+    };
+    window.addEventListener('popstate', onPopstate);
+    return () => window.removeEventListener('popstate', onPopstate);
+  }, []);
+  useEffect(() => {
+    if (page !== 'race' || countdown === null) return;
+    const timer = window.setTimeout(() => {
+      if (countdown === 0) { setCountdown(null); inputRef.current?.focus(); }
+      else setCountdown(countdown - 1);
+    }, countdown === 0 ? 420 : 850);
+    return () => window.clearTimeout(timer);
+  }, [page, countdown]);
+  useEffect(() => {
+    if (page !== 'race' || finishedAt === null) return;
+    const timer = window.setTimeout(() => navigate('results'), 850);
+    return () => window.clearTimeout(timer);
+  }, [page, finishedAt]);
+  useEffect(() => {
+    if (page === 'multiplayer' && snapshot?.phase === 'countdown')
+      navigate('multiplayerRace');
+  }, [page, snapshot?.phase]);
+  function navigate(next: Page) {
+    if (next === 'multiplayer' && status === 'connected' &&
+        (snapshot?.phase === 'countdown' || snapshot?.phase === 'racing')) next = 'multiplayerRace';
+    if ((page === 'multiplayer' || page === 'multiplayerRace') &&
+        next !== 'multiplayer' && next !== 'multiplayerRace') disconnect();
+    const url = PAGE_URLS[next];
+    if (window.location.pathname + window.location.search !== url) window.history.pushState(null, '', url);
+    setPage(next);
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }
+  function startSolo() {
+    resetPractice(language, false);
+    setCountdown(3);
+    navigate('race');
+  }
+  function updateNickname(value: string) {
+    setNickname(value);
+    try { localStorage.setItem('racer.nickname', value); } catch { /* private mode */ }
+  }
+
+  return <div className="app-shell" style={{ '--accent': CARS[skin].color } as CSSProperties}>
     <header className="topbar">
       <div className="shell header-layout">
-        <a className="brand" href="/" aria-label="TypeRacer Mongolia нүүр">
+        <a className="brand" href="/" onClick={e => { e.preventDefault(); navigate('home'); }} aria-label="TypeRacer Mongolia нүүр">
           <span className="brand-mark">TR</span>
           <span className="brand-name">TYPE<span>RACER</span><small>MONGOLIA</small></span>
         </a>
-        <nav className="main-nav" aria-label="Тоглох горим">
-          <button className={'nav-item ' + (mode === 'practice' ? 'selected' : '')}
-            aria-current={mode === 'practice' ? 'page' : undefined}
-            onClick={() => { if (mode === 'multiplayer') disconnect(); setMode('practice'); }}>Race</button>
-          <button className={'nav-item ' + (mode === 'multiplayer' ? 'selected' : '')}
-            aria-current={mode === 'multiplayer' ? 'page' : undefined}
-            onClick={() => setMode('multiplayer')}>Multiplayer</button>
-          <button className="nav-item garage-nav" onClick={() => {
-            if (mode === 'multiplayer') disconnect();
-            setMode('practice');
-            window.setTimeout(() => document.getElementById('garage')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 20);
-          }}>Garage</button>
+        <nav className="main-nav" aria-label="Үндсэн цэс">
+          <button className={'nav-item ' + (page === 'home' ? 'selected' : '')} aria-current={page === 'home' ? 'page' : undefined}
+            onClick={() => navigate('home')}>Home</button>
+          <button className={'nav-item ' + (['play','race','results'].includes(page) ? 'selected' : '')}
+            aria-current={['play','race','results'].includes(page) ? 'page' : undefined}
+            onClick={() => navigate('play')}>Play</button>
+          <button className={'nav-item ' + (['multiplayer','multiplayerRace'].includes(page) ? 'selected' : '')}
+            aria-current={['multiplayer','multiplayerRace'].includes(page) ? 'page' : undefined}
+            onClick={() => navigate('multiplayer')}>Multiplayer</button>
+          <button className={'nav-item ' + (page === 'garage' ? 'selected' : '')}
+            aria-current={page === 'garage' ? 'page' : undefined}
+            onClick={() => navigate('garage')}>Garage</button>
         </nav>
         <div className="header-right">
           <span className="beta-label">BETA</span>
-          <div className="profile-chip" aria-label="Тоглогчийн мэдээлэл">
+          <div className="profile-chip" aria-label="Хөтөч дээрх тоглогчийн мэдээлэл">
             <span className="profile-avatar" aria-hidden="true">●</span>
             <span className="profile-name">{nickname}<small>LV. {level} · {xp} XP</small></span>
           </div>
+          <button className="primary-button nav-play" onClick={() => navigate('play')}>▶ PLAY</button>
         </div>
       </div>
     </header>
     <main className="shell main">
-      <div className="page-heading">
-        <div className="hero-word" aria-hidden="true">{mode === 'practice' ? 'RACE' : 'LIVE'}</div>
-        <div className="page-heading-copy">
-          <div className="eyebrow">01 <span className="eyebrow-sep">/</span> {mode === 'practice' ? 'ГАНЦААРЧИЛСАН УРАЛДААН' : 'НАЙЗУУДТАЙ УРАЛДАХ'}</div>
-          <h1>{mode === 'practice' ? 'Хурд, нарийвчлалаа сорь.' : 'Найзуудтайгаа барианд хүр.'}</h1>
-          <p>{mode === 'practice' ? 'Монгол хэлээр хурдан, алдаагүй бичиж уралдаарай.' : 'Өрөө үүсгээд кодоо найзууддаа илгээгээрэй.'}</p>
+      {page === 'home' && <HomePage best={best} xp={xp} onPlay={() => navigate('play')}
+        onMultiplayer={() => navigate('multiplayer')} onGarage={() => navigate('garage')}/>}
+      {page === 'play' && <PlayPage language={language} best={best}
+        onLanguage={l => { setLanguage(l); resetPractice(l, false); }}
+        onSolo={startSolo} onMultiplayer={() => navigate('multiplayer')} onGarage={() => navigate('garage')}/>}
+      {page === 'garage' && <GaragePage skin={skin} xp={xp} onSelect={updateSkin} onPlay={() => navigate('play')}/>}
+      {page === 'results' && <ResultsPage wpm={wpm} accuracy={accuracy} elapsed={elapsed} best={best} correct={correct} carIcon={CARS[skin].icon}
+        onAgain={startSolo} onPlay={() => navigate('play')} onGarage={() => navigate('garage')} />}
+      {page === 'race' && <>
+        <div className="game-header">
+          <button className="back-link" onClick={() => navigate('play')}>← RACE LOBBY</button>
+          <span className="section-kicker">01 / SOLO RACE · {language === 'mn' ? 'MONGOLIAN' : 'ENGLISH'}</span>
+          <div className="game-timer">{(elapsed / 1000).toFixed(1)}s</div>
         </div>
-        <div className="hero-metrics">
-          {mode === 'practice' && <div className="hero-metric">
-            <strong>{best}</strong><span>BEST WPM</span>
-          </div>}
-          <div className="hero-metric timer-metric">
-            <strong>{mode === 'practice' ? (elapsed / 1000).toFixed(1).padStart(4, '0') : 'LIVE'}</strong>
-            <span>{mode === 'practice' ? 'ЦАГИЙН ЯВЦ' : 'MULTIPLAYER'}</span>
-          </div>
-        </div>
-        <div className="hero-motto" aria-hidden="true">TYPE<br/>RACE<br/>IMPROVE</div>
-      </div>
-      {mode === 'practice' ? <>
         <section className="race-panel" aria-label="Ганцаарчилсан бичих уралдаан">
           <div className="race-panel-head">
             <div className="race-title"><span className="race-indicator" aria-hidden="true"/> <h2>THE TRACK</h2><span className="race-chip">SOLO RACE</span></div>
@@ -277,19 +333,22 @@ export function App() {
             </div>
           </div>
           <div className="track-wrap">
+            {countdown !== null && <div className="start-countdown" role="status" aria-live="assertive">
+              <span>GET READY</span><strong>{countdown === 0 ? 'GO!' : countdown}</strong><small>Уралдаан эхлэх гэж байна</small>
+            </div>}
             <div className="track-meta"><span>START YOUR ENGINES</span><span>FINISH →</span></div>
-            <Lane name={nickname} position={1} progress={progress} color={SKINS[skin].color} icon={SKINS[skin].icon} subtitle="YOU · ACTIVE RACER" isYou />
+            <Lane name={nickname} position={1} progress={progress} color={CARS[skin].color} icon={CARS[skin].icon} subtitle="YOU · ACTIVE RACER" isYou />
             <Lane name={best > 0 ? 'Хувийн рекорд' : '60 WPM зорилт'} position={2} progress={ghostProgress(best > 0 ? best : 60)}
               color="#d8dce0" icon="/cars/graphite-r.svg" subtitle={best > 0 ? 'PB GHOST · ӨМНӨХ ХУРД' : 'PACE GHOST · БОДИТ ТОГЛОГЧ БИШ'}/>
             <Lane name="40 WPM зорилт" position={3} progress={ghostProgress(40)}
               color="#4486ef" icon="/cars/blue-sprint.svg" subtitle="PACE GHOST · БОДИТ ТОГЛОГЧ БИШ"/>
             <div className="track-note">PACE GHOSTS ARE TIME-BASED TARGETS, NOT LIVE PLAYERS</div>
           </div>
-          <div className="typing-area" onClick={() => inputRef.current?.focus()}>
+          <div className="typing-area" onClick={() => { if (countdown === null) inputRef.current?.focus(); }}>
             <div className="typing-label"><span><i aria-hidden="true">//</i> {language === 'mn' ? 'МОНГОЛ ТЕКСТ' : 'ENGLISH TEXT'}</span><span>{prompt.id.toUpperCase()} · {correct} / {target.length}</span></div>
             <PhraseView prompt={prompt} typed={typed}/>
             <div className="typing-input-row">
-              <input ref={inputRef} autoFocus autoCapitalize="off" autoCorrect="off" autoComplete="off"
+              <input ref={inputRef} autoFocus={false} readOnly={countdown !== null} autoCapitalize="off" autoCorrect="off" autoComplete="off"
                 spellCheck={false} value={typed} onPaste={e => e.preventDefault()} onChange={updateTyping}
                 onCompositionEnd={e => updateTypingValue(e.currentTarget.value)}
                 aria-label="Энд бичиж эхлээрэй" className="typing-input"
@@ -302,32 +361,20 @@ export function App() {
             <div className="stat-block"><strong>{wpm}</strong><span>WPM</span><small>Хурд</small></div>
             <div className="stat-block"><strong>{accuracy}<em>%</em></strong><small>Нарийвчлал</small></div>
             <div className="stat-block stat-progress"><strong>{correct} <em>/ {target.length}</em></strong><small>Тэмдэгт</small><span className="stat-progress-bar" aria-label={'Явц ' + progress + '%'}><span style={{ width: progress + '%' }}/></span></div>
-            <div className="stat-block stat-cta"><button className="primary-button race-again" onClick={() => resetPractice()}>RACE AGAIN <span aria-hidden="true">→</span></button></div>
+            <div className="stat-block stat-cta"><button className="primary-button race-again" onClick={startSolo}>RACE AGAIN <span aria-hidden="true">→</span></button></div>
           </div>
         </section>
         <p className="help-note">Ө, Ү үсгийг зөв бичээрэй. Алдааг Backspace дарж засна. Сүнс машинууд бол жишиг хурд бөгөөд бодит өрсөлдөгч биш.</p>
 
-        <section className="garage-panel" id="garage" aria-label="Машинаа сонгох">
-          <div className="garage-heading">
-            <div className="garage-heading-title"><span aria-hidden="true">▰</span><h2>MY GARAGE</h2></div>
-            <p>Машинаа сонго. Гадаад төрх нь бичих хурданд нөлөөлөхгүй.</p>
-          </div>
-          <div className="skin-row">
-            {(Object.keys(SKINS) as Skin[]).map(key => {
-              const unlockAt = key === 'lime' ? 250 : key === 'phantom' ? 650 : 0;
-              const locked = xp < unlockAt;
-              return <button key={key} aria-pressed={!locked && skin === key} disabled={locked}
-                className={'skin-card ' + (skin === key ? 'chosen' : '') + (locked ? ' locked' : '')}
-                onClick={() => updateSkin(key)} title={locked ? unlockAt + ' XP хүрээд нээнэ' : SKINS[key].label}>
-                <img src={SKINS[key].icon} alt="" draggable={false}/>
-                <span className="skin-name">{SKINS[key].label}</span>
-                <small>{locked ? '🔒 ' + unlockAt + ' XP' : skin === key ? '✓ Equipped' : 'Select'}</small>
-              </button>;
-            })}
-          </div>
-          <div className="garage-footnote">LEVEL {level} <span>·</span> {xp} XP <span>·</span> Шинэ машинуудыг дасгалаар нээгээрэй.</div>
-        </section>
-      </> : <>
+
+      </>}
+      {(page === 'multiplayer' || page === 'multiplayerRace') && <>
+        <div className="flow-heading multiplayer-heading">
+          <button className="back-link" onClick={() => navigate('play')}>← CHOOSE MODE</button>
+          <span className="section-kicker">MULTIPLAYER / PRIVATE FRIEND LOBBY</span>
+          <h1>{page === 'multiplayerRace' ? <>THE <span>RACE.</span></> : <>RACE <span>LOBBY.</span></>}</h1>
+          <p>2–6 тоглогч · Урилгын код · Бүгд бэлэн болмогц уралдаан эхэлнэ.</p>
+        </div>
         <section className="race-panel multiplayer-panel" aria-label="Найзуудтай уралдах">
           <div className="race-panel-head">
             <div className="race-title"><span className="race-indicator"/><h2>Найзуудтайгаа уралд</h2><span className="race-chip">LIVE · 2–6</span></div>
@@ -335,34 +382,59 @@ export function App() {
           </div>
 
           {status === 'disconnected' && <div className="lobby-start">
-            <div className="lobby-intro"><h3>Өрөө үүсгэх</h3><p>Нэрээ оруулаад өрөө нээнэ. Найздаа урилгын холбоосоо явуулж уралдаарай.</p></div>
-            <label className="field-label" htmlFor="nickname">ТОГЛОГЧИЙН НЭР</label>
+            <div className="lobby-intro">
+              <span className="section-kicker">PRIVATE FRIEND RACES</span>
+              <h3>CREATE A RACE LOBBY.</h3>
+              <p>Найзуудаа өрөөний код эсвэл урилгын холбоосоор уриарай. Дор хаяж хоёр тоглогч цуглаж Ready дармагц уралдаан эхэлнэ.</p>
+            </div>
+            <label className="field-label" htmlFor="nickname">YOUR RACER NAME</label>
             <input id="nickname" className="field" value={nickname} maxLength={20}
-              onChange={e => setNickname(e.target.value)} aria-label="Тоглогчийн нэр"/>
-            <button className="primary-button full" onClick={() => void createRoom()}>+ ШИНЭ ӨРӨӨ ҮҮСГЭХ</button>
-            <div className="divider-text">ЭСВЭЛ НЭГДЭХ</div>
-            <label className="field-label" htmlFor="join-code">ӨРӨӨНИЙ КОД</label>
-            <div className="join-row"><input id="join-code" className="field" maxLength={8} value={joinCode}
-              onChange={e => setJoinCode(e.target.value.toUpperCase().replace(/[^A-F0-9]/g, ''))}
-              placeholder="Жишээ: A3BF29C1" aria-label="Өрөөний код"/>
-              <button className="secondary-button" onClick={() => connectRoom(joinCode)}>НЭВТРЭХ →</button>
+              onChange={e => updateNickname(e.target.value)} aria-label="Тоглогчийн нэр"/>
+            <div className="lobby-entry-grid">
+              <section className="lobby-entry-card">
+                <span className="section-kicker">01 / HOST</span>
+                <h4>Шинэ өрөө нээх</h4>
+                <p>Өөрийн өрөөг үүсгээд бусдад урилга илгээнэ.</p>
+                <button className="primary-button full" onClick={() => void createRoom()}>+ CREATE LOBBY →</button>
+              </section>
+              <section className="lobby-entry-card">
+                <span className="section-kicker">02 / JOIN</span>
+                <h4>Бэлэн өрөөнд нэгдэх</h4>
+                <p>Найзаасаа ирсэн найман тэмдэгттэй кодыг оруулна.</p>
+                <label className="field-label" htmlFor="join-code">ROOM CODE</label>
+                <input id="join-code" className="field" maxLength={8} value={joinCode}
+                  onChange={e => setJoinCode(e.target.value.toUpperCase().replace(/[^A-F0-9]/g, ''))}
+                  placeholder="A3BF29C1" aria-label="Өрөөний код"/>
+                <button className="secondary-button full" disabled={!roomCodePattern.test(joinCode)} onClick={() => connectRoom(joinCode)}>НЭВТРЭХ →</button>
+              </section>
             </div>
           </div>}
           {status === 'connecting' && <p className="connection-note">Өрөөнд холбогдож байна…</p>}
           {status === 'connected' && snapshot && <div className="room-active">
-            <div className="room-info"><div><small>ӨРӨӨНИЙ КОД</small><strong>{code}</strong></div>
+            <div className="room-info"><div><small>YOUR INVITE CODE</small><strong>{code}</strong></div>
               <button className="secondary-button" onClick={() => void copyCode()}>↗ Холбоос хуулах</button></div>
             <div className="room-meta" aria-live="polite">{snapshot.players.length} / 6 тоглогч · {snapshot.phase === 'waiting' ? 'Бэлэн болохыг хүлээж байна' : snapshot.phase === 'countdown' ? 'Уралдаан эхлэх гэж байна' : snapshot.phase === 'racing' ? 'Уралдаж байна' : 'Дууссан'}</div>
-            <div className="multiplayer-track">
+            {snapshot.phase === 'waiting' && <div className="lobby-waiting">
+              <h3>RACERS IN THE LOBBY <span>{snapshot.players.length} / 6</span></h3>
+              <div className="lobby-player-grid">
+                {snapshot.players.map((player, index) => <div className="lobby-player" key={player.id}>
+                  <span className="lobby-player-num">{String(index + 1).padStart(2,'0')}</span>
+                  <span className="lobby-player-name">{player.name}{player.id === myId ? ' (YOU)' : ''}</span>
+                  <span className={player.ready ? 'lobby-ready ready' : 'lobby-ready'}>{player.ready ? '✓ READY' : 'WAITING'}</span>
+                </div>)}
+                {snapshot.players.length < 6 && <div className="lobby-player empty"><span>+</span><span>Invite a friend using the code above</span></div>}
+              </div>
+            </div>}
+            {snapshot.phase !== 'waiting' && <div className="multiplayer-track">
               {snapshot.players.map((player, index) => <Lane key={player.id} name={player.name} position={index + 1} isYou={player.id === myId}
                 progress={progressPercent(player.progress, snapshot.prompt.text)}
-                color={player.id === myId ? SKINS[skin].color : ['#ec6b55', '#66788f', '#3679e8'][index % 3]}
-                icon={player.id === myId ? SKINS[skin].icon : ['/cars/coral-gt.svg', '/cars/graphite-r.svg', '/cars/blue-sprint.svg'][index % 3]}
+                color={player.id === myId ? CARS[skin].color : ['#ec6b55', '#66788f', '#3679e8'][index % 3]}
+                icon={player.id === myId ? CARS[skin].icon : ['/cars/coral-gt.svg', '/cars/graphite-r.svg', '/cars/blue-sprint.svg'][index % 3]}
                 subtitle={player.completedAt ? 'FINISHED' : player.ready ? 'READY' : 'WAITING'}/>)}
-            </div>
+            </div>}
             {snapshot.phase === 'waiting' && <div className="ready-area">
               <p>Бүх тоглогч бэлэн болмогц 3 секундын дараа уралдаан эхэлнэ.</p>
-              <button className="primary-button" onClick={ready} disabled={myPlayer?.ready}>{myPlayer?.ready ? '✓ БЭЛЭН' : 'БЭЛЭН БОЛОХ →'}</button>
+              <button className="primary-button" onClick={ready} disabled={myPlayer?.ready || snapshot.players.length < 2}>{myPlayer?.ready ? '✓ БЭЛЭН' : snapshot.players.length < 2 ? 'НАЙЗАА ХҮЛЭЭЖ БАЙНА' : '✓ READY TO RACE →'}</button>
             </div>}
             {(snapshot.phase === 'countdown' || snapshot.phase === 'racing' || snapshot.phase === 'finished') &&
               <div className="online-type">
@@ -378,11 +450,12 @@ export function App() {
               <div><strong>{onlineAccuracy}<small>%</small></strong><span>Нарийвчлал</span></div>
               <div><strong>{myPlayer ? progressPercent(myPlayer.progress, snapshot.prompt.text) : 0}<small>%</small></strong><span>Замын явц</span></div>
             </div>}
-            {snapshot.phase === 'finished' && <div className="finish-banner" role="status"><strong>Уралдаан дууслаа{raceResult !== null ? ' · ' + raceResult + ' WPM' : ''}</strong><button className="primary-button" onClick={disconnect}>ДАХИН УРАЛДАХ</button></div>}
-            <button className="leave-link" onClick={disconnect}>← Өрөөнөөс гарах</button>
+            {snapshot.phase === 'finished' && <div className="finish-banner" role="status"><strong>Уралдаан дууслаа{raceResult !== null ? ' · ' + raceResult + ' WPM' : ''}</strong><button className="primary-button" onClick={() => { disconnect(); navigate('multiplayer'); }}>NEW LOBBY →</button></div>}
+            <button className="leave-link" onClick={() => { disconnect(); navigate('multiplayer'); }}>← Өрөөнөөс гарах</button>
           </div>}
           {!!error && <p className="error-note" role="alert">{error}</p>}
         </section>
+
         <p className="help-note">Зочны уралдаан. Албан ёсны рейтинг, шагнал болон үр дүнгийн хадгалалт идэвхгүй.</p>
       </>}
       <footer>© TypeRacer Mongolia <span>·</span> PLAY FAIR. TYPE FAST. <span>·</span> BETA</footer>

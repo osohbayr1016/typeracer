@@ -1,0 +1,253 @@
+/* TypeRacer Mongolia — routed experience: Home / Play / Race / Lobby / Garage / Results.
+   Reference-informed layout, original UI and artwork. */
+.nav-play { align-self: center; min-height: 36px; padding: 9px 16px; font-size: 11px; }
+.header-layout .main-nav { gap: 4px; }
+.header-layout .nav-item { padding-inline: 13px; }
+.section-kicker { color: #f16b52; display: block; font-size: 10px; font-weight: 900; letter-spacing: 2.2px; }
+.home-page, .play-page, .garage-page, .results-page { min-height: 68vh; }
+.home-hero { min-height: 490px; display: grid; grid-template-columns: 48% 52%; position: relative;
+  border-bottom: 1px solid #42474a; }
+.home-hero-copy { align-self: center; padding: 47px 25px 54px 44px; position: relative; z-index: 2; }
+.home-hero-copy .eyebrow { color: #b8bdbd; font-size: 12px; letter-spacing: 3px; }
+.home-hero h1,.flow-heading h1,.results-title h1,.no-result h1 {
+  font: italic 900 clamp(54px,7.1vw,106px)/.97 Impact,"Arial Narrow",sans-serif;
+  letter-spacing: -1px; color: #fff; margin: 22px 0 24px; }
+.home-hero h1 span,.flow-heading h1 span,.results-title h1 span,.no-result h1 span { color: var(--orange); }
+.home-hero-copy > p:not(.home-play-caption) { color: #c6cccb; max-width: 510px; font-size: 15px; line-height: 1.7; margin-bottom: 28px; }
+.hero-buttons { display: flex; align-items: center; flex-wrap: wrap; gap: 11px; }
+.hero-play { min-height: 62px; padding: 0 25px; font-size: 17px; letter-spacing: 1px; gap: 16px; }
+.hero-play > span:last-child { font-size: 25px; }
+.hero-secondary { min-height: 62px; border: 1px solid #5e6265; background: transparent; color: #f3f0ee; }
+.hero-secondary:hover { background: #2b3032; }
+.home-play-caption { color: #838a8c; font-size: 11px; line-height: 1.6; margin: 16px 0 0; }
+.home-visual { position: relative; overflow: hidden; isolation: isolate; min-height: 425px;
+  background: radial-gradient(ellipse at 40% 57%,#444f50 0,#24292b 40%,transparent 78%);
+  border-left: 1px solid #33393b; }
+.home-visual::before { content: ""; position: absolute; width: 136%; height: 280px; top: 28%; left: -17%;
+  transform: skewY(-9deg); z-index: -1;
+  background: repeating-linear-gradient(0deg,#ffffff0a 0 1px,transparent 1px 4px),
+  linear-gradient(#272e30,#1a2022);
+  border-top: 7px solid #6c73746b; border-bottom: 7px solid #6c737470; }
+.home-visual::after { content: ""; position: absolute; z-index: -1; width: 130%; height: 4px; top: 62%; left: -15%; transform: rotate(-9deg);
+  background: repeating-linear-gradient(90deg,#a0a4a56e 0 32px,transparent 32px 72px); }
+.home-car-image { position: absolute; width: 89%; max-width: 680px; left: 5%; top: 31%; z-index: 2;
+  filter: drop-shadow(-35px 24px 20px #000d); transform: rotate(-4deg); }
+.hero-sideword { position: absolute; top: 42px; right: 37px; color: #9b9f9e; font-size: 10px; font-weight: 900; letter-spacing: 3px; }
+.home-road-stamp { position: absolute; left: 28px; bottom: 37px; font: 900 46px/1 Impact,sans-serif; color: #faf7f2; }
+.home-road-stamp span { display: block; margin-top: 5px; color: #f75a43; font: 800 11px/1.3 Arial,sans-serif; letter-spacing: 3px; }
+.home-finish-art { position: absolute; right: 2px; bottom: 60px; writing-mode: vertical-rl;
+  font: italic 900 49px/1 Impact,sans-serif; color: #aab3b426; letter-spacing: 6px; }
+.home-lower { display: grid; grid-template-columns: 1fr 1.25fr auto; gap: 32px; padding: 35px 36px 18px; }
+.home-record,.home-steps { min-width: 0; }
+.home-record { border-right: 1px solid #444a4c; padding-right: 32px; }
+.home-record strong { display: block; font: 900 43px/1.4 Impact,sans-serif; margin-top: 11px; }
+.home-record strong small { color: #afb5b6; font: 600 10px Arial,sans-serif; letter-spacing: 1px; }
+.home-record p { color: #9da7a7; margin: 5px 0 0; font-size: 11px; line-height: 1.6; }
+.home-steps .section-kicker { margin-bottom: 14px; }
+.home-steps div { display: flex; gap: 18px; padding: 5px 0; font-size: 12px; color: #bdc4c3; }
+.home-steps b { color: #ff6b53; font-family: Impact,sans-serif; font-size: 16px; }
+.home-garage-link { align-self: center; background: #22292b; border: 1px solid #40494a; color: #fff;
+  border-radius: 5px; padding: 16px 19px; font-size: 11px; font-weight: 800; white-space: nowrap; }
+.home-garage-link:hover { background: #303739; border-color: var(--orange); }
+.home-garage-link span { margin-left: 19px; color: var(--orange); font-size: 17px; }
+.flow-heading { padding: 45px 21px 30px; position: relative; }
+.flow-heading h1 { font-size: clamp(51px,5.7vw,79px); margin: 13px 0 12px; }
+.flow-heading > p { margin: 0; color: #b4babb; font-size: 14px; line-height: 1.7; }
+.mode-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; padding: 0 18px; }
+.mode-card { position: relative; display: flex; flex-direction: column; padding: 24px 28px 25px;
+  border: 1px solid #454c4e; background: #212729; overflow: hidden; min-height: 460px; }
+.mode-card.solo-mode { border-color: #8e483d; background: linear-gradient(153deg,#3b2927 0,#202526 48%); }
+.mode-card-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.mode-number { color: #e6e8e5; font: 900 12px/1.2 Impact,sans-serif; letter-spacing: 2px; }
+.mode-pill { color: #aeb8b8; background: #161b1c; border: 1px solid #42494a; padding: 6px 9px; border-radius: 4px; font-size: 9px; font-weight: 850; letter-spacing: .7px; }
+.mode-car { object-fit: contain; width: min(88%,385px); height: 135px; align-self: center; margin: 1px 0 5px;
+  filter: drop-shadow(-10px 13px 10px #0008); }
+.mode-car-grid { height: 140px; position: relative; display: flex; justify-content: center; align-items: center; margin-top: 4px; }
+.mode-car-grid img { height: 122px; width: 58%; object-fit: contain; filter: drop-shadow(0 12px 8px #0008); }
+.mode-car-grid img:first-child { transform: translate(35px,-14px); }
+.mode-car-grid img:last-child { transform: translate(-20px,18px); }
+.mode-card h2 { margin: 7px 0 8px; color: #fff; font-size: 25px; font-weight: 850; }
+.mode-card > p { margin: 0 0 19px; color: #b0b9b9; font-size: 13px; line-height: 1.65; }
+.mode-option { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #444e50; padding: 16px 0; }
+.mode-option > span,.mode-detail { font-size: 10px; font-weight: 900; letter-spacing: 1.5px; color: #9fa9a9; }
+.mode-detail { border-top: 1px solid #444e50; display: flex; justify-content: space-between; padding: 12px 0; margin-top: auto; }
+.mode-detail strong { color: #fff; letter-spacing: 0; }
+.mode-action { width: 100%; min-height: 56px; margin-top: 11px; justify-content: space-between; padding-inline: 19px; font-size: 13px; letter-spacing: .8px; }
+.mode-action > span { font-size: 20px; }
+.mode-rules { display: flex; flex-wrap: wrap; gap: 7px; margin-top: auto; padding: 18px 0 8px; }
+.mode-rules span { font-size: 9px; font-weight: 800; color: #aab3b3; padding: 7px 9px; border: 1px solid #4a5254; }
+.mode-note { color: #9aa4a5; margin-top: 12px; font-size: 10px; }
+.play-page-footer { margin: 30px 18px 0; padding: 23px; text-align: center; border-top: 1px solid #394143; color: #b2b9b9; font-size: 12px; }
+.play-page-footer button { background: transparent; border: 0; color: #ff785f; font-weight: 800; padding: 7px; }
+.garage-flow-heading { padding-bottom: 23px; }
+.garage-feature { border: 1px solid #4e4e50; min-height: 270px; margin: 0 20px; padding: 28px 47px; display: flex;
+  align-items: center; justify-content: space-between; gap: 30px;
+  background: radial-gradient(ellipse at 74% 65%,#413537 0,transparent 67%),linear-gradient(135deg,#252b2d,#1a2022); }
+.garage-feature h2 { font: 900 59px/1.3 Impact,"Arial Narrow",sans-serif; margin: 9px 0 0; }
+.garage-feature p { color: #a7b1b1; font-weight: 800; letter-spacing: 1px; font-size: 12px; margin: 0 0 24px; }
+.garage-feature p span { color: #ee604b; padding-inline: 8px; }
+.garage-feature img { width: min(55%,520px); height: 235px; object-fit: contain; filter: drop-shadow(-24px 20px 14px #0009); }
+.garage-collection-heading { display: flex; align-items: baseline; justify-content: space-between; margin: 31px 20px 16px; }
+.garage-collection-heading h2 { font: 900 23px/1 Impact,sans-serif; letter-spacing: 1px; margin: 0; }
+.garage-collection-heading span { font-size: 10px; color: #a1aaaa; letter-spacing: 1px; }
+.garage-page-grid { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 14px; padding: 0 20px; }
+.garage-car-tile { min-width: 0; padding: 13px; background: #232a2c; border: 1px solid #434b4d; color: #f0f2f0; text-align: left; border-radius: 6px; }
+.garage-car-tile:hover:not(:disabled) { border-color: #ff6047; transform: translateY(-2px); background: #303638; }
+.garage-car-tile.selected { background: #312825; border-color: #ff6047; }
+.garage-car-tile:disabled { opacity: .52; filter: grayscale(.7); }
+.garage-tile-number { color: #858e8f; font: 900 15px Impact,sans-serif; }
+.garage-car-tile img { display: block; width: 100%; height: 95px; object-fit: contain; }
+.garage-tile-footer { display: flex; gap: 6px; align-items: center; justify-content: space-between; }
+.garage-tile-footer b { font-size: 12px; }
+.garage-tile-footer small { font-size: 9px; font-weight: 900; color: #f37159; }
+.results-page { padding: 44px 20px 30px; }
+.results-title h1 { margin: 12px 0; font-size: clamp(55px,7vw,97px); }
+.results-title p { color: #b5bebe; margin: 0 0 24px; }
+.results-feature { min-height: 260px; border: 1px solid #494f50; background: linear-gradient(100deg,#252d2e,#1d2124);
+  display: grid; grid-template-columns: 45% 1fr; align-items: center; overflow: hidden; }
+.results-car { position: relative; height: 245px; display: grid; place-items: center; background: #3e2c292b; }
+.results-car img { width: 92%; height: 235px; object-fit: contain; filter: drop-shadow(0 18px 12px #0009); }
+.results-car span { position: absolute; left: 24px; top: 23px; font-size: 9px; color: #fe7b65; letter-spacing: 2px; font-weight: 900; }
+.results-score { padding: 32px; }
+.results-score > span { color: #b5bcbc; font-size: 12px; letter-spacing: 2px; font-weight: 800; }
+.results-score strong { display: block; font: 900 103px/1.2 Impact,"Arial Narrow",sans-serif; margin-top: 12px; }
+.results-score em { color: #f26851; font: 900 24px/1 sans-serif; font-style: normal; }
+.results-score p { color: #a3abab; font-size: 12px; }
+.results-metrics { display: grid; grid-template-columns: repeat(3,1fr); background: #151a1c; border: 1px solid #3c4446; border-top: 0; }
+.results-metrics div { padding: 25px 29px; border-right: 1px solid #414749; }
+.results-metrics div:last-child { border: 0; }
+.results-metrics span { display: block; color: #9ba4a3; letter-spacing: 1px; font-size: 10px; }
+.results-metrics strong { font: 900 36px/1.5 Impact,sans-serif; }
+.results-actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 23px 0; }
+.no-result { display: flex; flex-direction: column; align-items: start; justify-content: center; }
+.no-result p { color: #a7b0b0; }
+.game-header { min-height: 74px; display: flex; align-items: center; justify-content: space-between; padding: 14px 8px; gap: 15px; }
+.game-timer { font: 900 27px/1 Impact,sans-serif; font-variant-numeric: tabular-nums; color: #fb6b54; }
+.back-link { border: 0; background: transparent; color: #b3babc; font-weight: 900; font-size: 10px; letter-spacing: 1.2px; padding: 9px 4px; }
+.back-link:hover { color: #ff765e; }
+.start-countdown { position: absolute; inset: 0; background: #111719db; z-index: 8; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.start-countdown > span { font-size: 12px; font-weight: 900; letter-spacing: 3px; color: #f0c5b9; }
+.start-countdown > strong { font: italic 900 115px/1.1 Impact,sans-serif; color: #ff5d43; text-shadow: 4px 6px 0 #60170f; }
+.start-countdown > small { color: #dee0dd; letter-spacing: 1px; font-size: 11px; }
+.multiplayer-heading { padding: 26px 12px 20px; }
+.multiplayer-heading .back-link { display: block; margin: 0 0 18px; }
+.multiplayer-heading h1 { margin-bottom: 7px; }
+.lobby-start { max-width: 100%; padding: 30px 37px 38px; }
+.lobby-intro h3 { margin: 11px 0 6px; font: 900 32px/1 Impact,sans-serif; }
+.lobby-intro p { max-width: 660px; }
+.lobby-start > .field { max-width: 530px; }
+.lobby-entry-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 25px; }
+.lobby-entry-card { border: 1px solid #484e50; background: #22282a; padding: 22px 24px; display: flex; flex-direction: column; }
+.lobby-entry-card h4 { font-size: 20px; margin: 12px 0 3px; color: #fff; }
+.lobby-entry-card > p { color: #a7b1b0; line-height: 1.5; font-size: 12px; min-height: 37px; margin: 0 0 16px; }
+.lobby-entry-card .field-label { margin-top: 0; }
+.lobby-entry-card .field { margin-bottom: 10px; }
+.lobby-entry-card .primary-button { margin-top: auto; }
+.lobby-entry-card .secondary-button.full { width: 100%; }
+.room-active { padding: 18px 28px 22px; }
+.room-info strong { color: #ffac99; }
+.lobby-waiting { border: 1px solid #444b4d; margin: 20px 0 0; background: #1c2224; padding: 18px 22px; }
+.lobby-waiting h3 { font: 900 19px/1 Impact,sans-serif; letter-spacing: 1.3px; margin: 0 0 18px; display: flex; justify-content: space-between; gap: 10px; }
+.lobby-waiting h3 span { color: #f47860; }
+.lobby-player-grid { display: grid; gap: 7px; }
+.lobby-player { display: flex; align-items: center; gap: 17px; padding: 12px 14px; border: 1px solid #454c4e; background: #293033; }
+.lobby-player-num { color: #fc6e56; font: 900 17px Impact,sans-serif; }
+.lobby-player-name { font-weight: 800; font-size: 13px; flex: 1; }
+.lobby-ready { font-size: 10px; letter-spacing: .6px; color: #a7b0af; }
+.lobby-ready.ready { color: #8ce5ae; }
+.lobby-player.empty { background: #23292a; border-style: dashed; color: #858f8f; font-size: 11px; }
+.lobby-player.empty > span:first-child { color: #ef745e; font-size: 23px; line-height: 1; }
+.ready-area { border-top: 1px solid #3c4547; margin-top: 16px; }
+.multiplayer-panel .race-stats { display: flex; padding: 17px 20px; gap: 0; }
+.multiplayer-panel .race-stats > div { flex: 1; border-right: 1px solid #4a5052; padding: 0 15px; }
+.multiplayer-panel .race-stats > div:last-child { border: 0; }
+.multiplayer-panel .race-stats strong { font: 900 31px Impact,sans-serif; display: block; }
+.multiplayer-panel .race-stats span { color: #b1b8b7; font-size: 11px; }
+.multiplayer-panel .race-stats small { font-size: 13px; }
+@media(max-width:1080px) {
+  .header-layout { gap: 14px; }
+  .header-layout .nav-item { padding-inline: 9px; }
+  .profile-name { display: none; }
+  .home-hero { grid-template-columns: 53% 47%; }
+  .home-hero-copy { padding-left: 23px; }
+  .home-hero h1 { font-size: clamp(49px,6.4vw,85px); }
+  .home-lower { grid-template-columns: 1fr 1.2fr; }
+  .home-garage-link { justify-self: start; }
+  .garage-page-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+}
+@media(max-width:750px) {
+  .nav-play { min-height: 33px; padding: 7px 11px; font-size: 10px; }
+  .home-hero { display: flex; flex-direction: column; min-height: 0; }
+  .home-hero-copy { order: 1; padding: 26px 17px 23px; }
+  .home-hero h1 { font-size: clamp(52px,11vw,82px); margin-block: 14px; }
+  .home-hero-copy > p:not(.home-play-caption) { font-size: 13px; }
+  .home-visual { order: 2; min-height: 230px; border-left: 0; border-top: 1px solid #474e50; }
+  .home-car-image { top: 13%; width: 70%; left: 16%; max-height: 200px; }
+  .home-visual::before { top: 12%; height: 180px; }
+  .home-visual::after { top: 53%; }
+  .home-road-stamp { bottom: 20px; font-size: 32px; }
+  .home-steps { grid-row: auto; }
+  .home-lower { grid-template-columns: 1fr; gap: 20px; padding: 25px 15px; }
+  .home-record { border-right: 0; border-bottom: 1px solid #484e50; padding-bottom: 19px; padding-right: 0; }
+  .mode-cards,.lobby-entry-grid { grid-template-columns: 1fr; }
+  .mode-card { min-height: 0; padding: 18px 20px; }
+  .mode-car,.mode-car-grid { height: 110px; }
+  .mode-car-grid img { height: 95px; }
+  .garage-feature { margin: 0 6px; padding: 22px; }
+  .garage-feature h2 { font-size: 40px; }
+  .garage-feature img { height: 170px; }
+  .garage-page-grid { padding: 0 6px; gap: 9px; grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .garage-collection-heading { margin-inline: 6px; }
+  .results-feature { grid-template-columns: 1fr; }
+  .results-car { height: 160px; }
+  .results-car img { height: 160px; }
+  .results-score { padding: 20px; }
+  .results-score strong { font-size: 75px; }
+  .lobby-start { padding: 22px 15px; }
+  .room-active { padding: 12px; }
+}
+@media(max-width:580px) {
+  .header-layout { min-height: 96px; }
+  .header-right { gap: 10px; }
+  .profile-chip { display: none; }
+  .nav-play { display: inline-flex; }
+  .header-layout .nav-item { font-size: 12px; padding-inline: 4px; }
+  .hero-buttons { display: grid; }
+  .hero-play,.hero-secondary { min-height: 55px; width: 100%; }
+  .home-visual { min-height: 202px; }
+  .hero-sideword { top: 19px; font-size: 8px; }
+  .flow-heading { padding: 29px 8px 18px; }
+  .flow-heading h1 { font-size: 51px; }
+  .flow-heading > p { font-size: 12px; }
+  .mode-cards { padding: 0; }
+  .mode-card h2 { font-size: 21px; }
+  .mode-action { font-size: 12px; }
+  .play-page-footer { margin-inline: 0; }
+  .garage-feature { flex-wrap: wrap; }
+  .garage-feature > div { width: 100%; }
+  .garage-feature img { width: 100%; max-height: 148px; order: -1; }
+  .garage-car-tile img { height: 80px; }
+  .garage-tile-footer { flex-wrap: wrap; }
+  .results-page { padding: 27px 4px; }
+  .results-title h1 { font-size: 55px; }
+  .results-metrics div { padding: 13px 9px; }
+  .results-metrics strong { font-size: 26px; }
+  .results-actions { display: grid; }
+  .results-actions .primary-button,.results-actions .secondary-button { width: 100%; }
+  .game-header { gap: 6px; }
+  .game-header .section-kicker { font-size: 8px; letter-spacing: 1px; }
+  .game-timer { font-size: 18px; }
+  .lobby-entry-card { padding: 16px; }
+  .lobby-intro h3 { font-size: 24px; }
+  .lobby-waiting { padding: 14px 10px; }
+  .lobby-waiting h3 { font-size: 15px; }
+  .lobby-player { gap: 8px; padding: 11px 7px; }
+  .lobby-player-name { font-size: 11px; }
+  .room-info { flex-wrap: wrap; }
+  .room-info .secondary-button { width: 100%; }
+  .multiplayer-heading h1 { font-size: 50px; }
+  .multiplayer-panel .race-stats strong { font-size: 23px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .home-car-image,.mode-car,.garage-feature img { animation: none !important; transition-duration: .01ms !important; }
+}
