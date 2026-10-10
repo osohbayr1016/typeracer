@@ -2,14 +2,25 @@
   "name": "mongolian-typeracer",
   "private": true,
   "version": "0.1.0",
-  "workspaces": ["packages/*", "frontend", "backend"],
+  "workspaces": [
+    "packages/*",
+    "frontend",
+    "backend"
+  ],
   "scripts": {
     "dev:web": "npm run dev -w frontend",
     "dev:api": "npm run dev -w backend",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "build": "npm run build --workspaces --if-present"
+    "build": "npm run build --workspaces --if-present",
+    "test:e2e": "playwright test"
   },
   "packageManager": "npm@11.6.2",
-  "engines": { "node": ">=22", "npm": ">=11" }
+  "engines": {
+    "node": ">=22",
+    "npm": ">=11"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0"
+  }
 }
