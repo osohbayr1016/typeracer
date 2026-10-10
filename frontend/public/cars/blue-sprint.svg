@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 116" role="img" aria-label="Blue Sprint">
+<defs><linearGradient id="paint" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#79b9ff"/><stop offset=".4" stop-color="#326ee7"/><stop offset="1" stop-color="#17449f"/></linearGradient><linearGradient id="glass" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#bcecff"/><stop offset="1" stop-color="#183d61"/></linearGradient></defs>
+<ellipse cx="135" cy="98" rx="108" ry="9" fill="#142b43" opacity=".16"/>
+<path d="M33 78 L40 62 L74 55 L100 28 L168 25 L203 52 L227 57 Q242 62 243 78 L242 90 L24 90 L24 79Z" fill="url(#paint)" stroke="#17449f" stroke-width="3" stroke-linejoin="round"/>
+<path d="M95 52 L110 34 L163 33 L185 53 Z" fill="url(#glass)" stroke="#18334d" stroke-width="3"/>
+<path d="M139 34 L144 53" stroke="#17344d" stroke-width="4"/>
+<path d="M56 68 L213 68" stroke="#79b9ff" stroke-width="3" opacity=".65"/>
+<path d="M25 76 L38 73 L39 83 L25 83Z" fill="#ffe4a4"/>
+<path d="M223 65 L238 69 L241 79 L223 79Z" fill="#f76565"/>
+<path d="M70 57 L81 56 M182 56 L208 60" stroke="#ffffff" stroke-width="2.5" opacity=".55"/>
+<path d="M82 83 Q102 85 117 82" stroke="#17449f" stroke-width="3" opacity=".65"/>
+<circle cx="74" cy="90" r="20" fill="#15263b" stroke="#0e1b2b" stroke-width="3"/><circle cx="74" cy="90" r="11" fill="#e5edf3" stroke="#97a9b9" stroke-width="3"/><circle cx="74" cy="90" r="4" fill="#8497a8"/>
+<circle cx="200" cy="90" r="20" fill="#15263b" stroke="#0e1b2b" stroke-width="3"/><circle cx="200" cy="90" r="11" fill="#e5edf3" stroke="#97a9b9" stroke-width="3"/><circle cx="200" cy="90" r="4" fill="#8497a8"/>
+<path d="M47 53 L45 43 L71 44 L78 55" fill="#17449f" stroke="#17449f" stroke-width="3" stroke-linejoin="round"/>
+</svg>
