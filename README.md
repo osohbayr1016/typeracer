@@ -1,76 +1,109 @@
-# Typeracer Mongolia — playable MVP
+# TypeRacer Mongolia — playable staging beta
 
-A fast, responsive Mongolian Cyrillic typing-race game. This is an **initial unranked beta**, not a production-ready paid competitive platform.
+A Mongolian Cyrillic typing-race game, built with the same main stack as the author's `standoff-` project: **TypeScript, npm workspaces, React + Vite, Hono, Cloudflare Workers, Durable Objects and WebSockets**.
 
-## Stack (based on osohbayr1016/standoff-)
+**Status:** Solo and guest races work in development. This is a **staging/unranked beta**, not yet a ranked, payment-ready, or production-secure competition platform.
 
-- npm workspaces, TypeScript monorepo
-- React 19 and Vite 7 frontend
-- Hono 4, Cloudflare Workers backend
-- Cloudflare Durable Objects and WebSocket real-time guest multiplayer
-- D1 migration scaffold for future **authenticated and verified** leaderboard
-- Cloudflare R2 reserved for future moderated cosmetic assets (not used or deployed in this version)
+## Features available now
 
-This implementation starts from an almost-empty repository and **does not copy** standoff-'s application logic, private files, credentials, or databases.
+- MN/EN typing practice with Cyrillic Ө/Ү, WPM, accuracy and personal best.
+- Browser-local practice XP and three free car appearances.
+- Friend-only guest rooms, 2–6 players, 8-character invite code, Ready, countdown and real-time race progress.
+- Server-computed race progress, per-socket abuse limits and same-origin browser API protection.
+- Unit tests, TypeScript checks, Vite/Worker build, two Chromium E2E scenarios.
+- One Cloudflare Worker hosts **both the game website and /api endpoints**, so no separate Cloudflare Pages deployment or CORS environment variables are needed.
 
-## What works in the first version
+**Not included:** account login, official leaderboards, ranked matches, tournament management, monetary systems, purchase/battle pass, persisting trusted results, reconnect/resume, serious bot prevention, load testing, Cloudflare WAF rules, and production-grade monitoring.
 
-- Mongolian Cyrillic (Ө, Ү) and English typing practice
-- Keystroke feedback, speed (WPM), accuracy, elapsed time and personal best
-- Device-local XP, three free vehicle appearances
-- Unranked guest multiplayer rooms: 2–6 players, share code, Ready, synchronized countdown, one authoritative Durable Object per room
-- Server accepts one character at a time and calculates race progress itself; rejects malformed keystrokes and caps per-socket bursts
-- CI for typechecking, unit tests, frontend build and Worker bundling
+## Try it locally
 
-No national leaderboard, authentication, public ranked matches, paid passes, money, or server-persisted wins are enabled. Local XP and records are **for practice only**. Bots and scripts still require additional anti-cheat systems before competitive rankings can be trusted.
+Requires Node.js **22+** and npm **11.6.2**.
 
-## Local development
+```bash
+git clone -b feat/mongolian-racer-mvp https://github.com/osohbayr1016/typeracer.git
+cd typeracer
+npm install -g npm@11.6.2
+npm install
+```
 
-Requirements: Node.js 22+ and npm 11.6.2 (npm 10 triggered an Arborist dependency-graph error in CI).
+Start these in **two terminals** at the repository root:
 
-1. npm install -g npm@11.6.2
-2. npm install
-3. Terminal 1: npm run dev:api
-4. Terminal 2: npm run dev:web
-5. Open http://localhost:5173
-6. For multiplayer, create a room in one browser window, enter the code in a second window, then press Ready in both. Race starts after three seconds.
+```bash
+npm run dev:api
+```
 
-Vite proxies requests and WebSockets from /api to http://localhost:8787. Solo typing runs even without a backend.
+```bash
+npm run dev:web
+```
 
-Run verification:
+Open **http://localhost:5173**. Solo play works without the API; multiplayer requires the Worker on port 8787.
 
-~~~sh
+To test with a friend locally: select **Найзуудтай уралдах**, create a room in browser A, enter the code in browser B, press **БЭЛЭН БОЛОХ** in both, and type after the three-second countdown. Browsers on different computers should use the deployed staging site instead.
+
+## Deploy to Cloudflare: easiest manual route
+
+A **single Worker** deploys both the frontend files and the server API, including the Durable Object migration. The Worker will be called `mongolian-typeracer-staging`. Do **not** deploy the work-in-progress branch to a production custom domain.
+
+1. Create or sign in to your [Cloudflare dashboard](https://dash.cloudflare.com/). Enable the `workers.dev` subdomain for your account if prompted. Make sure your account supports **Durable Objects**.
+2. In your local clone, log in with `npx wrangler login`. Complete the browser authentication.
+3. Build the frontend, then deploy the Worker:
+
+```bash
+npm run build -w frontend
+npm run deploy -w backend
+```
+
+4. Wrangler prints your **actual public URL** (for example, `https://mongolian-typeracer-staging.<your-subdomain>.workers.dev`). Do not guess the subdomain.
+5. Smoke-test the published site using Node 22:
+
+```bash
+node scripts/smoke.mjs https://mongolian-typeracer-staging.<your-subdomain>.workers.dev
+```
+
+The smoke test validates the HTML site, API health, Mongolian prompts, creation of a real Durable Object room, and a WebSocket connection. If deployment fails, check Cloudflare API permissions/account eligibility and the GitHub Actions logs; a successful dry-run is **not** proof of a successful live deployment.
+
+## Deploy to Cloudflare automatically via GitHub Actions
+
+The CI workflow verifies typechecks, unit tests, build and browser tests. On a **push to `feat/mongolian-racer-mvp`**, a subsequent staging job will deploy the site only when both Cloudflare credentials are configured.
+
+1. In Cloudflare dashboard, locate your **Account ID** (not Zone ID). Create an account-scoped API token with permissions sufficient to deploy/create Workers and their Durable Objects, scoped to your intended account only.
+2. In [this repo's GitHub Actions secrets settings](https://github.com/osohbayr1016/typeracer/settings/secrets/actions), create:
+   - `CLOUDFLARE_ACCOUNT_ID` — Cloudflare account ID.
+   - `CLOUDFLARE_API_TOKEN` — limited-scope Cloudflare API token.
+3. **Never paste the token into code, README, issues, PR descriptions, chat, or a public environment variable.**
+4. Push a new commit to the feature branch to trigger CI. The workflow runs the deploy only after the verification job succeeds.
+5. Check [GitHub Actions](https://github.com/osohbayr1016/typeracer/actions) for the **Deploy Cloudflare staging after tests** job. On success, its job summary contains the public URL and a hosted smoke-test result.
+6. If the job says credentials are missing, no deployment occurred. GitHub does not retroactively run an earlier workflow when you add secrets; push a new commit or explicitly rerun the workflow as allowed by GitHub.
+
+**No Cloudflare API token is in the repository.** Configuration lives in `backend/wrangler.jsonc`, and `frontend/dist` is built and uploaded as static assets in the same release. `VITE_API_URL` is intentionally left unset for same-origin requests.
+
+## Run tests before shipping
+
+```bash
 npm run typecheck
 npm test
 npm run build
 npm run build:worker -w backend
-~~~
+npx playwright install chromium
+npm run test:e2e
+```
 
-## Production hosting: extra steps are necessary
+Manual acceptance checklist:
 
-- Deploy the Worker from backend using Wrangler, after configuring your Cloudflare account.
-- Change backend/wrangler.jsonc FRONTEND_ORIGIN from localhost to the **exact** Cloudflare Pages origin (scheme included, no trailing slash); never commit secrets.
-- Build frontend/dist and deploy as a Cloudflare Pages static site.
-- Set frontend's VITE_API_URL during build to the HTTPS Worker origin (no /api suffix). The Vite dev proxy is not used in production.
-- Configure Cloudflare WAF rate limiting at the edge, monitoring and alerts, and independent host/browser smoke tests before making multiplayer public.
-- D1 is **not bound** in this first version. The migration under backend/migrations is reserved for authenticated and verified data and must not be applied as a public unverified leaderboard.
-- For future monetization, store provider keys exclusively in Wrangler secrets and verify payment callbacks server-side with idempotency.
+- Solo typing: Mongolian Ө/Ү, English mode, corrections, restart, WPM and accuracy.
+- Two devices: create room, join with code, Ready/countdown, correct/wrong keys, completion.
+- Mobile browser and desktop keyboards; verify input methods, focus and orientation.
+- Close one player's tab while waiting/racing and observe room behavior.
+- Verify random invented room codes are rejected, room caps and origin policy.
+- Run `node scripts/smoke.mjs <published-https-url>` after each release.
 
-## Security and limitations
+## Security, reliability and limits
 
-- Guest room codes are not passwords. Anybody with a valid code can join; do not use rooms for private content.
-- Game state lives in Durable Object **instance memory**, and reinitialization can terminate an unfinished room. Implement hibernation, durable snapshotting and disconnect recovery before ranked matches.
-- Per-isolate HTTP limiting and per-connection keystroke limits are only partial abuse reduction; **not** global rate limiting or complete anti-cheat.
-- Practice data uses browser localStorage, is changeable by the user, and never enters a national or prize leaderboard.
-- The server independently processes letters; it does not rely on a client WPM claim. An automated bot can still type.
-- No secrets, tokens, or payment accounts are part of the repository.
+- Room codes are public invitation codes, **not passwords**. Browser same-origin checks help with cross-site requests but are not authentication and don't stop scripts or bots.
+- The Durable Object stores room creation in persistent storage; current player/game state is **memory-only**, so an object restart can disrupt a race. Hibernation/durable snapshots and reconnect logic are essential before ranked play.
+- Per-isolate room creation limits are not global enforcement; configure account-level Cloudflare WAF/rate limits and watch usage before opening to strangers.
+- Browser localStorage stats are manipulable, unverified and never qualify for money/real prizes.
+- D1 migration in `backend/migrations` is only a future scaffold. **No D1 binding/migration and no paid R2 storage are required for this beta.**
+- Before real competition: OAuth, D1 user/score model, rate-limited matchmaking, tamper/bot investigation, moderation, GDPR/privacy requirements where applicable, observability, retries, load and cost measurements, staging-to-prod release gates.
 
-## Roadmap
-
-1. Current: standalone playable solo typing loop, original Mongolian phrases, guest multiplayer, CI.
-2. Next: test in real browsers and Cloudflare, keyboard-layout guidance, accessibility and input-method testing, reconnect/resume, durable timers.
-3. Then: strong OAuth login, D1 identity/profiles, globally rate-limited matchmaking, ranked results with abuse review, ELO/MMR and nation-wide leaderboard.
-4. Later: tournament operations, moderation, audited car cosmetics in private R2, signed economy ledger and server-authoritative free/premium battle passes.
-5. Scale: measured load/stress tests, query benchmarks, edge observability, cost caps, phased deployments and rollback.
-
-The game uses its own phrases and basic visual assets. Nitro Type, Monkeytype and TypeRacer are **inspiration for genre and UX**, not sources of copied game code, brand assets or licensed content.
+The experience is original; external typing games inspire interaction patterns but no third-party copyrighted game code/assets are copied.
