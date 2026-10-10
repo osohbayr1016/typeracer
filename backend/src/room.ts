@@ -14,6 +14,7 @@ export class RaceRoom {
   private phase: Phase = 'waiting';
   private startAt: number | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  private pendingBroadcast: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private readonly state: DurableObjectState, _env: unknown) {}
 
@@ -69,6 +70,14 @@ export class RaceRoom {
     const state = this.snapshot();
     for (const socket of this.sockets.keys()) this.send(socket, state);
   }
+  /** Cap fanout near 20 Hz instead of broadcasting every key to every socket. */
+  private queueBroadcast(): void {
+    if (this.pendingBroadcast !== null) return;
+    this.pendingBroadcast = setTimeout(() => {
+      this.pendingBroadcast = null;
+      this.broadcast();
+    }, 50);
+  }
   private leave(socket: WebSocket): void {
     if (!this.sockets.delete(socket)) return;
     if (this.sockets.size === 0 && this.timer) { clearTimeout(this.timer); this.timer = null; }
@@ -107,7 +116,7 @@ export class RaceRoom {
     player.mistakes = next.mistakes;
     player.strokes = next.strokes;
     if (player.progress === characters(this.prompt.text).length) player.completedAt = now;
-    this.broadcast();
+    this.queueBroadcast();
     if ([...this.sockets.values()].every(p => p.completedAt !== null)) this.finish();
   }
   private finish(): void {
@@ -115,6 +124,8 @@ export class RaceRoom {
     this.phase = 'finished';
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
+    if (this.pendingBroadcast) clearTimeout(this.pendingBroadcast);
+    this.pendingBroadcast = null;
     this.broadcast();
     const start = this.startAt || Date.now();
     for (const player of this.sockets.values()) {
