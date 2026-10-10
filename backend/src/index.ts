@@ -40,7 +40,7 @@ app.get('/api/prompts', c => {
 
 // Best-effort per-isolate abuse reduction. Deploy Cloudflare WAF rate limiting for global protection.
 const roomAttempts = new Map<string, { start: number; count: number }>();
-app.post('/api/rooms', c => {
+app.post('/api/rooms', async c => {
   const ip = c.req.header('CF-Connecting-IP') || 'anonymous';
   const now = Date.now();
   if (roomAttempts.size > 2000) roomAttempts.clear();
@@ -50,6 +50,9 @@ app.post('/api/rooms', c => {
   roomAttempts.set(ip, next);
   if (next.count > 10) return c.json({ error: 'Too many rooms; try again later' }, 429);
   const code = crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase();
+  const id = c.env.RACE_ROOMS.idFromName(code);
+  const created = await c.env.RACE_ROOMS.get(id).fetch('https://room.internal/create', { method: 'POST' });
+  if (!created.ok) return c.json({ error: 'Room creation failed' }, 503);
   return c.json({ code, capacity: ROOM_CAPACITY }, 201);
 });
 app.get('/api/rooms/:code/ws', c => {
