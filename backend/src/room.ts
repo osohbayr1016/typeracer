@@ -80,6 +80,13 @@ export class RaceRoom {
   }
   private leave(socket: WebSocket): void {
     if (!this.sockets.delete(socket)) return;
+    if (this.phase === 'countdown' && this.sockets.size < 2) {
+      if (this.timer) clearTimeout(this.timer);
+      this.timer = null;
+      this.phase = 'waiting';
+      this.startAt = null;
+      for (const player of this.sockets.values()) player.ready = false;
+    }
     if (this.sockets.size === 0 && this.timer) { clearTimeout(this.timer); this.timer = null; }
     if (this.sockets.size === 0 && this.phase !== 'waiting') {
       this.phase = 'finished';
