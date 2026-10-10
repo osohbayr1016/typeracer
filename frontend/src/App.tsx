@@ -227,7 +227,15 @@ export function App() {
 
 
   useEffect(() => {
-    const onPopstate = () => setPage(routeFromLocation());
+    const onPopstate = () => {
+      const next = routeFromLocation();
+      if (next !== 'multiplayer' && next !== 'multiplayerRace' && socketRef.current) {
+        socketRef.current.close();
+        socketRef.current = null;
+        setStatus('disconnected'); setSnapshot(null); setCode(''); setMyId(''); setRaceResult(null);
+      }
+      setPage(next);
+    };
     window.addEventListener('popstate', onPopstate);
     return () => window.removeEventListener('popstate', onPopstate);
   }, []);
@@ -249,6 +257,8 @@ export function App() {
       navigate('multiplayerRace');
   }, [page, snapshot?.phase]);
   function navigate(next: Page) {
+    if (next === 'multiplayer' && status === 'connected' &&
+        (snapshot?.phase === 'countdown' || snapshot?.phase === 'racing')) next = 'multiplayerRace';
     if ((page === 'multiplayer' || page === 'multiplayerRace') &&
         next !== 'multiplayer' && next !== 'multiplayerRace') disconnect();
     const url = PAGE_URLS[next];
@@ -303,7 +313,7 @@ export function App() {
         onLanguage={l => { setLanguage(l); resetPractice(l, false); }}
         onSolo={startSolo} onMultiplayer={() => navigate('multiplayer')} onGarage={() => navigate('garage')}/>}
       {page === 'garage' && <GaragePage skin={skin} xp={xp} onSelect={updateSkin} onPlay={() => navigate('play')}/>}
-      {page === 'results' && <ResultsPage wpm={wpm} accuracy={accuracy} elapsed={elapsed} best={best} correct={correct}
+      {page === 'results' && <ResultsPage wpm={wpm} accuracy={accuracy} elapsed={elapsed} best={best} correct={correct} carIcon={CARS[skin].icon}
         onAgain={startSolo} onPlay={() => navigate('play')} onGarage={() => navigate('garage')} />}
       {page === 'race' && <>
         <div className="game-header">
