@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test('solo Mongolian typing can be completed and restarted', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: /Үсэг бүр/ })).toBeVisible();
-  const text = (await page.locator('.typing-area .phrase').innerText()).trim();
+  const text = (await page.locator('.typing-area .phrase').innerText()).replace(/\u00a0/g, ' ').trim();
   expect(text).toMatch(/[ӨөҮү]/);
   const keyboard = page.getByRole('textbox', { name: 'Энд бичиж эхлээрэй' });
   await keyboard.pressSequentially(text, { delay: 5 });
@@ -38,7 +38,7 @@ test('two browsers can create, join, ready and start a guest race', async ({ bro
     await expect(input).toBeEditable({ timeout: 12_000 });
     const progressBefore = await creator.locator('.multiplayer-track .lane.you .lane-detail').innerText();
     expect(progressBefore).toBe('READY');
-    const text = (await creator.locator('.online-type .phrase').innerText()).trim();
+    const text = (await creator.locator('.online-type .phrase').innerText()).replace(/\u00a0/g, ' ').trim();
     await input.pressSequentially(text.slice(0, 5), { delay: 10 });
     await expect(creator.locator('.online-type .typing-label')).toContainText('5 /');
   } finally {
