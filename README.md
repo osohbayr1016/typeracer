@@ -26,13 +26,14 @@ No national leaderboard, authentication, public ranked matches, paid passes, mon
 
 ## Local development
 
-Requirements: Node.js 22+, npm.
+Requirements: Node.js 22+ and npm 11.6.2 (npm 10 triggered an Arborist dependency-graph error in CI).
 
-1. npm install
-2. Terminal 1: npm run dev:api
-3. Terminal 2: npm run dev:web
-4. Open http://localhost:5173
-5. For multiplayer, create a room in one browser window, enter the code in a second window, then press Ready in both. Race starts after three seconds.
+1. npm install -g npm@11.6.2
+2. npm install
+3. Terminal 1: npm run dev:api
+4. Terminal 2: npm run dev:web
+5. Open http://localhost:5173
+6. For multiplayer, create a room in one browser window, enter the code in a second window, then press Ready in both. Race starts after three seconds.
 
 Vite proxies requests and WebSockets from /api to http://localhost:8787. Solo typing runs even without a backend.
 
