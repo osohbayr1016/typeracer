@@ -1,0 +1,77 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main, feat/mongolian-racer-mvp]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install -g npm@11.6.2
+      - run: |
+          npm install --no-audit --no-fund || {
+            cat /home/runner/.npm/_logs/*-debug-0.log | tail -n 140
+            exit 1
+          }
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run build:worker -w backend
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+
+  deploy-staging:
+    name: Deploy Cloudflare staging after tests
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/feat/mongolian-racer-mvp'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: typeracer-cloudflare-staging
+      cancel-in-progress: true
+    env:
+      CLOUDFLARE_READY: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' && secrets.CLOUDFLARE_API_TOKEN != '' }}
+    steps:
+      - name: Check staging credentials
+        if: env.CLOUDFLARE_READY != 'true'
+        run: echo "::notice::Staging not deployed. Set GitHub Actions secrets CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN, then push a new commit to this branch."
+      - uses: actions/checkout@v4
+        if: env.CLOUDFLARE_READY == 'true'
+      - uses: actions/setup-node@v4
+        if: env.CLOUDFLARE_READY == 'true'
+        with:
+          node-version: '22'
+      - name: Install npm 11
+        if: env.CLOUDFLARE_READY == 'true'
+        run: npm install -g npm@11.6.2
+      - name: Install and build frontend
+        if: env.CLOUDFLARE_READY == 'true'
+        run: |
+          npm install --no-audit --no-fund
+          npm run build -w frontend
+      - name: Deploy single Worker + website + Durable Object
+        id: deploy
+        if: env.CLOUDFLARE_READY == 'true'
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: backend
+          command: deploy
+          packageManager: npm
+      - name: Smoke test public staging endpoint
+        if: steps.deploy.outcome == 'success'
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          test -n "$DEPLOYMENT_URL" || { echo "::error::Deployment URL unavailable (is workers.dev enabled?)"; exit 1; }
+          node scripts/smoke.mjs "$DEPLOYMENT_URL"
+          echo "### Playable staging URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "$DEPLOYMENT_URL" >> "$GITHUB_STEP_SUMMARY"
