@@ -5,11 +5,13 @@ import {
 } from '@typeracer/shared';
 
 type Mode = 'practice' | 'multiplayer';
-type Skin = 'mint' | 'sunset' | 'purple';
+type Skin = 'mint' | 'sunset' | 'purple' | 'lime' | 'phantom';
 const SKINS: Record<Skin, { color: string; label: string; icon: string }> = {
   mint: { color: '#3679e8', label: 'Blue Sprint', icon: '/cars/blue-sprint.svg' },
   sunset: { color: '#ec6b55', label: 'Coral GT', icon: '/cars/coral-gt.svg' },
-  purple: { color: '#66788f', label: 'Graphite R', icon: '/cars/graphite-r.svg' }
+  purple: { color: '#c8cdd6', label: 'Graphite R', icon: '/cars/graphite-r.svg' },
+  lime: { color: '#c8e64a', label: 'Volt', icon: '/cars/volt.svg' },
+  phantom: { color: '#65666e', label: 'Phantom', icon: '/cars/phantom.svg' }
 };
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 const roomCodePattern = /^[A-F0-9]{8}$/;
@@ -20,8 +22,8 @@ function storedNumber(key: string): number {
 function storedSkin(): Skin {
   try {
     const value = localStorage.getItem('racer.skin');
-    return value && value in SKINS ? value as Skin : 'mint';
-  } catch { return 'mint'; }
+    return value && value in SKINS ? value as Skin : 'sunset';
+  } catch { return 'sunset'; }
 }
 function PhraseView({ prompt, typed, progress = null }: {
   prompt: Prompt; typed: string; progress?: number | null
@@ -38,15 +40,23 @@ function PhraseView({ prompt, typed, progress = null }: {
     })}
   </div>;
 }
-function Lane({ name, progress, color, icon, subtitle, isYou }: {
-  name: string; progress: number; color: string; icon: string; subtitle: string; isYou?: boolean
+function Lane({ name, progress, color, icon, subtitle, isYou, position = 1 }: {
+  name: string; progress: number; color: string; icon: string; subtitle: string; isYou?: boolean; position?: number
 }) {
-  return <div className={'lane ' + (isYou ? 'you' : '')}>
-    <div className="lane-header"><span className="lane-name">{name}{isYou ? ' · YOU' : ''}</span><span className="lane-detail">{subtitle}</span></div>
-    <div className="lane-road">
-      <div className="lane-progress" style={{ width: progress + '%', background: color }} />
-      <img className="lane-car" style={{ left: Math.min(86, Math.max(0, progress)) + '%' }} src={icon} alt="" aria-hidden="true" draggable={false}/>
-      <span className="finish-flag" aria-hidden="true">▦</span>
+  return <div className={'lane ' + (isYou ? 'you' : '')} style={{ '--lane-color': color } as CSSProperties}>
+    <div className="lane-header">
+      <span className="lane-position">{String(position).padStart(2, '0')}</span>
+      <div className="lane-details">
+        <div className="lane-name-row"><span className="lane-name">{name}</span>{isYou && <span className="you-tag">★</span>}</div>
+        <span className="lane-detail">{subtitle}</span>
+        <div className="lane-progress-track" aria-hidden="true"><span style={{ width: progress + '%' }}/></div>
+      </div>
+      <span className="lane-percentage">{progress}%</span>
+    </div>
+    <div className="lane-road" aria-label={name + ': ' + progress + '%'}>
+      <div className="lane-progress" style={{ width: progress + '%' }}/>
+      <img className="lane-car" style={{ left: (2 + progress * .76) + '%' }} src={icon} alt="" aria-hidden="true" draggable={false}/>
+      <span className="finish-flag" aria-hidden="true"/>
     </div>
   </div>;
 }
@@ -95,6 +105,8 @@ export function App() {
   const wpm = wordsPerMinute(correct, elapsed);
   const accuracy = accuracyPercent(Math.max(0, strokes - mistakes), strokes);
   const progress = progressPercent(correct, prompt.text);
+  const ghostProgress = (pace: number) => Math.min(100, Math.round(elapsed / 60000 * pace * 5 / Math.max(1, target.length) * 100));
+  const level = Math.floor(xp / 300) + 1;
   const myPlayer = snapshot?.players.find(p => p.id === myId);
   const onlineWpm = myPlayer && snapshot?.startAt
     ? wordsPerMinute(myPlayer.progress, Math.max(1, (myPlayer.completedAt ?? now) - snapshot.startAt)) : 0;
@@ -119,7 +131,7 @@ export function App() {
     window.setTimeout(() => inputRef.current?.focus(), 10);
   }
   function updateTyping(event: ChangeEvent<HTMLInputElement>) {
-    if (finishedAt !== null) return;
+    if (finishedAt !== null || (event.nativeEvent as InputEvent).isComposing) return;
     const value = normalizeText(event.target.value);
     if (characters(value).length > target.length) return;
     if (startedAt === null && value.length > 0) setStartedAt(Date.now());
@@ -146,6 +158,7 @@ export function App() {
     }
   }
   function updateSkin(value: Skin) {
+    if ((value === 'lime' && xp < 250) || (value === 'phantom' && xp < 650)) return;
     setSkin(value);
     try { localStorage.setItem('racer.skin', value); } catch { /* storage unavailable */ }
   }
@@ -203,48 +216,54 @@ export function App() {
     <header className="topbar">
       <div className="shell header-layout">
         <a className="brand" href="/" aria-label="TypeRacer Mongolia нүүр">
-          <span className="brand-mark">↗</span>
+          <span className="brand-mark">TR</span>
           <span className="brand-name">TYPE<span>RACER</span><small>MONGOLIA</small></span>
         </a>
         <nav className="main-nav" aria-label="Тоглох горим">
           <button className={'nav-item ' + (mode === 'practice' ? 'selected' : '')}
             aria-current={mode === 'practice' ? 'page' : undefined}
-            onClick={() => { if (mode === 'multiplayer') disconnect(); setMode('practice'); }}>
-            Бичих дасгал
-          </button>
+            onClick={() => { if (mode === 'multiplayer') disconnect(); setMode('practice'); }}>Race</button>
           <button className={'nav-item ' + (mode === 'multiplayer' ? 'selected' : '')}
             aria-current={mode === 'multiplayer' ? 'page' : undefined}
-            onClick={() => setMode('multiplayer')}>
-            Найзуудтай уралдах
-          </button>
+            onClick={() => setMode('multiplayer')}>Multiplayer</button>
+          <button className="nav-item garage-nav" onClick={() => {
+            if (mode === 'multiplayer') disconnect();
+            setMode('practice');
+            window.setTimeout(() => document.getElementById('garage')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 20);
+          }}>Garage</button>
         </nav>
         <div className="header-right">
-          <span className="beta-label">БЕТА</span>
-          {mode === 'practice'
-            ? <button className="primary-button header-cta" onClick={() => inputRef.current?.focus()}>УРАЛДАХ →</button>
-            : <button className="primary-button header-cta" onClick={() => { disconnect(); setMode('practice'); window.setTimeout(() => inputRef.current?.focus(), 20); }}>ДАСГАЛ ХИЙХ →</button>}
+          <span className="beta-label">BETA</span>
+          <div className="profile-chip" aria-label="Тоглогчийн мэдээлэл">
+            <span className="profile-avatar" aria-hidden="true">●</span>
+            <span className="profile-name">{nickname}<small>LV. {level} · {xp} XP</small></span>
+          </div>
         </div>
       </div>
     </header>
-
     <main className="shell main">
       <div className="page-heading">
+        <div className="hero-word" aria-hidden="true">{mode === 'practice' ? 'RACE' : 'LIVE'}</div>
         <div className="page-heading-copy">
-          <div className="eyebrow">{mode === 'practice' ? 'БИЧИХ ДАСГАЛ' : 'НАЙЗУУДТАЙ УРАЛДАХ'} <span className="eyebrow-sep">/</span> MONGOLIA</div>
-          <h1>Үсэг бүр <span>ялалт руу.</span></h1>
-          <p>{mode === 'practice'
-            ? 'Өгүүлбэрийг зөв бич. Машинаа барианд хүргэ. Рекордоо ахиул.'
-            : 'Нэг өрөөнд цуглараад Монгол хэлээр хэн хурдан бичихээ сориорой.'}</p>
+          <div className="eyebrow">01 <span className="eyebrow-sep">/</span> {mode === 'practice' ? 'ГАНЦААРЧИЛСАН УРАЛДААН' : 'НАЙЗУУДТАЙ УРАЛДАХ'}</div>
+          <h1>{mode === 'practice' ? 'Хурд, нарийвчлалаа сорь.' : 'Найзуудтайгаа барианд хүр.'}</h1>
+          <p>{mode === 'practice' ? 'Монгол хэлээр хурдан, алдаагүй бичиж уралдаарай.' : 'Өрөө үүсгээд кодоо найзууддаа илгээгээрэй.'}</p>
         </div>
-        {mode === 'practice' && <div className="heading-pb" aria-label={'Хувийн дээд хурд ' + best + ' WPM'}>
-          <span>ХУВИЙН ДЭЭД</span><strong>{best}</strong><small>WPM</small>
-        </div>}
+        <div className="hero-metrics">
+          {mode === 'practice' && <div className="hero-metric">
+            <strong>{best}</strong><span>BEST WPM</span>
+          </div>}
+          <div className="hero-metric timer-metric">
+            <strong>{mode === 'practice' ? (elapsed / 1000).toFixed(1).padStart(4, '0') : 'LIVE'}</strong>
+            <span>{mode === 'practice' ? 'ЦАГИЙН ЯВЦ' : 'MULTIPLAYER'}</span>
+          </div>
+        </div>
+        <div className="hero-motto" aria-hidden="true">TYPE<br/>RACE<br/>IMPROVE</div>
       </div>
-
       {mode === 'practice' ? <>
         <section className="race-panel" aria-label="Ганцаарчилсан бичих уралдаан">
           <div className="race-panel-head">
-            <div className="race-title"><span className="race-indicator"/> <h2>Бичих уралдаан</h2><span className="race-chip">SOLO RACE</span></div>
+            <div className="race-title"><span className="race-indicator" aria-hidden="true"/> <h2>THE TRACK</h2><span className="race-chip">SOLO RACE</span></div>
             <div className="panel-actions">
               <div className="segmented" role="group" aria-label="Хэл сонгох">
                 <button className={language === 'mn' ? 'active' : ''} aria-pressed={language === 'mn'} onClick={() => resetPractice('mn')}>Монгол</button>
@@ -254,40 +273,55 @@ export function App() {
             </div>
           </div>
           <div className="track-wrap">
-            <div className="track-meta"><span>START</span><span className="track-heading">THE TRACK</span><span>FINISH</span></div>
-            <Lane name="ТА" progress={progress} color={SKINS[skin].color} icon={SKINS[skin].icon} subtitle={progress + '%'} isYou />
+            <div className="track-meta"><span>START YOUR ENGINES</span><span>FINISH →</span></div>
+            <Lane name={nickname} position={1} progress={progress} color={SKINS[skin].color} icon={SKINS[skin].icon} subtitle="YOU · ACTIVE RACER" isYou />
+            <Lane name={best > 0 ? 'Хувийн рекорд' : '60 WPM зорилт'} position={2} progress={ghostProgress(best > 0 ? best : 60)}
+              color="#d8dce0" icon="/cars/graphite-r.svg" subtitle={best > 0 ? 'PB GHOST · ӨМНӨХ ХУРД' : 'PACE GHOST · БОДИТ ТОГЛОГЧ БИШ'}/>
+            <Lane name="40 WPM зорилт" position={3} progress={ghostProgress(40)}
+              color="#4486ef" icon="/cars/blue-sprint.svg" subtitle="PACE GHOST · БОДИТ ТОГЛОГЧ БИШ"/>
+            <div className="track-note">PACE GHOSTS ARE TIME-BASED TARGETS, NOT LIVE PLAYERS</div>
           </div>
           <div className="typing-area" onClick={() => inputRef.current?.focus()}>
-            <div className="typing-label"><span>ДООРХ ТЕКСТИЙГ БИЧНЭ ҮҮ</span><span>{correct} / {target.length} ҮСЭГ</span></div>
+            <div className="typing-label"><span><i aria-hidden="true">//</i> {language === 'mn' ? 'МОНГОЛ ТЕКСТ' : 'ENGLISH TEXT'}</span><span>{prompt.id.toUpperCase()} · {correct} / {target.length}</span></div>
             <PhraseView prompt={prompt} typed={typed}/>
-            <input ref={inputRef} autoFocus autoCapitalize="off" autoCorrect="off" autoComplete="off"
-              spellCheck={false} value={typed} onPaste={e => e.preventDefault()} onChange={updateTyping}
-              aria-label="Энд бичиж эхлээрэй" className="typing-input"
-              placeholder={finishedAt !== null ? 'Барианд орлоо!' : 'Энд бичиж эхлээрэй...'} disabled={finishedAt !== null}/>
-            {finishedAt !== null && <div className="finish-banner" role="status"><strong>Барианд орлоо! {wpm} WPM · {accuracy}%</strong><button className="primary-button" onClick={() => resetPractice()}>ДАХИН УРАЛДАХ →</button></div>}
+            <div className="typing-input-row">
+              <input ref={inputRef} autoFocus autoCapitalize="off" autoCorrect="off" autoComplete="off"
+                spellCheck={false} value={typed} onPaste={e => e.preventDefault()} onChange={updateTyping}
+                onCompositionEnd={e => { const el = e.currentTarget; if (el.value !== typed) updateTyping({ target: el, nativeEvent: { isComposing: false } } as ChangeEvent<HTMLInputElement>); }}
+                aria-label="Энд бичиж эхлээрэй" className="typing-input"
+                placeholder={finishedAt !== null ? 'Барианд орлоо!' : 'Энд бичиж эхлээрэй...'} disabled={finishedAt !== null}/>
+              <button className="restart-shortcut" onClick={e => { e.stopPropagation(); resetPractice(); }} aria-label="Шинэ уралдаан эхлүүлэх">↻ <span>Restart</span></button>
+            </div>
+            {finishedAt !== null && <div className="finish-banner" role="status"><strong>Баяр хүргэе! Барианд орлоо · {wpm} WPM · {accuracy}%</strong><button className="primary-button" onClick={e => { e.stopPropagation(); resetPractice(); }}>ДАХИН УРАЛДАХ →</button></div>}
           </div>
           <div className="race-stats" aria-label="Уралдааны үзүүлэлт">
-            <div><strong>{wpm}</strong><span>WPM</span></div>
-            <div><strong>{accuracy}<small>%</small></strong><span>Нарийвчлал</span></div>
-            <div><strong>{progress}<small>%</small></strong><span>Замын явц</span></div>
-            <div><strong>{elapsed > 0 ? (elapsed / 1000).toFixed(1) : '0.0'}<small>s</small></strong><span>Хугацаа</span></div>
+            <div className="stat-block"><strong>{wpm}</strong><span>WPM</span><small>Хурд</small></div>
+            <div className="stat-block"><strong>{accuracy}<em>%</em></strong><small>Нарийвчлал</small></div>
+            <div className="stat-block stat-progress"><strong>{correct} <em>/ {target.length}</em></strong><small>Тэмдэгт</small><span className="stat-progress-bar" aria-label={'Явц ' + progress + '%'}><span style={{ width: progress + '%' }}/></span></div>
+            <div className="stat-block stat-cta"><button className="primary-button race-again" onClick={() => resetPractice()}>RACE AGAIN <span aria-hidden="true">→</span></button></div>
           </div>
         </section>
-        <p className="help-note">Алдаа гарвал Backspace дарж засна. Монгол хэлний Ө, Ү үсгийг зөв ашиглаарай.</p>
+        <p className="help-note">Ө, Ү үсгийг зөв бичээрэй. Алдааг Backspace дарж засна. Сүнс машинууд бол жишиг хурд бөгөөд бодит өрсөлдөгч биш.</p>
 
-        <section className="garage-panel" aria-label="Машинаа сонгох">
+        <section className="garage-panel" id="garage" aria-label="Машинаа сонгох">
           <div className="garage-heading">
-            <div><h2>Миний гараж</h2><p>Үнэгүй машинууд — тоглолтын хурданд нөлөөлөхгүй.</p></div>
-            <span className="garage-count">3 машин</span>
+            <div className="garage-heading-title"><span aria-hidden="true">▰</span><h2>MY GARAGE</h2></div>
+            <p>Машинаа сонго. Гадаад төрх нь бичих хурданд нөлөөлөхгүй.</p>
           </div>
           <div className="skin-row">
-            {(Object.keys(SKINS) as Skin[]).map(key => <button key={key} aria-pressed={skin === key}
-              className={'skin-card ' + (skin === key ? 'chosen' : '')} onClick={() => updateSkin(key)}>
-              <img src={SKINS[key].icon} alt="" draggable={false}/>
-              <span>{SKINS[key].label}</span>
-              <small>{skin === key ? '✓ Сонгосон' : 'Сонгох'}</small>
-            </button>)}
+            {(Object.keys(SKINS) as Skin[]).map(key => {
+              const unlockAt = key === 'lime' ? 250 : key === 'phantom' ? 650 : 0;
+              const locked = xp < unlockAt;
+              return <button key={key} aria-pressed={!locked && skin === key} disabled={locked}
+                className={'skin-card ' + (skin === key ? 'chosen' : '') + (locked ? ' locked' : '')}
+                onClick={() => updateSkin(key)} title={locked ? unlockAt + ' XP хүрээд нээнэ' : SKINS[key].label}>
+                <img src={SKINS[key].icon} alt="" draggable={false}/>
+                <span className="skin-name">{SKINS[key].label}</span>
+                <small>{locked ? '🔒 ' + unlockAt + ' XP' : skin === key ? '✓ Equipped' : 'Select'}</small>
+              </button>;
+            })}
           </div>
+          <div className="garage-footnote">LEVEL {level} <span>·</span> {xp} XP <span>·</span> Шинэ машинуудыг дасгалаар нээгээрэй.</div>
         </section>
       </> : <>
         <section className="race-panel multiplayer-panel" aria-label="Найзуудтай уралдах">
@@ -316,7 +350,7 @@ export function App() {
               <button className="secondary-button" onClick={() => void copyCode()}>↗ Холбоос хуулах</button></div>
             <div className="room-meta" aria-live="polite">{snapshot.players.length} / 6 тоглогч · {snapshot.phase === 'waiting' ? 'Бэлэн болохыг хүлээж байна' : snapshot.phase === 'countdown' ? 'Уралдаан эхлэх гэж байна' : snapshot.phase === 'racing' ? 'Уралдаж байна' : 'Дууссан'}</div>
             <div className="multiplayer-track">
-              {snapshot.players.map((player, index) => <Lane key={player.id} name={player.name} isYou={player.id === myId}
+              {snapshot.players.map((player, index) => <Lane key={player.id} name={player.name} position={index + 1} isYou={player.id === myId}
                 progress={progressPercent(player.progress, snapshot.prompt.text)}
                 color={player.id === myId ? SKINS[skin].color : ['#ec6b55', '#66788f', '#3679e8'][index % 3]}
                 icon={player.id === myId ? SKINS[skin].icon : ['/cars/coral-gt.svg', '/cars/graphite-r.svg', '/cars/blue-sprint.svg'][index % 3]}
@@ -347,7 +381,7 @@ export function App() {
         </section>
         <p className="help-note">Зочны уралдаан. Албан ёсны рейтинг, шагнал болон үр дүнгийн хадгалалт идэвхгүй.</p>
       </>}
-      <footer>TypeRacer Mongolia · Beta</footer>
+      <footer>© TypeRacer Mongolia <span>·</span> PLAY FAIR. TYPE FAST. <span>·</span> BETA</footer>
     </main>
   </div>;
 }
