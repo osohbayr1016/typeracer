@@ -408,7 +408,7 @@ export function App() {
                 <button className="secondary-button full" disabled={!roomCodePattern.test(joinCode)} onClick={() => connectRoom(joinCode)}>НЭВТРЭХ →</button>
               </section>
             </div>
-          </div>
+          </div>}
           {status === 'connecting' && <p className="connection-note">Өрөөнд холбогдож байна…</p>}
           {status === 'connected' && snapshot && <div className="room-active">
             <div className="room-info"><div><small>YOUR INVITE CODE</small><strong>{code}</strong></div>
