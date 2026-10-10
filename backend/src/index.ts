@@ -20,13 +20,18 @@ app.use('/api/*', async (c, next) => {
   if (!originAllowed(origin, c.env.FRONTEND_ORIGIN)) return c.json({ error: 'Origin not allowed' }, 403);
   await next();
 });
-app.use('/api/*', cors({
-  origin: (origin, c) => originAllowed(origin, c.env.FRONTEND_ORIGIN) ? origin : '',
-  allowMethods: ['GET', 'POST', 'OPTIONS'],
-  allowHeaders: ['Content-Type'],
-  maxAge: 3600
-}));
+app.use('/api/*', (c, next) => {
+  // Upgraded WebSocket responses have immutable headers. Never pass them through CORS.
+  if (c.req.header('Upgrade')?.toLowerCase() === 'websocket') return next();
+  return cors({
+    origin: (origin, ctx) => originAllowed(origin, ctx.env.FRONTEND_ORIGIN) ? origin : '',
+    allowMethods: ['GET', 'POST', 'OPTIONS'],
+    allowHeaders: ['Content-Type'],
+    maxAge: 3600
+  })(c, next);
+});
 app.use('*', async (c, next) => {
+  if (c.req.header('Upgrade')?.toLowerCase() === 'websocket') return next();
   await next();
   c.header('X-Content-Type-Options', 'nosniff');
   c.header('Referrer-Policy', 'no-referrer');
