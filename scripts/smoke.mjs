@@ -46,11 +46,13 @@ if (!globalThis.WebSocket) throw new Error('Node 22+ global WebSocket API is req
 const wsUrl = origin.replace(/^https:/, 'wss:') + '/api/rooms/' + room.code + '/ws?name=Smoke';
 await new Promise((resolve, reject) => {
   const socket = new WebSocket(wsUrl);
+  let receivedSnapshot = false;
   const timeout = setTimeout(() => { socket.close(); reject(new Error('WebSocket snapshot timeout')); }, 15_000);
   socket.addEventListener('message', event => {
     try {
       const value = JSON.parse(event.data);
       if (value.type === 'state') {
+        receivedSnapshot = true;
         assert.equal(value.phase, 'waiting');
         assert(value.players.length >= 1);
         clearTimeout(timeout);
@@ -60,7 +62,11 @@ await new Promise((resolve, reject) => {
     } catch (error) { clearTimeout(timeout); socket.close(); reject(error); }
   });
   socket.addEventListener('error', () => { clearTimeout(timeout); reject(new Error('WebSocket connection failed')); });
-  socket.addEventListener('close', () => { clearTimeout(timeout); });
+  socket.addEventListener('close', () => {
+    // A socket that closes before the first room snapshot is a failed smoke test.
+    // Closing after receiving the snapshot is handled by resolve() above.
+    if (!receivedSnapshot) { clearTimeout(timeout); reject(new Error('WebSocket closed before room snapshot')); }
+  });
 });
 console.log('✓ Live WebSocket room state');
 console.log('STAGING SMOKE TEST PASSED:', origin);
