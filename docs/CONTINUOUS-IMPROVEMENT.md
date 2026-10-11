@@ -1,3 +1,17 @@
+## 2026-10-11 — Public start lights + durable points and Team beta (PR #25)
+
+**User screenshot:** public race displayed a plain top-right numeric countdown, whereas the expected visual is three centered start lamps (red, yellow, green). Added a track-centered CSS signal tied to **server** `phase/startAt`: red then yellow during countdown, green only when server phase becomes `racing`. The quick typing input remains disabled before green; motion preferences are honored. A Chromium E2E asserts center alignment and disabled/enabled gating.
+
+**Global scoring request:** historical Nitro Type documentation (2016) publicly described speed/accuracy points, but the current proprietary algorithm is **not** reproducible. TypeRacer implements its own documented `round((90 + 0.75*WPM)*(accuracy/100)^2)`, requiring completed server-scored race, accuracy >=70%, WPM <=210. Points do not affect coins, XP, levels, or match placement. Bots and incomplete attempts never get points. Guest account cookie is HttpOnly/SameSite, Durable Object SQLite persists an idempotent `(race_id,player_id)` result ledger and weekly player leaderboard. `/api/leaderboard` allows paginated results with WPM, accuracy, races, points and Team tag; only completed humans with a guest session appear. The weekly cutoff is Monday UTC; total player stats persist.
+
+**Teams:** guest beta can create one Team, invite via code (maximum 25 members), join via invite, see member breakdown and weekly Team board. Team points originate from server-written race events while in a Team. The current model is intentionally a **guest/beta competition**, not an authenticated global league; guest accounts can be reset or farmed and do not prove a person's identity. Team captain ownership transfer, anti-cheat, provider account login, session-token hashing, durable matchmaking after instance restart and abuse protection remain outstanding. Do not label as verified or launch prizes until those are implemented.
+
+**Google and Facebook authentication:** must use real OAuth 2.0 app credentials, server-side state/CSRF protection, verified provider identity, secure session rotation and account linkage; no credentials/secrets are present in repo. Do NOT show fake working Google/Facebook buttons or claim integration is configured. Integrate as a separate reviewed security milestone and keep guest racing playable.
+
+**Tests:** Vitest checks score fairness caps, UTC week boundaries, server-only start lights; Chromium checks centered lights and server-gated input, backend-written live ranking and two-browser Team join/persistence. **CI/staging remain to be verified**; no destructive migrations, paid dependencies or production deployment. Existing SQLite Durable Object classes only; additive `CREATE TABLE IF NOT EXISTS`.
+
+---
+
 ## 2026-10-11 — PR #23 staging evidence and current P0–P3 backlog
 
 **Completed previous priority:** [PR #23](https://github.com/osohbayr1016/typeracer/pull/23) is merged into `main` at `2eeb42d2`. Its behavioral closed/throwing WebSocket unit/Chromium tests, real local Worker resume tests, typecheck and build passed. [Main push run 38133888580](https://github.com/osohbayr1016/typeracer/actions/runs/38133888580) passed Cloudflare staging deployment and real public/private WebSocket smoke: two private clients synchronized, public queue joined two clients, bot and human progress was observed. This is CI smoke evidence, not a manual browser/device review.
