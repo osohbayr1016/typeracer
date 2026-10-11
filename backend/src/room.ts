@@ -33,7 +33,7 @@ export class RaceRoom {
   async fetch(request: Request): Promise<Response> {
     const path = new URL(request.url).pathname;
     if (path === '/quickplay') return this.quickService().fetch(request);
-    if (path.startsWith('/ranking/') || path === '/account') {
+    if (path.startsWith('/ranking/') || path.startsWith('/oauth/') || path === '/account') {
       const rank = this.quickService().rankings!;
       const cookie = request.headers.get('Cookie');
       if (path === '/account' && request.method === 'GET') {
@@ -44,6 +44,29 @@ export class RaceRoom {
           headers.append('Set-Cookie', 'tr_guest='+newToken+'; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000'+(secure?'; Secure':''));
         }
         return new Response(JSON.stringify({player:rank.publicPlayer(player)}), {headers});
+      }
+      if (path.startsWith('/oauth/') && request.method==='POST') {
+        let input:Record<string,unknown>;
+        try { const raw=await request.json(); if (!raw || typeof raw!=='object') throw Error('json'); input=raw as Record<string,unknown>; }
+        catch { return Response.json({error:'Invalid input'},{status:400}); }
+        const provider=input.provider;
+        if (provider!=='google' && provider!=='facebook') return Response.json({error:'Invalid provider'},{status:400});
+        if (typeof input.state!=='string') return Response.json({error:'Invalid state'},{status:400});
+        if (path==='/oauth/start') {
+          const ok=rank.startOAuth(cookie,provider,input.state);
+          return Response.json(ok?{ok:true}:{error:'Guest account required'},{status:ok?200:401});
+        }
+        if (path==='/oauth/finish') {
+          if (typeof input.providerSubject!=='string' || typeof input.displayName!=='string')
+            return Response.json({error:'Invalid provider profile'},{status:400});
+          const result=rank.completeOAuth(cookie,provider,input.state,input.providerSubject,input.displayName);
+          if (!result) return Response.json({error:'Expired or invalid OAuth state'},{status:403});
+          const headers=new Headers({'Content-Type':'application/json','Cache-Control':'no-store'});
+          const secure=new URL(request.url).searchParams.get('secure')==='1';
+          headers.append('Set-Cookie','tr_guest='+result.newToken+'; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000'+(secure?'; Secure':''));
+          return new Response(JSON.stringify({player:rank.publicPlayer(result.player)}),{headers});
+        }
+        return Response.json({error:'Unsupported OAuth action'},{status:404});
       }
       if (path === '/ranking/players' && request.method === 'GET') {
         const query = new URL(request.url).searchParams;
