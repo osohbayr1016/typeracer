@@ -1,3 +1,4 @@
+import './ShopPage.css';
 import { useState } from 'react';
 import { RARITIES, type Rarity } from './cars';
 import { SHOP, NEW_CAR_COLLECTION, isOwned, isLevelUnlocked, playerLevel, shopRotation,
