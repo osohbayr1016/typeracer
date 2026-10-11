@@ -130,7 +130,7 @@ export class QuickMatchmaker {
     return race;
   }
 
-  private joinBot(race: QuickRace): void {
+  private joinBot(race: QuickRace, autoStart = true): void {
     if (race.phase !== 'waiting' || race.humans.size === 0) return;
     if (race.humans.size + race.bots.length >= QUICK_LANES) return;
     const slot = race.botSequence++;
@@ -144,7 +144,7 @@ export class QuickMatchmaker {
     this.broadcast(race);
     // Once the five-player grid is full, move straight to the ONLY visible
     // countdown. Do not keep a separate "search timeout" running on screen.
-    if (race.humans.size + race.bots.length === QUICK_LANES) this.startCountdown(race);
+    if (autoStart && race.humans.size + race.bots.length === QUICK_LANES) this.startCountdown(race);
   }
 
   private startCountdown(race: QuickRace): void {
@@ -157,7 +157,7 @@ export class QuickMatchmaker {
     race.botJoinTimer = null;
     // All competitors are present before the 3-second countdown begins.
     // Remaining slots may occur if the event loop was briefly suspended.
-    while (race.humans.size + race.bots.length < QUICK_LANES) this.joinBot(race);
+    while (race.humans.size + race.bots.length < QUICK_LANES) this.joinBot(race, false);
     race.phase = 'countdown';
     race.startAt = Date.now() + QUICK_COUNTDOWN_MS;
     this.broadcast(race);
