@@ -26,10 +26,10 @@ type QuickRace = {
  */
 export const QUICK_QUEUE_MS = 5_000;
 export const QUICK_COUNTDOWN_MS = 3_000;
-export const QUICK_LANES = 10;
-export const QUICK_MAX_HUMANS = 10;
-export const QUICK_PRIZES = [120, 95, 75, 55, 40, 35, 30, 25, 20, 15] as const;
-export const QUICK_BOT_JOIN_MS = 400;
+export const QUICK_LANES = 5;
+export const QUICK_MAX_HUMANS = 5;
+export const QUICK_PRIZES = [120, 95, 75, 55, 40] as const;
+export const QUICK_BOT_JOIN_MS = 650;
 
 /** Original Mongolian guest bot roster. Bots are identified as bots in every snapshot.
  * Starting at an offset varies the lineup across consecutive races, without duplicate names.
@@ -69,7 +69,7 @@ export function quickPlacement(player: Racer, opponents: Racer[]): number {
       (p.completedAt === player.completedAt && p.id < player.id))).length;
 }
 export function quickPrize(place: number, finished: boolean): number {
-  return finished ? QUICK_PRIZES[place - 1] ?? 30 : 0;
+  return finished ? QUICK_PRIZES[place - 1] ?? 0 : 0;
 }
 
 export class QuickMatchmaker {
@@ -142,6 +142,9 @@ export class QuickMatchmaker {
       ready: true, pace: preset.pace
     });
     this.broadcast(race);
+    // Once the five-player grid is full, move straight to the ONLY visible
+    // countdown. Do not keep a separate "search timeout" running on screen.
+    if (race.humans.size + race.bots.length === QUICK_LANES) this.startCountdown(race);
   }
 
   private startCountdown(race: QuickRace): void {
