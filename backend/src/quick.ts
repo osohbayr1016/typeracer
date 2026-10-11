@@ -3,6 +3,7 @@ import {
   type Prompt, type Racer, type RoomSnapshot
 } from '@typeracer/shared';
 import { acceptKeystroke, safePlayerName } from './logic';
+import { RaceRankingStore } from './rankings';
 
 type QuickResult = {
   type: 'quick-result'; raceId: string; place: number | null; coins: number;
@@ -13,7 +14,7 @@ type QuickResult = {
 type Human = Racer & {
   socket: WebSocket | null; windowStart: number; windowCount: number; paid: boolean;
   resumeToken: string; disconnectTimer: ReturnType<typeof setTimeout> | null;
-  lastResult: QuickResult | null;
+  lastResult: QuickResult | null; accountId: string | null;
 };
 type Bot = Racer & { bot: true; pace: number };
 type QuickRace = {
@@ -83,6 +84,10 @@ export function quickPrize(place: number, finished: boolean): number {
 }
 
 export class QuickMatchmaker {
+  readonly rankings: RaceRankingStore | null;
+  constructor(storage?: DurableObjectStorage) {
+    this.rankings = storage ? new RaceRankingStore(storage.sql) : null;
+  }
   private pending: QuickRace | null = null;
   private active = new Set<QuickRace>();
   private sockets = new Map<WebSocket, { race: QuickRace; human: Human }>();
@@ -122,6 +127,7 @@ export class QuickMatchmaker {
       return new Response(null, { status: 101, webSocket: client });
     }
 
+    const account = this.rankings?.fromCookie(request.headers.get('Cookie')) ?? null;
     const human: Human = {
       id: crypto.randomUUID(), name: safePlayerName(url.searchParams.get('name') || ''),
       car: allowed(url.searchParams.get('car'), carIds, 'sunset'),
@@ -129,7 +135,8 @@ export class QuickMatchmaker {
       sticker: allowed(url.searchParams.get('sticker'), stickerIds, 'none'),
       progress: 0, mistakes: 0, strokes: 0, completedAt: null,
       ready: true, socket: server, windowStart: 0, windowCount: 0, paid: false,
-      resumeToken: crypto.randomUUID(), disconnectTimer: null, lastResult: null
+      resumeToken: crypto.randomUUID(), disconnectTimer: null, lastResult: null,
+      accountId: typeof account?.id === 'string' ? account.id : null
     };
     let race = this.pending;
     if (!race || race.phase !== 'waiting' || race.humans.size >= QUICK_MAX_HUMANS) {
@@ -264,6 +271,10 @@ export class QuickMatchmaker {
       accuracy: human.strokes ? Math.round((human.strokes - human.mistakes) / human.strokes * 100) : 100,
       elapsedMs: Math.max(1, human.completedAt - race.startAt), verified: false, standings: this.receiveSnapshot(race).players
     };
+    // The only leaderboard writer is the authoritative Durable Object finish.
+    // Guest clients cannot submit WPM, accuracy, points, or bots to this store.
+    if (human.accountId) this.rankings?.record(race.id, human.accountId,
+      human.lastResult.wpm, human.lastResult.accuracy, human.completedAt);
     this.send(human.socket, human.lastResult);
   }
 
