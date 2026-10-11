@@ -1,0 +1,221 @@
+/* TypeRacer Mongolia: an original car-led motion identity.
+   This file only animates transforms/opacity, never layout or route readiness. */
+.race-boot,
+.race-route-motion {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: hidden;
+  isolation: isolate;
+  pointer-events: none;
+}
+.race-boot {
+  background: #0d1214;
+  display: grid;
+  place-items: center;
+  color: #f4f1ec;
+  animation: boot-reveal .18s ease-out both;
+}
+.race-boot::before {
+  content: "";
+  position: absolute;
+  width: min(70vw, 950px);
+  height: 85vh;
+  right: -18vw;
+  top: -20vh;
+  transform: skew(-24deg);
+  border-left: 3px solid #ff5c40;
+  background: linear-gradient(110deg, #ff543514, transparent 70%);
+  pointer-events: none;
+}
+.race-boot-inner {
+  position: relative;
+  width: min(86vw, 640px);
+  padding: 0 0 16px;
+  min-width: 0;
+}
+.race-boot-brand { display: flex; align-items: center; gap: 16px; justify-content: center; }
+.race-boot-brand > strong {
+  color: #ff644a;
+  font: italic 900 clamp(48px, 7vw, 76px)/1 var(--font-display);
+  letter-spacing: -7px;
+  transform: skew(-9deg);
+}
+.race-boot-brand > span {
+  display: block;
+  font: 900 clamp(15px, 2.4vw, 24px)/1.06 var(--font-display);
+  letter-spacing: 1.8px;
+}
+.race-boot-brand small {
+  display: block;
+  margin-top: 7px;
+  color: #b8bdb9;
+  font: 800 10px/1.1 var(--font-body);
+  letter-spacing: 4px;
+}
+.race-boot-label {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #c4c9c7;
+  margin: clamp(29px, 5vh, 53px) 0 16px;
+}
+.race-boot-track {
+  position: relative;
+  height: clamp(118px, 23vh, 155px);
+  border-top: 3px solid #6f7777;
+  border-bottom: 3px solid #6f7777;
+  background: radial-gradient(ellipse at 45% 25%, #3c4747, #202729 65%, #161d1f);
+  overflow: hidden;
+}
+.race-boot-track-stripe {
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  top: 50%;
+  background: repeating-linear-gradient(90deg, #bcc8c754 0 45px, transparent 45px 90px);
+}
+.race-boot-speed {
+  position: absolute;
+  width: 52%;
+  top: 30%;
+  left: 8%;
+  bottom: 20%;
+  opacity: .9;
+  background: repeating-linear-gradient(0deg, transparent 0 12px, #ff704835 13px 15px, transparent 16px 27px);
+  animation: boot-speed 700ms linear infinite;
+}
+.race-boot-car {
+  position: absolute;
+  top: 50%;
+  left: 12%;
+  width: min(50%, 290px);
+  height: 113%;
+  transform: translate3d(0, -50%, 0);
+  object-fit: contain;
+  filter: drop-shadow(-19px 10px 8px #000c) drop-shadow(-12px 0 12px #f9674457);
+  will-change: transform;
+  animation: boot-idle-car 900ms ease-in-out infinite alternate;
+}
+.race-boot-finish,
+.race-route-checker {
+  position: absolute;
+  right: 7%;
+  top: 0;
+  bottom: 0;
+  width: 27px;
+  border-left: 2px solid #dedddb;
+  background: conic-gradient(#f2f0e7 25%, #252b2d 0 50%, #f2f0e7 0 75%, #252b2d 0) 0 0 / 20px 20px;
+}
+.race-boot-caption { text-align: center; margin-top: 15px; font-size: 11px; color: #afb6b4; }
+.race-boot-caption strong { color: #e1e5e2; }
+.race-boot-line { height: 3px; margin: 18px auto 0; width: 130px; background: #3a4446; overflow: hidden; }
+.race-boot-line > span { display: block; height: 100%; width: 45%; background: #ff624b; animation: boot-engine-line 950ms ease-in-out infinite alternate; }
+.route-page-enter { animation: route-page-arrive 295ms cubic-bezier(.16, 1, .3, 1) both; }
+.race-route-motion { z-index: 95; }
+.race-route-panel {
+  position: absolute;
+  inset: 0 auto 0 -20vw;
+  width: 140vw;
+  height: 100%;
+  background:
+    linear-gradient(110deg, #0d1416 0 16%, #242b2d 45%, #121719 75%),
+    #121719;
+  border-left: 12px solid #ff624b;
+  border-right: 12px solid #ff624b;
+  clip-path: polygon(0 0, 96% 0, 100% 100%, 4% 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 25px;
+  transform: translate3d(-115%, 0, 0);
+  will-change: transform;
+  animation: car-route-sweep 560ms cubic-bezier(.64, 0, .25, 1) both;
+}
+.race-route-bar,
+.race-route-lane {
+  position: relative;
+  width: min(76vw, 650px);
+  margin-left: auto;
+  margin-right: auto;
+}
+.race-route-bar { display: flex; align-items: center; gap: 19px; }
+.race-route-mark { font: italic 900 56px/.85 var(--font-display); color: #ff644a; letter-spacing: -5px; }
+.race-route-copy strong { display: block; color: #f1f0eb; font: 900 clamp(24px, 4vw, 40px)/1.1 var(--font-display); }
+.race-route-copy small { display: block; font-size: 10px; letter-spacing: 3px; margin-top: 7px; color: #aeb5b3; }
+.race-route-lane {
+  height: 140px;
+  border-top: 3px solid #5b6465;
+  border-bottom: 3px solid #5b6465;
+  background:
+    repeating-linear-gradient(0deg, #ffffff06 0 2px, transparent 2px 5px),
+    linear-gradient(120deg, #293133, #151b1d);
+  overflow: hidden;
+}
+.race-route-lane::before {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 3px;
+  top: 50%;
+  background: repeating-linear-gradient(90deg, #acb8b867 0 38px, transparent 38px 75px);
+}
+.race-route-lane > img {
+  position: absolute;
+  left: -1%;
+  top: 50%;
+  width: 260px;
+  max-width: 54%;
+  height: 125px;
+  object-fit: contain;
+  transform: translate3d(0, -50%, 0);
+  filter: drop-shadow(-22px 6px 8px #000c) drop-shadow(-25px 0 12px #ff533e54);
+  will-change: transform;
+  animation: route-car-run 520ms ease-out both;
+}
+.race-route-tiremarks {
+  position: absolute;
+  inset: 24% auto 24% 2%;
+  width: 68%;
+  background: repeating-linear-gradient(0deg, transparent 0 10px, #ff654b36 10px 13px, transparent 13px 24px);
+  opacity: .65;
+}
+@keyframes boot-reveal { from { opacity: 0; } to { opacity: 1; } }
+@keyframes boot-idle-car {
+  from { transform: translate3d(-18px, -50%, 0); }
+  to { transform: translate3d(18px, -50%, 0); }
+}
+@keyframes boot-speed { from { transform: translateX(-20px); } to { transform: translateX(45px); } }
+@keyframes boot-engine-line { from { transform: translateX(-70%); } to { transform: translateX(160%); } }
+@keyframes route-page-arrive {
+  from { opacity: .7; transform: translate3d(0, 9px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes car-route-sweep {
+  0% { transform: translate3d(-115%, 0, 0); }
+  38% { transform: translate3d(0, 0, 0); }
+  58% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(115%, 0, 0); }
+}
+@keyframes route-car-run {
+  from { transform: translate3d(-40px, -50%, 0); }
+  to { transform: translate3d(190px, -50%, 0); }
+}
+@media(max-width:600px) {
+  .race-boot-inner { width: 90vw; }
+  .race-boot-track { height: 128px; }
+  .race-boot-car { left: 10%; width: 59%; }
+  .race-route-panel { gap: 16px; }
+  .race-route-mark { font-size: 43px; }
+  .race-route-bar, .race-route-lane { width: min(76vw, 350px); }
+  .race-route-copy strong { font-size: 26px; }
+  .race-route-copy small { font-size: 8px; }
+  .race-route-lane { height: 104px; }
+  .race-route-lane > img { height: 96px; }
+  .race-route-checker { width: 14px; background-size: 11px 11px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .race-boot, .race-route-motion { display: none !important; }
+  .route-page-enter { animation: none !important; }
+}
