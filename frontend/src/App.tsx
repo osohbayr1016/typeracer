@@ -3,7 +3,8 @@ import { HomePage } from './pages/HomePage';
 import { QuickRacePage, type QuickResult } from './pages/QuickRacePage';
 import { QuickRaceResultsPage } from './pages/QuickRaceResultsPage';
 import { type QuickRaceOutcome } from './pages/quickResultsModel';
-import { ProfilePage, LeaderboardPage, StatsPage, FriendsPage } from './pages/SocialPages';
+import { ProfilePage, StatsPage, FriendsPage } from './pages/SocialPages';
+import { GlobalLeaderboardPage, TeamsPage } from './pages/RankingsPages';
 import { PlayPage } from './pages/PlayPage';
 import { GaragePage } from './pages/GaragePage';
 import { ResultsPage } from './pages/ResultsPage';
@@ -17,10 +18,10 @@ import {
   PROMPTS, wordsPerMinute, type Language, type Prompt, type RoomSnapshot
 } from '@typeracer/shared';
 
-type Page = 'home' | 'play' | 'quickRace' | 'quickResults' | 'profile' | 'leaderboard' | 'stats' | 'friends' | 'race' | 'garage' | 'results' | 'shop' | 'season' | 'multiplayer' | 'multiplayerRace';
+type Page = 'home' | 'play' | 'quickRace' | 'quickResults' | 'profile' | 'leaderboard' | 'teams' | 'stats' | 'friends' | 'race' | 'garage' | 'results' | 'shop' | 'season' | 'multiplayer' | 'multiplayerRace';
 const PAGE_URLS: Record<Page, string> = {
   home: '/', play: '/play', quickRace: '/quick-race', quickResults: '/quick-results',
-  profile: '/profile', leaderboard: '/leaderboard', stats: '/stats', friends: '/friends',
+  profile: '/profile', leaderboard: '/leaderboard', teams: '/teams', stats: '/stats', friends: '/friends',
   race: '/race', garage: '/garage', results: '/results',
   shop: '/shop', season: '/season',
   multiplayer: '/multiplayer', multiplayerRace: '/multiplayer/race'
@@ -306,6 +307,8 @@ export function App() {
             onClick={() => navigate('friends')}>Найзууд</button>
           <button className={'nav-item ' + (page === 'leaderboard' ? 'selected' : '')}
             onClick={() => navigate('leaderboard')}>Чансаа</button>
+          <button className={'nav-item ' + (page === 'teams' ? 'selected' : '')}
+            onClick={() => navigate('teams')}>Багууд</button>
           <button className={'nav-item ' + (page === 'stats' ? 'selected' : '')}
             onClick={() => navigate('stats')}>Стат</button>
           <button className={'nav-item ' + (page === 'shop' ? 'selected' : '')}
@@ -339,8 +342,9 @@ export function App() {
         onNameChange={updateNickname} onPlay={() => navigate('quickRace')}
         onGarage={() => navigate('garage')} onSeason={() => navigate('season')} onStats={() => navigate('stats')}/>}
       {page === 'stats' && <StatsPage profile={profile} best={best} onPlay={() => navigate('quickRace')}/>}
-      {page === 'leaderboard' && <LeaderboardPage profile={profile} outcome={quickOutcome}
-        onPlay={() => navigate('quickRace')}/>}
+      {page === 'leaderboard' && <GlobalLeaderboardPage profile={profile} outcome={quickOutcome}
+        onPlay={() => navigate('quickRace')} onTeams={() => navigate('teams')}/>}
+      {page === 'teams' && <TeamsPage onPlay={() => navigate('quickRace')}/>}
       {page === 'friends' && <FriendsPage
         onCreateRoom={() => { navigate('multiplayer'); void createRoom(); }}
         onJoinRoom={room => { navigate('multiplayer'); setJoinCode(room); connectRoom(room); }}

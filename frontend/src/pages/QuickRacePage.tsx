@@ -6,6 +6,7 @@ import { CARS, type Skin } from './cars';
 import { type Profile } from '../progression';
 import { QuickTypingPanel } from './QuickTypingPanel';
 import { sendRaceKey } from './typingSync';
+import { startSignal } from './raceStartSignal';
 import { type QuickRaceOutcome, type QuickResult } from './quickResultsModel';
 import './QuickRacePage.css';
 
@@ -54,12 +55,26 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
       if (resume) params.set('resume', resume);
     } catch { /* private browsing may disable session storage */ }
     const url = base.replace(/^http/, 'ws') + '/api/quickplay/ws?' + params;
-    let socket: WebSocket;
-    try { socket = new WebSocket(url); }
-    catch { setConnection('error'); setError('Уралдааны сервертэй холбогдож чадсангүй.'); return; }
-    socketRef.current = socket;
-    socket.onopen = () => { if (!disposed) { setConnection('connected'); setError(''); } };
-    socket.onmessage = event => {
+    let socket: WebSocket | null = null;
+    // Issue an HttpOnly same-origin guest cookie BEFORE WebSocket upgrade.
+    // The browser cannot claim points itself; the DO writes finished scores.
+    void (async () => {
+      try {
+        await fetch(base + '/api/account', { credentials:'include' });
+        if (disposed) return;
+        await fetch(base + '/api/account/name', {
+          method:'POST', credentials:'include', headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({name:nickname})
+        });
+      } catch { /* Race still works if leaderboard session creation fails. */ }
+      if (disposed) return;
+      let ws: WebSocket;
+      try { ws = new WebSocket(url); }
+      catch { setConnection('error'); setError('Уралдааны сервертэй холбогдож чадсангүй.'); return; }
+      socket = ws;
+      socketRef.current = ws;
+      ws.onopen = () => { if (!disposed) { setConnection('connected'); setError(''); } };
+    ws.onmessage = event => {
       if (disposed) return;
       try {
         const data = JSON.parse(event.data) as RoomSnapshot |
@@ -90,8 +105,8 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
         }
       } catch { setError('Серверийн хариу ойлгомжгүй байна.'); }
     };
-    socket.onerror = () => { if (!disposed) setError('Холболт тасарлаа. Дахин оролдоно уу.'); };
-    socket.onclose = () => {
+    ws.onerror = () => { if (!disposed) setError('Холболт тасарлаа. Дахин оролдоно уу.'); };
+    ws.onclose = () => {
       if (disposed || receivedResult) return;
       // The server holds this human's race slot for 15 seconds. Try a bounded,
       // short reconnect; later attempts remain a manual choice.
@@ -105,11 +120,12 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
         setError('Уралдааны холболт тасарлаа. Дахин нэгдэж болно.');
       }
     };
+    })();
     return () => {
       disposed = true;
       if (retryTimer) window.clearTimeout(retryTimer);
       socketRef.current = null;
-      socket.close();
+      socket?.close();
     };
   // A new attempt is the only way to re-enter the queue. Prop changes during a race
   // never silently disconnect players.
@@ -121,8 +137,7 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
     return () => window.clearInterval(timer);
   }, []);
   const self = snapshot?.players.find(p => p.id === myId);
-  const countdown = snapshot?.phase === 'countdown' && snapshot.startAt
-    ? Math.max(1, Math.ceil((snapshot.startAt - now) / 1000)) : 0;
+  const signal = startSignal(snapshot?.phase, snapshot?.startAt, now);
   const filled = snapshot?.players.length ?? 0;
   const myRank = snapshot && self ? 1 + snapshot.players.filter(p => p.id !== myId &&
     (p.progress > self.progress || (p.progress === self.progress &&
@@ -160,9 +175,8 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
         <span className="quick-phase-value">{filled}<em>/5</em></span>
       </> : snapshot.phase === 'countdown' ? <>
         <span className="quick-phase-badge">2 / 2</span>
-        <div className="quick-phase-copy"><strong>БҮГД БЭЛЭН · ГАРААНЫ ТООЛОЛ</strong>
-          <small>Бичих текстээ хараарай. Тэг болоход бичиж эхэлнэ.</small></div>
-        <strong className="quick-phase-value" data-testid="race-start-countdown">{countdown}</strong>
+        <div className="quick-phase-copy"><strong>ГАРААНД БЭЛЭН</strong>
+          <small>Гэрэл ногоон болмогц бичиж эхлээрэй.</small></div>
       </> : snapshot.phase === 'racing' ? <>
         <span className="quick-phase-live">● ЭХЭЛЛЭЭ</span>
         <div className="quick-phase-copy"><strong>ОДОО БИЧЭЭРЭЙ!</strong>
@@ -175,6 +189,16 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
     </div>}
 
     {snapshot && <section className="quick-track" aria-label="Таван тоглогчийн байрлал">
+      {signal !== 'off' && <div className={'quick-start-lights signal-'+signal}
+        role="status" aria-live="assertive" data-testid="race-start-lights" data-signal={signal}
+        aria-label={signal === 'red' ? 'УЛААН. ХҮЛЭЭНЭ ҮҮ' : signal === 'yellow' ? 'ШАР. БЭЛД' : 'НОГООН. ЭХЭЛ'}>
+        <div className="quick-start-housing" aria-hidden="true">
+          <span className={'light-red'+(signal==='red'?' active':'')}/>
+          <span className={'light-yellow'+(signal==='yellow'?' active':'')}/>
+          <span className={'light-green'+(signal==='green'?' active':'')}/>
+        </div>
+        <strong>{signal==='red'?'ХҮЛЭЭ':signal==='yellow'?'БЭЛД':'ЭХЭЛ!'}</strong>
+      </div>}
       <div className="quick-track-head">
         <span>УРАЛДАГЧИД</span>
         <strong>{filled} / 5 · {snapshot.players.filter(p => !p.bot).length} ХҮН · {snapshot.players.filter(p => p.bot).length} БОТ</strong>

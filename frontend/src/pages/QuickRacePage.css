@@ -147,3 +147,27 @@
   .quick-lane { animation: none; }
   .quick-road > img,.quick-road-progress { transition: none; }
 }
+
+
+/* Three start lights in the center of the LIVE track, never above the input.
+ * Lights only reflect the server countdown/racing phase. */
+.quick-track { position: relative; }
+.quick-start-lights { position:absolute; top:50%; left:50%; z-index:12; transform:translate(-50%,-50%);
+  display:flex; flex-direction:column; align-items:center; gap:8px; pointer-events:none;
+  filter:drop-shadow(0 13px 24px #000d); }
+.quick-start-housing { display:flex; align-items:center; gap:11px; padding:15px 20px; border:3px solid #768487;
+  border-radius:18px; background:linear-gradient(155deg,#333b3d,#101617); box-shadow:0 4px 0 #090d0e, inset 0 2px #576065; }
+.quick-start-housing span { width:clamp(42px,5.4vw,68px); aspect-ratio:1; border-radius:50%;
+  border:4px solid #080e10; display:block; box-shadow:inset 0 6px 14px #000c,0 1px 2px #93a5a850; }
+.quick-start-housing .light-red { background:#4d1716; }
+.quick-start-housing .light-yellow { background:#554219; }
+.quick-start-housing .light-green { background:#153b28; }
+.quick-start-housing .light-red.active { background:#ff3a29; box-shadow:0 0 25px #ff3927,0 0 65px #ff422280,inset 0 0 11px #ffd1a3; }
+.quick-start-housing .light-yellow.active { background:#ffc82f; box-shadow:0 0 27px #ffd535,0 0 65px #f3c22095,inset 0 0 10px #fff6b5; }
+.quick-start-housing .light-green.active { background:#26e77e; box-shadow:0 0 30px #14f886,0 0 70px #22db7999,inset 0 0 10px #d4ffe5; }
+.quick-start-lights strong { padding:6px 17px; border-radius:4px; background:#131a1df0;
+  color:#f5e9df; font:900 clamp(18px,2.8vw,30px)/1 var(--font-display); letter-spacing:1px; }
+.quick-start-lights.signal-green strong {color:#a7ffce;}
+@media(max-width:600px){ .quick-start-housing {gap:6px;padding:10px 12px;border-width:2px;border-radius:13px;}
+  .quick-start-housing span {width:40px;border-width:3px;} .quick-start-lights strong{font-size:18px;} }
+@media(prefers-reduced-motion:reduce){ .quick-start-lights { animation:none; } }

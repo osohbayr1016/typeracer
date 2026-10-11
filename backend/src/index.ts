@@ -32,6 +32,23 @@ app.use('*', async (c, next) => {
   c.header('Cache-Control', 'no-store');
 });
 app.get('/api/health', c => c.json({ ok: true, service: 'mongolian-typeracer', version: 1 }));
+// Guest account is stable per first-party browser. Only DO-written, completed
+// races can contribute points; this is a beta, not identity-verified ranking.
+const publicRanking = (c: {env:Env;req:{raw:Request}},path:string) => {
+  const ns = c.env.RACE_ROOMS;
+  return ns.get(ns.idFromName('MONGOLIAN-QUICK-V1')).fetch(
+    new Request('https://room.internal'+path,{method:c.req.raw.method,
+      headers:c.req.raw.headers,
+      body:['GET','HEAD'].includes(c.req.raw.method)?undefined:c.req.raw.body,
+      duplex: 'half' } as RequestInit)
+  );
+};
+app.get('/api/account',c=>publicRanking(c,'/account?secure='+(new URL(c.req.url).protocol==='https:'?'1':'0')));
+app.post('/api/account/name',c=>publicRanking(c,'/ranking/name'));
+app.get('/api/leaderboard',c=>publicRanking(c,'/ranking/players'+new URL(c.req.url).search));
+app.get('/api/teams',c=>publicRanking(c,'/ranking/teams'));
+app.get('/api/teams/me',c=>publicRanking(c,'/ranking/team'));
+app.post('/api/teams',c=>publicRanking(c,'/ranking/team'));
 app.get('/api/prompts', c => {
   // Public typing competition is Mongolian-only even if clients request another language.
   return c.json({ prompts: PROMPTS.mn });
