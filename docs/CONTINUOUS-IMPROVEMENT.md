@@ -1,3 +1,11 @@
+## 2026-10-11 — Google/Facebook confidential OAuth foundation (PR pending)
+
+**Scope:** previously implemented point and Team scores were tied to mutable beta guest cookies. Added real server-side OAuth authorization-code flow for Google/Meta Facebook, confidential token exchange, provider-verified userinfo, CSRF state stored in Durable Object SQLite for 5 minutes and bound to same browser guest session, unique provider identity mapping, session rotation and logout token revocation. Profile page fetches real `/api/auth/providers` configuration; buttons are disabled when secrets are absent instead of faking login. Existing guest racing remains available. Added provider helper unit tests, Chromium provider-configuration and logout-cookie checks, and `docs/AUTH-SETUP.md` exact setup instructions.
+
+**Blocker:** the repository does **not** contain, and should never contain, real Google OAuth Web client ID/secret and Facebook App ID/secret. Owner must configure provider apps with correct staging callback allowlists and Cloudflare Worker secrets. Automated CI can validate code/config gating, but live Google/Facebook provider handshake cannot be claimed passing until credentials and live browser QA exist. No production deploy or external paid dependencies. Guest score anti-cheat, session-token hash-at-rest, abuse quotas, account deletion and profile inventory server reconciliation still pending.
+
+---
+
 ## 2026-10-11 — Public start lights + durable points and Team beta (PR #25)
 
 **User screenshot:** public race displayed a plain top-right numeric countdown, whereas the expected visual is three centered start lamps (red, yellow, green). Added a track-centered CSS signal tied to **server** `phase/startAt`: red then yellow during countdown, green only when server phase becomes `racing`. The quick typing input remains disabled before green; motion preferences are honored. A Chromium E2E asserts center alignment and disabled/enabled gating.

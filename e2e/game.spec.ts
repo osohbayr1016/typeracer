@@ -800,3 +800,42 @@ test('team create, invite-only join and member roster persist in SQLite DO acros
     await expect(captain.getByTestId('team-points-table')).toContainText(tag);
   } finally {await Promise.allSettled([captain.close(),teammate.close()]);}
 });
+
+
+test('profile has real provider-aware Google/Facebook auth controls, never fake enabled login',async({page})=>{
+  await page.goto('/profile');
+  await expect(page.getByTestId('auth-panel')).toBeVisible();
+  const response=await page.request.get('/api/auth/providers');
+  expect(response.ok()).toBeTruthy();
+  const providers=await response.json() as {google:boolean;facebook:boolean};
+  const google=page.getByTestId('google-login');
+  const facebook=page.getByTestId('facebook-login');
+  await expect(google).toBeVisible();
+  await expect(facebook).toBeVisible();
+  if(!providers.google){
+    await expect(google).toBeDisabled();
+    expect((await page.request.get('/api/auth/google/start')).status()).toBe(503);
+  }else await expect(google).toBeEnabled();
+  if(!providers.facebook){
+    await expect(facebook).toBeDisabled();
+    expect((await page.request.get('/api/auth/facebook/start')).status()).toBe(503);
+  }else await expect(facebook).toBeEnabled();
+});
+
+test('guest logout rotates and revokes the first-party server session cookie',async({page})=>{
+  await page.goto('/profile');
+  const getSession=async()=>{
+    const response=await page.request.get('/api/account');
+    expect(response.ok()).toBeTruthy();
+    return response.json() as Promise<{player:{id:string;guest:boolean}}>;
+  };
+  const first=await getSession();
+  const cookie=(await page.context().cookies()).find(x=>x.name==='tr_guest');
+  expect(cookie?.httpOnly).toBe(true);
+  expect(cookie?.sameSite).toBe('Lax');
+  const r=await page.request.post('/api/auth/logout');
+  expect(r.status()).toBe(200);
+  const second=await getSession();
+  expect(second.player.id).not.toBe(first.player.id);
+  expect(second.player.guest).toBe(true);
+});
