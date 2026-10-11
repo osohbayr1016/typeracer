@@ -1,36 +1,79 @@
+import { useState } from 'react';
 import { CARS, carKeys, type Skin } from './cars';
-type Props = { skin: Skin; xp: number; onSelect: (skin: Skin) => void; onPlay: () => void };
-export function GaragePage({ skin, xp, onSelect, onPlay }: Props) {
-  const level = Math.floor(xp / 300) + 1;
+import { ITEMS, TRAIL_NAMES, TITLE_NAMES, STICKER_SYMBOLS, isOwned,
+  type CosmeticKind, type Profile, type Trail, type Title, type Sticker } from '../progression';
+type Props = { profile: Profile; onEquip: (kind: CosmeticKind, id: string) => void;
+  onPlay: () => void; onShop: () => void; onSeason: () => void };
+type Tab = 'car' | 'trail' | 'title' | 'sticker';
+const tabs: {key: Tab; label: string}[] = [
+  {key:'car',label:'Машин'}, {key:'trail',label:'Гэрлийн мөр'},
+  {key:'title',label:'Цол'}, {key:'sticker',label:'Тэмдэг'}
+];
+export function GaragePage({ profile, onEquip, onPlay, onShop, onSeason }: Props) {
+  const [tab, setTab] = useState<Tab>('car');
+  const equipped = tab === 'car' ? profile.car : tab === 'trail' ? profile.trail : tab === 'title' ? profile.title : profile.sticker;
+  const level = Math.floor(profile.xp / 300) + 1;
+  const options = tab === 'car' ? carKeys.map(key => ({
+    id: key, label: CARS[key].label, icon: CARS[key].icon, note: 'Машин'
+  })) : tab === 'trail' ? (Object.keys(TRAIL_NAMES) as Trail[]).map(key => ({
+    id: key, label: TRAIL_NAMES[key], icon: '', note: 'Гэрлийн мөр'
+  })) : tab === 'title' ? (Object.keys(TITLE_NAMES) as Title[]).map(key => ({
+    id: key, label: TITLE_NAMES[key], icon: '', note: 'Нэрийн цол'
+  })) : (Object.keys(STICKER_SYMBOLS) as Sticker[]).map(key => ({
+    id: key, label: key === 'none' ? 'Тэмдэггүй' : ITEMS.find(i => i.kind === 'sticker' && i.id === key)?.name || key, icon: '', note: 'Тэмдэг'
+  }));
   return <div className="garage-page">
     <div className="flow-heading garage-flow-heading">
-      <span className="section-kicker">YOUR COLLECTION / LOCAL GARAGE</span>
-      <h1>MY <span>GARAGE.</span></h1>
-      <p>Уралдаанд оролцох машинаа сонго. Машины загвар бичих хурданд нөлөөлөхгүй.</p>
+      <span className="section-kicker">МИНИЙ ГАРАЖ · ЦУГЛУУЛГА</span>
+      <h1>МИНИЙ <span>ГАРАЖ.</span></h1>
+      <p>Машин, мөр, цол, тэмдэгээ сонгож өөрийн хэв маягаа бүрдүүлээрэй. Гоёл бичих хурдыг нэмэхгүй.</p>
     </div>
-    <section className="garage-feature">
+    <section className="garage-feature garage-custom-feature">
       <div>
-        <span className="section-kicker">CURRENTLY EQUIPPED</span>
-        <h2>{CARS[skin].label}</h2>
-        <p>LEVEL {level} <span>·</span> {xp} XP</p>
-        <button className="primary-button" onClick={onPlay}>▶ PLAY WITH THIS CAR →</button>
+        <span className="section-kicker">ОДОО СОНГОСОН</span>
+        <h2>{CARS[profile.car].label}</h2>
+        <p>ТҮВШИН {level} <span>·</span> {profile.xp} XP <span>·</span> {TITLE_NAMES[profile.title]}</p>
+        <div className="equipped-tags">
+          <span>{TRAIL_NAMES[profile.trail]}</span>
+          <span>{profile.sticker === 'none' ? 'Тэмдэггүй' : STICKER_SYMBOLS[profile.sticker] + ' Тэмдэг'}</span>
+        </div>
+        <button className="primary-button" onClick={onPlay}>▶ ЭНЭ МАШИНААР УРАЛДАХ →</button>
       </div>
-      <img src={CARS[skin].icon} alt={CARS[skin].label}/>
+      <div className={'garage-preview-car trail-' + profile.trail}>
+        <span className="garage-preview-trail" aria-hidden="true"/>
+        <img src={CARS[profile.car].icon} alt={CARS[profile.car].label}/>
+        {profile.sticker !== 'none' && <b className="garage-preview-sticker">{STICKER_SYMBOLS[profile.sticker]}</b>}
+      </div>
     </section>
-    <div className="garage-collection-heading"><h2>CHOOSE YOUR CAR</h2><span>{carKeys.filter(key => xp >= CARS[key].unlockAt).length} / {carKeys.length} UNLOCKED</span></div>
-    <div className="garage-page-grid">
-      {carKeys.map((key, index) => {
-        const car = CARS[key];
-        const locked = xp < car.unlockAt;
-        const selected = key === skin;
-        return <button key={key} className={'garage-car-tile' + (selected ? ' selected' : '')}
-          disabled={locked} aria-pressed={!locked && selected} onClick={() => onSelect(key)}>
-          <span className="garage-tile-number">{String(index + 1).padStart(2, '0')}</span>
-          <img src={car.icon} alt="" loading="lazy"/>
-          <span className="garage-tile-footer"><b>{car.label}</b><small>{locked ? '🔒 ' + car.unlockAt + ' XP' : selected ? '✓ EQUIPPED' : 'EQUIP →'}</small></span>
+    <nav className="collection-tabs garage-tabs" aria-label="Гоёлын төрөл">
+      {tabs.map(t => <button className={tab === t.key ? 'current' : ''} aria-pressed={tab === t.key}
+        onClick={() => setTab(t.key)} key={t.key}>{t.label}</button>)}
+    </nav>
+    <div className="garage-collection-heading">
+      <h2>{tabs.find(t => t.key === tab)?.label.toUpperCase()}</h2>
+      <span>{options.filter(x => isOwned(profile,tab,x.id)).length} / {options.length} НЭЭГДСЭН</span>
+    </div>
+    <div className="garage-page-grid expanded-garage">
+      {options.map((x,index) => {
+        const owned = isOwned(profile,tab,x.id);
+        const selected = equipped === x.id;
+        const oldLevel = tab === 'car' && ['lime','phantom'].includes(x.id) ? CARS[x.id as Skin].unlockAt : 0;
+        return <button key={x.id} className={'garage-car-tile'+(selected?' selected':'')+(!owned?' locked':'')}
+          aria-pressed={selected} disabled={!owned} onClick={() => onEquip(tab,x.id)}>
+          <span className="garage-tile-number">{String(index+1).padStart(2,'0')}</span>
+          <div className={'garage-tile-preview trail-'+(tab === 'trail' ? x.id : 'none')}>
+            {tab === 'car' ? <img src={x.icon} alt="" loading="lazy"/> :
+              <span>{tab === 'trail' ? '〰' : tab === 'title' ? x.label : (STICKER_SYMBOLS[x.id as Sticker] || '○')}</span>}
+          </div>
+          <span className="garage-tile-footer"><b>{x.label}</b><small>{selected ? '✓ Сонгосон' : owned ? 'Сонгох' :
+            oldLevel ? oldLevel+' XP' : '🔒 Түгжээтэй'}</small></span>
         </button>;
       })}
     </div>
-    <p className="help-note">XP нь зөвхөн таны хөтөч дээр хадгалагдах дасгалын оноо. Худалдан авалт эсвэл төлбөр байхгүй.</p>
+    <div className="garage-path-actions">
+      <button className="secondary-button" onClick={onShop}>◈ ДЭЛГҮҮРЭЭС АВАХ →</button>
+      <button className="secondary-button" onClick={onSeason}>★ УЛИРЛЫН ШАГНАЛ →</button>
+    </div>
+    <p className="help-note">Авсан зүйлс хөтөчид хадгалагдана. Хэрэглэгчийн бүртгэлтэй серверийн бараа материал хараахан байхгүй.</p>
   </div>;
 }
