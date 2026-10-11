@@ -1,7 +1,10 @@
 /* TypeRacer Mongolia · Track-first racing UI
    All race metrics come from gameplay; solo ghosts are explicitly labelled pace targets. */
 :root {
-  font-family: "Segoe UI", Inter, Arial, sans-serif;
+  /* Mongolian Ө ө Ү ү require Cyrillic Extended, including bold display weights. */
+  --font-display: "Roboto Condensed", "Noto Sans", "DejaVu Sans", Arial, sans-serif;
+  --font-body: "Noto Sans", "Segoe UI", "DejaVu Sans", Arial, sans-serif;
+  font-family: var(--font-body);
   color: #f6f4ed;
   background: #101416;
   font-synthesis: none;
@@ -35,9 +38,9 @@ a { color: inherit; }
 .topbar { background: #0a0e10; border-bottom: 1px solid #36393b; position: relative; z-index: 5; }
 .header-layout { min-height: 68px; display: flex; align-items: stretch; gap: clamp(18px,5vw,85px); }
 .brand { display: flex; align-items: center; gap: 13px; text-decoration: none; flex-shrink: 0; }
-.brand-mark { font: 1000 italic 33px/.9 Impact,"Arial Narrow",sans-serif; letter-spacing: -4px;
+.brand-mark { font: 900 italic 33px/.9 var(--font-display); letter-spacing: -4px;
   transform: skew(-11deg); color: var(--orange); min-width: 47px; text-shadow: 2px 1px 0 #8e271e; }
-.brand-name { font-size: 15px; font-weight: 950; letter-spacing: 2.3px; line-height: 1; white-space: nowrap; }
+.brand-name { font-size: 15px; font-weight: 900; letter-spacing: 2.3px; line-height: 1; white-space: nowrap; }
 .brand-name span { color: #fff; }
 .brand-name small { display: block; margin-top: 7px; letter-spacing: 4.1px; color: #b9babc; font-size: 8px; }
 .main-nav { display: flex; align-items: stretch; gap: 18px; }
@@ -61,7 +64,7 @@ a { color: inherit; }
   linear-gradient(145deg,#ff5739,#8b1f19 80%,transparent); clip-path: polygon(0 0,100% 0,83% 100%,0 100%); }
 .page-heading::after { content: ""; position: absolute; inset: 0; z-index: -2; opacity: .14;
   background-image: radial-gradient(#ccc 0.7px,transparent .7px); background-size: 4px 4px; }
-.hero-word { position: absolute; left: 6px; top: 13px; font: 1000 italic clamp(75px,10vw,154px)/.82 Impact,"Arial Narrow",sans-serif;
+.hero-word { position: absolute; left: 6px; top: 13px; font: 900 italic clamp(75px,10vw,154px)/.82 var(--font-display);
   letter-spacing: -4px; color: #0b0d0d; transform: skew(-7deg); pointer-events: none; opacity: .95; }
 .page-heading-copy { max-width: 540px; }
 .eyebrow { font-size: 18px; font-weight: 900; line-height: 1.2; letter-spacing: .2px; color: #f5f5f1; }
@@ -70,7 +73,7 @@ a { color: inherit; }
 .page-heading p { font-size: 12px; line-height: 1.6; margin: 2px 0 0; color: #85898a; }
 .hero-metrics { display: flex; align-items: center; gap: 0; margin-left: auto; flex-shrink: 0; }
 .hero-metric { display: grid; gap: 4px; min-width: 110px; padding: 5px 23px; border-left: 1px solid #54352f; }
-.hero-metric strong { font: 900 34px/1 Impact,"Arial Narrow",sans-serif; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
+.hero-metric strong { font: 900 34px/1 var(--font-display); letter-spacing: 1px; font-variant-numeric: tabular-nums; }
 .hero-metric span { color: #919596; font-size: 10px; font-weight: 800; letter-spacing: 1.3px; }
 .hero-motto { color: #b8b9b8; line-height: 1.5; font-size: 8px; font-weight: 900; letter-spacing: 4px;
   border-left: 4px dotted var(--orange); padding-left: 15px; }
@@ -78,7 +81,7 @@ a { color: inherit; }
 .race-panel-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 49px;
   padding: 7px 20px; background: #181b1c; border-bottom: 1px solid #34393b; }
 .race-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.race-title h2 { font: 900 14px/1 Impact,"Arial Narrow",sans-serif; color: #e1e0dc; letter-spacing: 2px; margin: 0; }
+.race-title h2 { font: 900 14px/1 var(--font-display); color: #e1e0dc; letter-spacing: 2px; margin: 0; }
 .race-indicator { display: inline-block; width: 7px; height: 7px; background: var(--orange); transform: skew(-15deg); }
 .race-chip { color: #8f9595; font-size: 9px; font-weight: 800; letter-spacing: 1px; border-left: 1px solid #5a5b58; padding-left: 10px; }
 .panel-actions { display: flex; align-items: center; gap: 15px; }
@@ -94,7 +97,7 @@ a { color: inherit; }
   #1e2325; }
 .track-wrap { padding: 23px 23px 18px; }
 .track-wrap::after, .multiplayer-track::after { content: "FINISH"; position: absolute; right: 1px; top: 50%; transform: translateY(-50%) rotate(-90deg);
-  transform-origin: center; color: #b4b9ba22; font: italic 900 48px/1 Impact,sans-serif; letter-spacing: 5px; pointer-events: none; }
+  transform-origin: center; color: #b4b9ba22; font: italic 900 48px/1 var(--font-display); letter-spacing: 5px; pointer-events: none; }
 .track-meta { display: flex; justify-content: space-between; color: #8d9797; letter-spacing: 2.5px; font-size: 9px; font-weight: 800;
   padding: 0 40px 11px 5px; }
 .lane { display: grid; grid-template-columns: minmax(170px,25%) minmax(0,1fr); align-items: stretch;
@@ -103,7 +106,7 @@ a { color: inherit; }
 .lane-header { display: grid; grid-template-columns: 39px minmax(0,1fr); grid-template-rows: auto auto;
   align-content: center; gap: 4px 12px; padding: 6px 18px 6px 0; position: relative; z-index: 2; }
 .lane-position { grid-row: 1/3; display: grid; place-items: center; width: 34px; height: 34px; align-self: start;
-  font: italic 900 22px/1 Impact,"Arial Narrow",sans-serif; color: #1a1d1f; background: #bebfc1; transform: skew(-8deg); }
+  font: italic 900 22px/1 var(--font-display); color: #1a1d1f; background: #bebfc1; transform: skew(-8deg); }
 .lane.you .lane-position { background: var(--orange); color: #fff; }
 .lane-details { min-width: 0; }
 .lane-name-row { display: flex; align-items: center; gap: 8px; }
@@ -127,8 +130,8 @@ a { color: inherit; }
 .track-note { color: #909696; font-size: 9px; letter-spacing: 1.5px; font-weight: 800; text-align: right; padding: 15px 8px 0; }
 .typing-area { background: var(--paper); color: #242729; padding: 25px clamp(18px,4vw,56px) 18px; position: relative; }
 .typing-label { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 10px; letter-spacing: 1.4px; font-weight: 850; color: #5a5f60; }
-.typing-label i { color: var(--orange); font: italic 900 23px/1 Impact,sans-serif; vertical-align: middle; margin-right: 13px; }
-.phrase { font: 500 clamp(20px,2.05vw,30px)/1.65 ui-monospace,"SFMono-Regular",Consolas,"DejaVu Sans Mono",monospace;
+.typing-label i { color: var(--orange); font: italic 900 23px/1 var(--font-display); vertical-align: middle; margin-right: 13px; }
+.phrase { font: 500 clamp(20px,2.05vw,30px)/1.65 "DejaVu Sans Mono", "Noto Sans Mono", ui-monospace, Consolas, monospace;
   letter-spacing: .3px; margin: 14px 0 16px; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 80px; }
 .letter { color: #767b7d; }
 .letter.correct { color: #122916; background: #c4e8ab; }
@@ -156,7 +159,7 @@ a { color: inherit; }
 .stat-block { flex: 1; min-width: 0; border-right: 1px solid #424748; padding: 0 clamp(7px,3vw,40px); display: flex; align-items: center; flex-wrap: wrap; gap: 0 10px; }
 .stat-block:first-child { padding-left: 0; }
 .stat-block:last-child { border: 0; padding-right: 0; }
-.stat-block strong { font: 900 clamp(26px,3vw,44px)/1 Impact,"Arial Narrow",sans-serif; color: #fff; font-variant-numeric: tabular-nums; }
+.stat-block strong { font: 900 clamp(26px,3vw,44px)/1 var(--font-display); color: #fff; font-variant-numeric: tabular-nums; }
 .stat-block strong em { font: 500 18px/1 "Segoe UI",Arial,sans-serif; color: #899093; }
 .stat-block > span:not(.stat-progress-bar) { font-size: 14px; color: #b1b4b5; }
 .stat-block > small { width: 100%; font-size: 11px; margin-top: 5px; color: #a1a5a4; }
@@ -172,7 +175,7 @@ a { color: inherit; }
 .garage-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
 .garage-heading-title { display: flex; align-items: center; gap: 14px; }
 .garage-heading-title > span { color: var(--orange); font-size: 23px; }
-.garage-heading h2 { font: 900 20px/1 Impact,"Arial Narrow",sans-serif; letter-spacing: 1px; color: #f4f1ec; margin: 0; }
+.garage-heading h2 { font: 900 20px/1 var(--font-display); letter-spacing: 1px; color: #f4f1ec; margin: 0; }
 .garage-heading p { font-size: 11px; color: #8b9294; margin: 0; }
 .skin-row { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 13px; margin-top: 19px; }
 .skin-card { min-width: 0; min-height: 123px; border: 1px solid #3b4245; background: #22272a; border-radius: 8px;
@@ -195,7 +198,7 @@ footer span { color: var(--orange); padding: 0 12px; }
 .unranked-label { font-size: 10px; color: #bfc2c2; border: 1px solid #4c5153; padding: 7px 11px; border-radius: 4px; }
 .lobby-start { max-width: 610px; margin: 0 auto; padding: 28px 25px 36px; }
 .lobby-intro { border-bottom: 1px solid #40474a; padding-bottom: 19px; }
-.lobby-intro h3 { margin: 0 0 7px; font: 900 29px/1.2 Impact,"Arial Narrow",sans-serif; letter-spacing: 1px; }
+.lobby-intro h3 { margin: 0 0 7px; font: 900 29px/1.2 var(--font-display); letter-spacing: 1px; }
 .lobby-intro p { margin: 0; color: #a2abac; font-size: 13px; line-height: 1.65; }
 .field-label { display: block; font-size: 10px; letter-spacing: 1px; font-weight: 800; margin: 21px 0 8px; color: #c0c6c7; }
 .field { width: 100%; min-width: 0; border: 1px solid #666c6d; color: #ecebe5; border-radius: 4px; padding: 11px 14px; height: 48px;
@@ -211,7 +214,7 @@ footer span { color: var(--orange); padding: 0 12px; }
 .room-info { display: flex; justify-content: space-between; align-items: center; gap: 15px; padding: 14px 18px;
   background: #24292b; border: 1px solid #41494c; border-radius: 4px; }
 .room-info small { display: block; font-size: 10px; color: #a9afb0; letter-spacing: 1px; }
-.room-info strong { font: 900 26px/1.4 Impact,"Arial Narrow",sans-serif; letter-spacing: 5px; }
+.room-info strong { font: 900 26px/1.4 var(--font-display); letter-spacing: 5px; }
 .room-meta { font-size: 12px; color: #aeb5b5; font-weight: 750; padding: 18px 0 12px; }
 .multiplayer-track { padding: 14px; border: 1px solid #3b4244; }
 .multiplayer-track .lane { height: 92px; }
@@ -325,4 +328,11 @@ footer span { color: var(--orange); padding: 0 12px; }
 }
 @media(prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* The racing display font must not fall back to Impact for Ө / Ү glyphs. */
+.brand-mark, .hero-word, .hero-metric strong, .race-title h2,
+.lane-position, .stat-block strong, .garage-heading h2,
+.lobby-intro h3, .room-info strong {
+  font-family: var(--font-display);
 }
