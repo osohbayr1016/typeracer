@@ -54,6 +54,16 @@ app.post('/api/rooms', async c => {
   if (!created.ok) return c.json({ error: 'Room creation failed' }, 503);
   return c.json({ code, capacity: ROOM_CAPACITY }, 201);
 });
+// One queue coordinator supports multiple simultaneous live matches. Guests and bots
+// are identified; no persistent ranked leaderboard or authenticated payout is claimed.
+app.get('/api/quickplay/ws', c => {
+  if (c.req.header('Upgrade')?.toLowerCase() !== 'websocket')
+    return c.json({ error: 'WebSocket upgrade required' }, 426);
+  const id = c.env.RACE_ROOMS.idFromName('MONGOLIAN-QUICK-V1');
+  const source = new URL(c.req.url);
+  return c.env.RACE_ROOMS.get(id).fetch('https://room.internal/quickplay' + source.search,
+    { headers: c.req.raw.headers });
+});
 app.get('/api/rooms/:code/ws', c => {
   const code = c.req.param('code').toUpperCase();
   if (!validRoomCode(code)) return c.json({ error: 'Invalid room code' }, 400);

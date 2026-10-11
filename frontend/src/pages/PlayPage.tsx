@@ -1,105 +1,69 @@
 import './PlayPage.css';
 
 type Props = {
-  best: number;
-  carIcon: string;
-  carName: string;
-  onSolo: () => void;
-  onMultiplayer: () => void;
-  onGarage: () => void;
+  best: number; carIcon: string; carName: string;
+  onPlay: () => void; onMultiplayer: () => void; onGarage: () => void;
 };
 
-/**
- * A race-first entry point. This page deliberately has one dominant action:
- * start the existing solo race (with its real countdown and reward flow).
- * Friends mode is secondary and links to the existing real lobby.
+/** There is no Solo mode in the primary game: Play is always live quick matchmaking.
+ * The other route is a private lobby for friends.
  */
-export function PlayPage({ best, carIcon, carName, onSolo, onMultiplayer, onGarage }: Props) {
+export function PlayPage({ best, carIcon, carName, onPlay, onMultiplayer, onGarage }: Props) {
   return <div className="play-page">
     <header className="play-entry-heading">
       <div className="play-entry-heading-copy">
-        <span className="play-entry-eyebrow"><span className="play-entry-dot" aria-hidden="true"/> УРАЛДААН СОНГОХ</span>
+        <span className="play-entry-eyebrow"><span className="play-entry-dot" aria-hidden="true"/> ҮНДСЭН УРАЛДААН</span>
         <h1>УРАЛДАХАД <span>БЭЛЭН ҮҮ?</span></h1>
-        <p>Монгол хэлээр бичиж машинаа хөдөлгөөрэй. Доороос уралдаанаа сонгоод шууд эхэлнэ.</p>
+        <p>Нэг товч дарж бодит тоглогчидтой уралд. Хүн хүрэлцэхгүй бол ботоор нөхнө.</p>
       </div>
-      <div className="play-language-badge" aria-label="Уралдааны хэл: Монгол">
-        <span aria-hidden="true">МН</span>
-        <div><strong>МОНГОЛ ХЭЛ</strong><small>Ө · Ү үсэгтэй</small></div>
-      </div>
+      <div className="play-language-badge" aria-label="Монгол хэлний уралдаан"><span>МН</span><div><strong>МОНГОЛ ХЭЛ</strong><small>Ө · Ү үсэгтэй</small></div></div>
     </header>
-
-    <section className="play-solo-feature" aria-labelledby="play-solo-title">
+    <section className="play-solo-feature play-quick-feature" aria-labelledby="play-live-title">
       <div className="play-solo-details">
-        <div className="play-solo-kicker">
-          <span className="play-option-index">01</span>
-          <span>ШУУД ЭХЛЭХ</span>
-          <span className="play-feature-pill">БҮРТГЭЛ ШААРДАХГҮЙ</span>
-        </div>
-        <h2 id="play-solo-title">ГАНЦААРАА<br/>УРАЛДАХ</h2>
-        <p className="play-solo-description">Өөрийн хурдаа сорь. 3 секундын бэлтгэлийн дараа бичиж эхлээрэй.</p>
-        <div className="play-solo-steps" aria-label="Ганцаарчилсан уралдааны явц">
-          <span><b>1</b> Эхлэх</span>
-          <span aria-hidden="true" className="play-step-arrow">→</span>
-          <span><b>2</b> Бичих</span>
-          <span aria-hidden="true" className="play-step-arrow">→</span>
-          <span><b>3</b> Шагнал авах</span>
-        </div>
-        <button className="play-start-button" onClick={onSolo} type="button">
-          <span className="play-start-symbol" aria-hidden="true">▶</span>
-          <span>ГАНЦААРАА ЭХЛЭХ</span>
+        <div className="play-solo-kicker"><span className="play-option-index">01</span><span>ОНЛАЙН УРАЛДААН</span>
+          <span className="play-feature-pill">ШУУД ТОГЛОХ</span></div>
+        <h2 id="play-live-title">УРАЛДААНД<br/>ОРОХ</h2>
+        <p className="play-solo-description">Бодит хүмүүсийг хайна. 5 секундын дараа сул байрыг ботуудаар дүүргээд уралдаан эхэлнэ.</p>
+        <div className="play-solo-steps"><span><b>1</b> Тоглогч хайх</span><span className="play-step-arrow">→</span>
+          <span><b>2</b> Уралдах</span><span className="play-step-arrow">→</span><span><b>3</b> Зоос авах</span></div>
+        <button type="button" className="play-start-button" onClick={onPlay}>
+          <span className="play-start-symbol" aria-hidden="true">▶</span><span>УРАЛДААНД ОРОХ</span>
           <span className="play-start-arrow" aria-hidden="true">→</span>
         </button>
-        <p className="play-after-button">Шууд уралдаан руу орно · Монгол хэл · XP ба зоос</p>
-      </div>
-
-      <div className="play-preview" aria-label="Таны сонгосон машинтай уралдааны замын жишээ">
-        <div className="play-preview-topline">
-          <strong>ТАНЫ ГАРААНЫ ЗАМ</strong>
-          <span>БАРИА <span aria-hidden="true">↗</span></span>
+        <p className="play-after-button">Хүлээж зогсохгүй · 3 секундын гараа · Тоглоомын зоосны шагнал</p>
+        <div className="play-quick-payout"><span>БАРИАНЫ ШАГНАЛ</span>
+          <strong>1-р байр ◈120</strong><strong>2-р байр ◈95</strong><strong>3-р байр ◈75</strong><small>4–5-р байр ◈55–40</small>
         </div>
+      </div>
+      <div className="play-preview" aria-label="Тоглогчид болон боттой уралдааны замын жишээ">
+        <div className="play-preview-topline"><strong>ТАНЫ УРАЛДААН</strong><span>4–5 УРАЛДАГЧ</span></div>
         <div className="play-preview-road">
           <div className="play-preview-lane play-preview-lane-you">
             <div className="play-preview-lane-label"><strong>01</strong><span>ТА</span></div>
-            <img src={carIcon} alt={carName} draggable={false}/>
-            <span className="play-preview-checkers" aria-hidden="true"/>
+            <img src={carIcon} alt={carName} draggable={false}/><span className="play-preview-checkers"/>
           </div>
           <div className="play-preview-lane">
-            <div className="play-preview-lane-label"><strong>02</strong><span>ЖИШИГ 60</span></div>
-            <img src="/cars/graphite-r.svg" alt="" aria-hidden="true" draggable={false}/>
-            <span className="play-preview-checkers" aria-hidden="true"/>
+            <div className="play-preview-lane-label"><strong>02</strong><span>ХҮН / БОТ</span></div>
+            <img src="/cars/graphite-r.svg" alt="" draggable={false}/><span className="play-preview-checkers"/>
           </div>
           <div className="play-preview-lane">
-            <div className="play-preview-lane-label"><strong>03</strong><span>ЖИШИГ 40</span></div>
-            <img src="/cars/blue-sprint.svg" alt="" aria-hidden="true" draggable={false}/>
-            <span className="play-preview-checkers" aria-hidden="true"/>
+            <div className="play-preview-lane-label"><strong>03</strong><span>ХҮН / БОТ</span></div>
+            <img src="/cars/blue-sprint.svg" alt="" draggable={false}/><span className="play-preview-checkers"/>
           </div>
         </div>
-        <div className="play-preview-bottom">
-          <div><span className="play-preview-status-dot" aria-hidden="true"/> СОНГОСОН МАШИН: <strong>{carName}</strong></div>
-          <button type="button" onClick={onGarage}>МАШИН СОЛИХ <span aria-hidden="true">↗</span></button>
-        </div>
-        <p className="play-preview-disclaimer">Жишиг машинууд нь бодит тоглогч биш. Энэ бол уралдааны замын танилцуулга.</p>
+        <div className="play-preview-bottom"><div><span className="play-preview-status-dot"/> СОНГОСОН МАШИН: <strong>{carName}</strong></div>
+          <button type="button" onClick={onGarage}>МАШИН СОЛИХ ↗</button></div>
+        <p className="play-preview-disclaimer">Жишээ зураг. Жинхэнэ уралдаанд бодит хүмүүс болон ботууд тус тусдаа тэмдэглэгдэнэ.</p>
       </div>
     </section>
-
     <section className="play-friends-feature" aria-labelledby="play-friends-title">
-      <div className="play-friends-illustration" aria-hidden="true">
-        <img src="/cars/blue-sprint.svg" alt="" draggable={false}/>
-        <img src="/cars/graphite-r.svg" alt="" draggable={false}/>
-      </div>
-      <div className="play-friends-content">
-        <span className="play-friends-kicker">02 / НАЙЗУУДТАЙ</span>
+      <div className="play-friends-illustration" aria-hidden="true"><img src="/cars/blue-sprint.svg" alt=""/><img src="/cars/graphite-r.svg" alt=""/></div>
+      <div className="play-friends-content"><span className="play-friends-kicker">02 / ХУВИЙН ӨРӨӨ</span>
         <h2 id="play-friends-title">НАЙЗУУДТАЙГАА УРАЛДАХ</h2>
-        <p>2–6 тоглогчтой өрөө үүсгэ, эсвэл найзынхаа кодоор нэгд. Бүгд бэлэн болоход уралдаан эхэлнэ.</p>
-      </div>
-      <button type="button" className="play-friends-button" onClick={onMultiplayer}>
-        ӨРӨӨ ҮҮСГЭХ ЭСВЭЛ НЭГДЭХ <span aria-hidden="true">→</span>
-      </button>
+        <p>Өөрийн өрөөг үүсгэ эсвэл найзынхаа кодоор нэгд. Энэ нь олон нийтийн хурдан уралдаанаас тусдаа.</p></div>
+      <button type="button" className="play-friends-button" onClick={onMultiplayer}>ӨРӨӨ ҮҮСГЭХ / НЭГДЭХ <span aria-hidden="true">→</span></button>
     </section>
-
-    <div className="play-entry-footer">
-      <div className="play-entry-personalbest"><span>ХУВИЙН РЕКОРД</span><strong>{best} <small>ҮГ/МИН</small></strong></div>
-      <p>Ганцаарчилсан уралдаанд жишиг хурдтай бэлтгэнэ. Найзуудтай уралдахад жинхэнэ тоглогчид оролцоно.</p>
-    </div>
+    <div className="play-entry-footer"><div className="play-entry-personalbest"><span>ХУВИЙН РЕКОРД</span><strong>{best} <small>ҮГ/МИН</small></strong></div>
+      <p>Шагнал нь зөвхөн тоглоомын дотоод зоос бөгөөд одоогоор төхөөрөмж дээр хадгалагдана. Албан ёсны рейтинг хараахан байхгүй.</p></div>
   </div>;
 }

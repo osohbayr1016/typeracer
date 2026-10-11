@@ -3,6 +3,7 @@ import {
   type Racer, type RoomSnapshot, wordsPerMinute
 } from '@typeracer/shared';
 import { acceptKeystroke, safePlayerName } from './logic';
+import { QuickMatchmaker } from './quick';
 
 type Message = { type: 'ready' } | { type: 'key'; key: string };
 type Player = Racer & { socket: WebSocket; windowStart: number; windowCount: number };
@@ -16,6 +17,7 @@ function safeCosmetic(value: string | null, allowed: readonly string[], fallback
 }
 
 export class RaceRoom {
+  private quick = new QuickMatchmaker();
   private sockets = new Map<WebSocket, Player>();
   private prompt = choosePrompt('mn');
   private phase: Phase = 'waiting';
@@ -26,6 +28,7 @@ export class RaceRoom {
   constructor(private readonly state: DurableObjectState, _env: unknown) {}
 
   async fetch(request: Request): Promise<Response> {
+    if (new URL(request.url).pathname === '/quickplay') return this.quick.fetch(request);
     // Only an API-created room can accept players. Durable storage survives DO eviction.
     if (new URL(request.url).pathname === '/create' && request.method === 'POST') {
       await this.state.storage.put('createdAt', Date.now());

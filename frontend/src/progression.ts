@@ -111,6 +111,23 @@ export function raceReward(p: Profile, score: { wpm: number; accuracy: number; e
   return { ...p, xp: p.xp + earnedXp, coins: p.coins + earnedCoins, races: p.races + 1,
     seasonXp: p.seasonXp + (inSeason ? earnedXp : 0), history: [entry, ...p.history].slice(0, 30) };
 }
+/** Guest quick-race prizes. Result is server-computed but localStorage remains editable;
+ * do not treat this as a secure ranked or transferable account wallet.
+ */
+export function awardQuickRace(p: Profile, score: {
+  raceId: string; place: number | null; coins: number; wpm: number;
+  accuracy: number; elapsedMs: number; at: number
+}): Profile {
+  const key = 'quick:' + score.raceId;
+  if (!/^[0-9a-f-]{36}$/i.test(score.raceId) || p.history.some(entry => entry.id === key) ||
+      score.place === null || score.place < 1 || score.place > 5 || !Number.isInteger(score.coins) ||
+      score.coins < 0 || score.coins > 120 || score.elapsedMs <= 0 || score.wpm < 0 ||
+      !Number.isFinite(score.wpm) || score.accuracy < 0 || score.accuracy > 100) return p;
+  const awarded = raceReward(p, score);
+  return { ...awarded, coins: p.coins + score.coins, history: [
+    { ...awarded.history[0], id: key, earnedCoins: score.coins }, ...awarded.history.slice(1)
+  ] };
+}
 export function buyItem(p: Profile, kind: CosmeticKind, id: string): Profile {
   const item = SHOP.find(x => x.kind === kind && x.id === id);
   if (!item || owned(p, kind, id) || p.coins < item.price) return p;
