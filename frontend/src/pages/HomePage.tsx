@@ -20,5 +20,11 @@ export function HomePage({onPlay,onMultiplayer}:Props) {
         <span className="home-finish-art">FINISH /</span>
       </div>
     </section>
+    <section className="home-race-preview" aria-label="Уралдааны замын дүрслэл">
+      {[0,1,2].map((lane) => <div className="home-preview-lane" key={lane} aria-hidden="true">
+        <span className="home-preview-lane-number">{String(lane + 1).padStart(2,"0")}</span>
+        <span className="home-preview-road"><span className="home-preview-progress" style={{width: `${[72,54,39][lane]}%`}}/><img src="/cars/coral-gt.svg" alt="" className={`home-preview-car home-preview-car-${lane}`} style={{left:`${[72,54,39][lane]}%`}}/><span className="home-preview-finish"/></span>
+      </div>)}
+    </section>
   </div>;
 }
