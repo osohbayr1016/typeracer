@@ -705,7 +705,7 @@ test('profile nickname persists and profile, stats, friends, leaderboard are rea
   await expect(page.getByText('Өгөгдөл алга.')).toBeVisible();
   await page.goto('/leaderboard');
   await expect(page.getByTestId('leaderboard-page')).toBeVisible();
-  await page.getByRole('button',{name:'МИНИЙ РЕКОРДУУД'}).click();
+  await page.getByRole('button',{name:'МИНИЙ РЕКОРД'}).click();
   await expect(page.getByText('Таны бүртгэсэн уралдаан алга.')).toBeVisible();
   await page.goto('/friends');
   await expect(page.getByTestId('friends-page')).toBeVisible();
