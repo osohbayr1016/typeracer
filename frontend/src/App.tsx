@@ -6,7 +6,7 @@ import { GaragePage } from './pages/GaragePage';
 import { ResultsPage } from './pages/ResultsPage';
 import { ShopPage } from './pages/ShopPage';
 import { SeasonPage } from './pages/SeasonPage';
-import { loadProfile, saveProfile, raceReward, awardQuickRace, buyItem, claimReward, equipItem,
+import { loadProfile, saveProfile, raceReward, awardQuickRace, buyItem, claimReward, claimAvailableRewards, equipItem,
   TITLE_NAMES, STICKER_SYMBOLS, type CosmeticKind, type Cosmetic } from './progression';
 import { CARS, type Skin } from './pages/cars';
 import {
@@ -177,6 +177,7 @@ export function App() {
   function handleEquip(kind: CosmeticKind, id: string) { setProfile(p => equipItem(p, kind, id)); }
   function handleBuy(item: Cosmetic) { setProfile(p => buyItem(p, item.kind, item.id)); }
   function handleClaim(tier: number) { setProfile(p => claimReward(p, tier)); }
+  function handleClaimAll() { setProfile(p => claimAvailableRewards(p)); }
   function disconnect() {
     socketRef.current?.close(); socketRef.current = null;
     setStatus('disconnected'); setSnapshot(null); setCode(''); setMyId(''); setRaceResult(null);
@@ -299,7 +300,7 @@ export function App() {
           <button className={'nav-item ' + (page === 'shop' ? 'selected' : '')}
             aria-current={page === 'shop' ? 'page' : undefined} onClick={() => navigate('shop')}>Дэлгүүр</button>
           <button className={'nav-item ' + (page === 'season' ? 'selected' : '')}
-            aria-current={page === 'season' ? 'page' : undefined} onClick={() => navigate('season')}>Улирал</button>
+            aria-current={page === 'season' ? 'page' : undefined} onClick={() => navigate('season')}>Шагналын зам</button>
           <button className={'nav-item ' + (page === 'garage' ? 'selected' : '')}
             aria-current={page === 'garage' ? 'page' : undefined}
             onClick={() => navigate('garage')}>Гараж</button>
@@ -332,7 +333,8 @@ export function App() {
         onShop={() => navigate('shop')} onSeason={() => navigate('season')}/>}
       {page === 'shop' && <ShopPage profile={profile} onBuy={handleBuy}
         onEquip={item => handleEquip(item.kind, item.id)} onRace={() => navigate('play')}/>}
-      {page === 'season' && <SeasonPage profile={profile} onClaim={handleClaim} onRace={() => navigate('play')}/>}
+      {page === 'season' && <SeasonPage profile={profile} onClaim={handleClaim} onClaimAll={handleClaimAll}
+        onRace={() => navigate('play')} onShop={() => navigate('shop')}/>}
 
       {page === 'results' && <ResultsPage wpm={wpm} accuracy={accuracy} elapsed={elapsed} best={best} correct={correct} carIcon={CARS[skin].icon} earnedXp={profile.history[0]?.earnedXp || 0} earnedCoins={profile.history[0]?.earnedCoins || 0}
         onAgain={startSolo} onPlay={() => navigate('play')} onGarage={() => navigate('garage')} />}
