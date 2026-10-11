@@ -432,11 +432,14 @@ test('battle pass presents next milestone, 8 readable rewards and original shop 
     const bounds = await page.evaluate(() => ({
       document: document.documentElement.scrollWidth,
       viewport: innerWidth,
-      buttonsTooSmall: [...document.querySelectorAll('.pass-tier button')].some(
-        button => button.getBoundingClientRect().height < 40)
+      shortButtons: [...document.querySelectorAll('.pass-tier button')]
+        .map(button => ({className:button.className, height:Math.round(button.getBoundingClientRect().height*10)/10,
+          minHeight:getComputedStyle(button).minHeight, display:getComputedStyle(button).display,
+          text:button.textContent?.trim().slice(0,35)}))
+        .filter(button => button.height < 40)
     }));
     expect(bounds.document, String(width)).toBeLessThanOrEqual(bounds.viewport + 1);
-    expect(bounds.buttonsTooSmall).toBe(false);
+    expect(bounds.shortButtons, 'undersized pass touch targets at '+width+'px: '+JSON.stringify(bounds.shortButtons)).toEqual([]);
   }
   await page.getByRole('button', { name: /ДЭЛГҮҮР ҮЗЭХ/ }).click();
   await expect(page).toHaveURL(/\/shop$/);
