@@ -69,7 +69,10 @@ export function SeasonPage({profile,onClaim,onClaimAll,onRace,onShop}:Props) {
           <span>SEASON REWARDS</span><span>ҮЕ {String(reward.tier).padStart(2,'0')} / {SEASON_REWARDS.length}</span>
         </div>
         <RewardArt reward={reward} large/>
-        <span className="battle-featured-type">{labelOf(reward)}</span>
+        <div className="battle-featured-bottom">
+          <span className="battle-featured-type">{labelOf(reward)}</span>
+          <strong>{nameOf(reward)}</strong>
+        </div>
       </div>
       <div className="battle-featured-info">
         <span className="battle-overline">{received?'✓ АВСАН':canClaim?'● АВАХАД БЭЛЭН':'СОНГОСОН ШАГНАЛ'}</span>
