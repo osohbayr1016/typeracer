@@ -203,3 +203,20 @@
   .home-page .hero-buttons { flex-direction:column; align-items:stretch; }
   .home-page .hero-play,.home-page .hero-secondary { width:100%; }
 }
+
+
+/* Decorative race telemetry fills the unused landing space without more copy. */
+.home-page .home-hero { min-height: min(530px, 66vh); }
+.home-race-preview { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; padding:18px clamp(16px,3vw,48px) 26px; }
+.home-preview-lane { min-width:0; display:flex; align-items:center; gap:12px; padding:15px 16px; border:1px solid #303a3c; background:linear-gradient(125deg,#192023,#111719); border-radius:5px; }
+.home-preview-lane-number { color:#8b9698; font:italic 900 19px/1 var(--font-display); }
+.home-preview-road { position:relative; display:block; height:54px; flex:1; min-width:0; overflow:hidden; background:repeating-linear-gradient(90deg,#ffffff14 0 28px,transparent 28px 56px) center/100% 1px no-repeat; }
+.home-preview-road::before,.home-preview-road::after { content:""; position:absolute; left:0; right:0; height:1px; background:#ffffff19; }
+.home-preview-road::before { top:5px; }.home-preview-road::after { bottom:5px; }
+.home-preview-progress { position:absolute; top:7px; bottom:7px; left:0; background:linear-gradient(90deg,#fa51390b,#fa513930); }
+.home-preview-car { position:absolute; width:76px; height:48px; object-fit:contain; top:3px; transform:translateX(-65%); filter:drop-shadow(0 5px 4px #0009); }
+.home-preview-car-1 { filter:hue-rotate(125deg) drop-shadow(0 5px 4px #0009); }
+.home-preview-car-2 { filter:hue-rotate(220deg) drop-shadow(0 5px 4px #0009); }
+.home-preview-finish { position:absolute; right:8px; top:5px; bottom:5px; width:13px; opacity:.65; background:conic-gradient(#d4d9d8 25%,#263033 0 50%,#d4d9d8 0 75%,#263033 0) 0 0/12px 12px; }
+@media(max-width:760px) { .home-page .home-hero { min-height:0; } .home-race-preview { grid-template-columns:1fr; gap:8px; padding:12px 16px 22px; } .home-preview-lane { padding:8px 12px; } .home-preview-road { height:42px; } .home-preview-car { height:38px; top:2px; } }
+@media(prefers-reduced-motion:reduce) { .home-preview-car,.home-preview-progress { animation:none!important; transition:none!important; } }
