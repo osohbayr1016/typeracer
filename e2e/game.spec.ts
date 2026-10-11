@@ -525,3 +525,116 @@ test('shop car viewer makes each shape easy to inspect, closes with Escape, and 
   await legendary.getByRole('button', { name: /УРАЛДАЖ XP, ЗООС ОЛОХ/ }).click();
   await expect(page).toHaveURL(/\/play$/);
 });
+
+
+test('closed and throwing public WebSockets cannot create phantom local typing', async ({ page }) => {
+  await page.addInitScript(() => {
+    const NativeSocket = window.WebSocket;
+    const target = window as typeof window & { __activeQuickSocket?: WebSocket };
+    window.WebSocket = new Proxy(NativeSocket, {
+      construct(ctor, args) {
+        const socket = Reflect.construct(ctor, args) as WebSocket;
+        if (String(args[0]).includes('/api/quickplay/ws')) target.__activeQuickSocket = socket;
+        return socket;
+      }
+    });
+  });
+  await page.goto('/quick-race');
+  const input = page.getByRole('textbox', { name: 'Шууд уралдааны бичих талбар' });
+  await expect(input).toBeEditable({ timeout: 13_000 });
+  const letter = (await page.locator('.quick-phrase').innerText()).replace(/\u00a0/g, ' ')[0];
+  await page.evaluate(() => {
+    const socket = (window as typeof window & { __activeQuickSocket?: WebSocket }).__activeQuickSocket;
+    if (!socket || socket.readyState !== WebSocket.OPEN) throw new Error('No active quick socket');
+    socket.send = () => { throw new Error('Simulated send failure'); };
+  });
+  await input.fill(letter);
+  await expect(page.locator('.quick-type-head span')).toContainText(/^0\s*\//);
+  await page.evaluate(() => {
+    const socket = (window as typeof window & { __activeQuickSocket?: WebSocket }).__activeQuickSocket;
+    if (!socket) throw new Error('No quick socket');
+    Object.defineProperty(socket, 'readyState', { configurable: true, value: WebSocket.CLOSED });
+  });
+  await input.fill(letter);
+  await expect(page.locator('.quick-type-head span')).toContainText(/^0\s*\//);
+});
+
+test('Durable Object resumes the same public race and confirmed typing after socket loss', async ({ page }) => {
+  await page.addInitScript(() => {
+    type RaceDebug = {
+      sockets: WebSocket[];
+      welcomes: Array<{ id: string; resumeToken: string; resumed: boolean }>;
+    };
+    const target = window as typeof window & { __quickRaceDebug?: RaceDebug };
+    const NativeWebSocket = window.WebSocket;
+    target.__quickRaceDebug = { sockets: [], welcomes: [] };
+    window.WebSocket = new Proxy(NativeWebSocket, {
+      construct(ctor, args) {
+        const socket = Reflect.construct(ctor, args) as WebSocket;
+        if (!String(args[0]).includes('/api/quickplay/ws')) return socket;
+        target.__quickRaceDebug!.sockets.push(socket);
+        socket.addEventListener('message', event => {
+          try {
+            const message = JSON.parse(String(event.data));
+            if (message.type === 'welcome') target.__quickRaceDebug!.welcomes.push(message);
+          } catch { /* the real app owns protocol validation */ }
+        });
+        return socket;
+      }
+    });
+  });
+  await page.goto('/quick-race');
+  const input = page.getByRole('textbox', { name: 'Шууд уралдааны бичих талбар' });
+  await expect(input).toBeEditable({ timeout: 13_000 });
+  const letter = (await page.locator('.quick-phrase').innerText()).replace(/\u00a0/g, ' ')[0];
+  await input.fill(letter);
+  await expect(page.locator('.quick-type-head span')).toContainText(/^1\s*\//);
+  // Wait for a SERVER-confirmed road position, not just the optimistic caret.
+  await expect.poll(async () => Number((await page.locator('.quick-lane.me .quick-lane-meta b')
+    .innerText()).replace('%', '')), { timeout: 5_000 }).toBeGreaterThan(0);
+  const first = await page.evaluate(() =>
+    (window as typeof window & { __quickRaceDebug: {
+      welcomes: Array<{id:string;resumeToken:string;resumed:boolean}>
+    }}).__quickRaceDebug.welcomes.at(-1)!);
+  expect(first.resumeToken).toMatch(/^[0-9a-f-]{36}$/);
+  const welcomeCountBeforeDrop = await page.evaluate(() =>
+    (window as typeof window & { __quickRaceDebug: { welcomes: unknown[] } })
+      .__quickRaceDebug.welcomes.length);
+  await page.evaluate(() => {
+    const sockets = (window as typeof window & { __quickRaceDebug: {
+      sockets: WebSocket[]
+    }}).__quickRaceDebug.sockets;
+    const active = sockets.filter(socket => socket.readyState === WebSocket.OPEN).at(-1);
+    if (!active) throw new Error('No active socket');
+    // Native closing handshake through the Vite dev WS proxy can remain in
+    // CLOSING state for >10 seconds. Model a sudden transport drop explicitly
+    // so the client close handler fires, then verify a *real* new WS handshake
+    // and authoritative Durable Object resume on the replacement connection.
+    active.dispatchEvent(new CloseEvent('close', { code: 1006, wasClean: false }));
+    active.close(4001, 'Simulated dropped connection');
+  });
+  await expect.poll(async () => JSON.stringify(await page.evaluate(() => {
+    const debug = (window as typeof window & { __quickRaceDebug: {
+      sockets: WebSocket[]; welcomes: unknown[]
+    }}).__quickRaceDebug;
+    return {
+      welcomes: debug.welcomes.length,
+      sockets: debug.sockets.length,
+      states: debug.sockets.map(socket => socket.readyState),
+      connection: document.querySelector('.quick-connection')?.textContent?.trim() || '',
+      banner: document.querySelector('.quick-state-panel')?.textContent?.trim() || '',
+      phase: document.querySelector('.quick-phase')?.getAttribute('data-phase'),
+      resumeStored: !!window.sessionStorage.getItem('typeracer.quick.resume.v1')
+    };
+  })), { timeout: 10_000 }).toContain('"welcomes":' + (welcomeCountBeforeDrop + 1));
+  const second = await page.evaluate(() =>
+    (window as typeof window & { __quickRaceDebug: {
+      welcomes: Array<{id:string;resumeToken:string;resumed:boolean}>
+    }}).__quickRaceDebug.welcomes.at(-1)!);
+  expect(second.id).toBe(first.id);
+  expect(second.resumeToken).toBe(first.resumeToken);
+  expect(second.resumed).toBe(true);
+  await expect(page.locator('.quick-connection')).toContainText('ОНЛАЙН');
+  await expect(page.locator('.quick-type-head span')).toContainText(/^1\s*\//);
+  await expect(page.locator('.quick-lane.me')).toHaveCount(1);
+});

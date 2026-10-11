@@ -1,3 +1,33 @@
+## 2026-10-11 — PR #23 Chromium regression: ghost waiting racers
+
+**Observed CI failure:** GitHub Actions run [38132361548](https://github.com/osohbayr1016/typeracer/actions/runs/38132361548) passed typecheck/unit/build but failed Chromium: three legacy bot-count checks observed 3 bots instead of 4 (or 1 instead of 3); the new reconnect browser test could not reach an editable input. Failure output: 24 passed, 4 failed. Root cause consistent with immediate React StrictMode WebSocket cleanup leaving a disconnected **waiting** participant reserved for 15 seconds, hence phantom occupied lanes and early countdown. This was introduced with reconnect grace, not pre-existing matchmaker behavior.
+
+**Fix:** `backend/src/quick.ts` immediately evicts a disconnected **waiting**/finished racer (no typed progress to preserve), while retaining the 15-second reconnect grace only during countdown/racing. `backend/src/quick.reconnect.test.ts` verifies abandoned waiting sockets do not take bot slots, and moves token-expiry test to an in-progress match. Existing Chromium bot-count and live DO resume E2E remain required. **New CI run must be inspected before merge; this note is not a pass claim.** No staging/production change or new shop inventory.
+
+---
+
+## 2026-10-11 — Durable Object public-race realtime resume and sync (PR #23)
+
+**Prior blocker fixed in code:** PR #23 typecheck failed because a source-text test imported `node:fs` and `node:url` without frontend Node types. Replace it with deterministic behavior tests of guarded WebSocket sends and Mongolian Cyrillic optimistic typing.
+
+**Confirmed gap:** Existing Cloudflare SQLite-backed `RaceRoom` Durable Object routes public matches to a singleton `QuickMatchmaker`. A closed WebSocket deleted its human immediately and a reconnect created a NEW race with zero progress. This lost server-confirmed typing and race position.
+
+**Changes on `fix/quickplay-no-phantom-typing`:** (1) Keep a disconnected public racer in its DO match for up to 15 seconds; (2) bind a cryptographically random short-lived per-tab resume token to the previous racer; (3) on reconnect reattach the socket to the same racer ID/match ID and send the authoritative DO snapshot immediately, including existing progress and later result if available; (4) mark temporarily disconnected racers in snapshots; (5) bounded browser auto-retry and manual fallback; (6) guard local optimistic typing against closed/throwing WebSocket sends. The token is NEVER broadcast in opponent snapshots. No ranked rewards or real-money economy changes.
+
+**Test coverage added:** Backend simulated WebSocketPair/DO reconnect tests for session identity/progress/token isolation/expiry; frontend behavioral Vitest for Cyrillic typed/wrong characters, disabled/paste/closed/throwing sends; Chromium E2E for actual local Worker public race disconnect/rejoin preserving server progress and racer identity. **CI, live staging, browser behavior and PR merge are not confirmed until actual workflow logs are checked.** Existing workflows only; never production.
+
+**Important limits:** QuickMatchmaker keeps active races in DO process memory, not SQLite: recovery works only while the DO instance remains alive, NOT after Durable Object eviction/restart. Per-tab resume token is an unverified guest bearer credential; browser WebSocket URL can appear in infrastructure logs and should not carry real account claims. No guaranteed message delivery or per-keystroke acknowledgement yet; transient optimistic vs authoritative progress may still diverge on rate-limited/rejected messages. Plan server sequenced ACK, reconnect hibernation/durable recovery, abuse bounds for queued disconnected players, and real-mobile Mongolian IME QA before production-scale claims.
+
+---
+
+## 2026-10-11 — Quick Play disconnected optimistic typing guard (PR pending)
+
+**Confirmed code risk:** QuickTypingPanel advanced local progress before QuickRacePage checked WebSocket readiness. A closed socket or throwing send could show phantom typed characters.
+
+**Branch:** `fix/quickplay-no-phantom-typing`. QuickRacePage sendKey now returns false when socket is not OPEN or send throws; QuickTypingPanel only advances its optimistic caret after send returns true. A successful send does not guarantee server receipt; server finish/results remain authoritative. Added focused source regression tests. **Tests/CI and staging not yet verified; do not merge before required checks pass.** No new shop content added because gameplay reliability has priority. Follow up with actual browser disconnect E2E and reconciliation on reconnect.
+
+---
+
 ## 2026-10-11 — Critical cosmetic silhouette UX correction (Shop)
 
 **Confirmed user-visible issue:** Screenshot from the live staging Shop shows the six Mythic/Legendary vehicles as the same copied spiked wedge body with color changes; neighboring lower-rarity cars are similarly repeated. Earlier generated photorealistic concept renders are also predominantly a single hypercar archetype, so blindly uploading that existing ZIP would not fix the underlying vehicle diversity. The original PR #21 made artwork detailed but failed this visual distinctiveness requirement.

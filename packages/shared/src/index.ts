@@ -12,6 +12,8 @@ export type Racer = {
   // Guest-room appearance only; not proof of ownership or a verified leaderboard identity.
   car?: string; trail?: string; sticker?: string; title?: string;
   bot?: boolean;
+  /** Public Durable Object reports temporary disconnects without removing a race slot. */
+  connected?: boolean;
 };
 export type RoomSnapshot = {
   type: 'state';

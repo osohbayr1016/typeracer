@@ -4,8 +4,14 @@ import {
 } from '@typeracer/shared';
 import { acceptKeystroke, safePlayerName } from './logic';
 
+type QuickResult = {
+  type: 'quick-result'; raceId: string; place: number | null; coins: number;
+  wpm: number; accuracy: number; elapsedMs: number; verified: false;
+};
 type Human = Racer & {
-  socket: WebSocket; windowStart: number; windowCount: number; paid: boolean
+  socket: WebSocket | null; windowStart: number; windowCount: number; paid: boolean;
+  resumeToken: string; disconnectTimer: ReturnType<typeof setTimeout> | null;
+  lastResult: QuickResult | null;
 };
 type Bot = Racer & { bot: true; pace: number };
 type QuickRace = {
@@ -30,6 +36,8 @@ export const QUICK_LANES = 5;
 export const QUICK_MAX_HUMANS = 5;
 export const QUICK_PRIZES = [120, 95, 75, 55, 40] as const;
 export const QUICK_BOT_JOIN_MS = 650;
+/** Grace period for a disconnected public-race player in the current Durable Object instance. */
+export const QUICK_RECONNECT_GRACE_MS = 15_000;
 
 /** Original Mongolian guest bot roster. Bots are identified as bots in every snapshot.
  * Starting at an offset varies the lineup across consecutive races, without duplicate names.
@@ -80,18 +88,46 @@ export class QuickMatchmaker {
   fetch(request: Request): Response {
     if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket')
       return new Response('WebSocket upgrade required', { status: 426 });
-    if (this.sockets.size >= 160)
-      return new Response('Public queue busy, retry shortly', { status: 503 });
     const url = new URL(request.url);
+    const token = url.searchParams.get('resume');
+    // Cryptographically random, short-lived bearer token. Never include it in
+    // public snapshots; it only rebinds one socket to an existing DO race.
+    const existing = token && /^[0-9a-f-]{36}$/.test(token) ? [...this.active]
+      .flatMap(race => [...race.humans].map(human => ({ race, human })))
+      .find(entry => entry.human.resumeToken === token) : undefined;
+    if (!existing && this.sockets.size >= 160)
+      return new Response('Public queue busy, retry shortly', { status: 503 });
+
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
+
+    if (existing) {
+      const { race, human } = existing;
+      const old = human.socket;
+      if (old) {
+        this.sockets.delete(old);
+        try { old.close(1000, 'Session resumed'); } catch { /* already closed */ }
+      }
+      if (human.disconnectTimer) clearTimeout(human.disconnectTimer);
+      human.disconnectTimer = null;
+      human.socket = server;
+      this.attach(server, race, human);
+      this.send(server, { type: 'welcome', id: human.id, resumeToken: human.resumeToken, resumed: true });
+      // Immediate authoritative snapshot: do not wait for the 50ms fan-out tick.
+      this.send(server, this.receiveSnapshot(race));
+      if (human.lastResult) this.send(server, human.lastResult);
+      this.broadcast(race);
+      return new Response(null, { status: 101, webSocket: client });
+    }
+
     const human: Human = {
       id: crypto.randomUUID(), name: safePlayerName(url.searchParams.get('name') || ''),
       car: allowed(url.searchParams.get('car'), carIds, 'sunset'),
       trail: allowed(url.searchParams.get('trail'), trailIds, 'none'),
       sticker: allowed(url.searchParams.get('sticker'), stickerIds, 'none'),
       progress: 0, mistakes: 0, strokes: 0, completedAt: null,
-      ready: true, socket: server, windowStart: 0, windowCount: 0, paid: false
+      ready: true, socket: server, windowStart: 0, windowCount: 0, paid: false,
+      resumeToken: crypto.randomUUID(), disconnectTimer: null, lastResult: null
     };
     let race = this.pending;
     if (!race || race.phase !== 'waiting' || race.humans.size >= QUICK_MAX_HUMANS) {
@@ -100,17 +136,20 @@ export class QuickMatchmaker {
     }
     race.humans.add(human);
     // Replace the last bot with an incoming real racer while matchmaking is open.
-    // A full-looking animated lobby must never lock real players out of the queue.
     while (race.humans.size + race.bots.length > QUICK_LANES) race.bots.pop();
-    this.sockets.set(server, { race, human });
-    server.accept();
-    server.addEventListener('message', (event: MessageEvent) => this.receive(server, event.data));
-    server.addEventListener('close', () => this.leave(server));
-    server.addEventListener('error', () => this.leave(server));
-    this.send(server, { type: 'welcome', id: human.id });
+    this.attach(server, race, human);
+    this.send(server, { type: 'welcome', id: human.id, resumeToken: human.resumeToken, resumed: false });
     this.broadcast(race);
     if (race.humans.size === QUICK_MAX_HUMANS) this.startCountdown(race);
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  private attach(socket: WebSocket, race: QuickRace, human: Human): void {
+    socket.accept();
+    this.sockets.set(socket, { race, human });
+    socket.addEventListener('message', (event: MessageEvent) => this.receive(socket, event.data));
+    socket.addEventListener('close', () => this.leave(socket));
+    socket.addEventListener('error', () => this.leave(socket));
   }
 
   private newRace(): QuickRace {
@@ -217,12 +256,13 @@ export class QuickMatchmaker {
     if (human.paid || human.completedAt === null || race.startAt === null) return;
     human.paid = true;
     const place = quickPlacement(human, [...race.humans, ...race.bots]);
-    this.send(human.socket, {
+    human.lastResult = {
       type: 'quick-result', raceId: race.id, place, coins: quickPrize(place, true),
       wpm: wordsPerMinute(human.progress, Math.max(1, human.completedAt - race.startAt)),
       accuracy: human.strokes ? Math.round((human.strokes - human.mistakes) / human.strokes * 100) : 100,
       elapsedMs: Math.max(1, human.completedAt - race.startAt), verified: false
-    });
+    };
+    this.send(human.socket, human.lastResult);
   }
 
   private finish(race: QuickRace): void {
@@ -231,15 +271,19 @@ export class QuickMatchmaker {
     if (race.startAt !== null) this.tickBots(race);
     for (const human of race.humans) {
       if (human.completedAt !== null) this.awardFinish(race, human);
-      else this.send(human.socket, { type: 'quick-result', raceId: race.id, place: null, coins: 0,
-        wpm: wordsPerMinute(human.progress, Math.max(1, Date.now() - (race.startAt ?? Date.now()))),
-        accuracy: human.strokes ? Math.round((human.strokes - human.mistakes) / human.strokes * 100) : 100,
-        elapsedMs: Date.now() - (race.startAt ?? Date.now()), verified: false });
+      else {
+        human.lastResult = { type: 'quick-result', raceId: race.id, place: null, coins: 0,
+          wpm: wordsPerMinute(human.progress, Math.max(1, Date.now() - (race.startAt ?? Date.now()))),
+          accuracy: human.strokes ? Math.round((human.strokes - human.mistakes) / human.strokes * 100) : 100,
+          elapsedMs: Date.now() - (race.startAt ?? Date.now()), verified: false };
+        this.send(human.socket, human.lastResult);
+      }
     }
     this.broadcast(race);
     this.stopTimers(race);
-    // Keep final state visible briefly; moving to "play again" uses a fresh socket.
-    race.deadline = setTimeout(() => this.dispose(race), 4_000);
+    // Permit recently disconnected racers to recover their authoritative result.
+    race.deadline = setTimeout(() => this.dispose(race),
+      [...race.humans].some(h => h.socket === null) ? QUICK_RECONNECT_GRACE_MS : 4_000);
   }
 
   private receiveSnapshot(race: QuickRace): RoomSnapshot {
@@ -250,11 +294,13 @@ export class QuickMatchmaker {
       players: [...race.humans, ...race.bots].map(
         ({ id, name, car, trail, sticker, progress, mistakes, strokes, completedAt, ready, ...rest }) => ({
           id, name, car, trail, sticker, progress, mistakes, strokes, completedAt, ready,
-          bot: 'bot' in rest && rest.bot === true
+          bot: 'bot' in rest && rest.bot === true,
+          connected: 'socket' in rest ? rest.socket !== null : true
         }))
     };
   }
-  private send(socket: WebSocket, value: unknown): void {
+  private send(socket: WebSocket | null, value: unknown): void {
+    if (!socket) return;
     try { if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(value)); }
     catch { this.leave(socket); }
   }
@@ -271,9 +317,28 @@ export class QuickMatchmaker {
     if (!entry) return;
     this.sockets.delete(socket);
     const { race, human } = entry;
-    race.humans.delete(human);
-    if (race.humans.size === 0) this.dispose(race);
-    else this.broadcast(race);
+    // Closing an old socket after a successful resume cannot evict its new owner.
+    if (human.socket !== socket) return;
+    human.socket = null;
+    // Waiting racers have no progress to recover. Evict immediately so a
+    // React StrictMode double-mount or closed tab cannot occupy a ghost lobby
+    // slot, reduce bot fill or start a countdown with departed players.
+    if (race.phase === 'waiting' || race.phase === 'finished') {
+      race.humans.delete(human);
+      if (race.humans.size === 0) this.dispose(race);
+      else this.broadcast(race);
+      return;
+    }
+    if (human.disconnectTimer) clearTimeout(human.disconnectTimer);
+    human.disconnectTimer = setTimeout(() => {
+      human.disconnectTimer = null;
+      if (human.socket !== null) return;
+      race.humans.delete(human);
+      if (race.humans.size === 0) this.dispose(race);
+      else this.broadcast(race);
+    }, QUICK_RECONNECT_GRACE_MS);
+    // Preserve race progress and the player slot during a brief network outage.
+    this.broadcast(race);
   }
   private stopTimers(race: QuickRace): void {
     if (race.deadline) clearTimeout(race.deadline);
@@ -289,8 +354,13 @@ export class QuickMatchmaker {
     if (this.pending === race) this.pending = null;
     this.active.delete(race);
     for (const human of race.humans) {
-      this.sockets.delete(human.socket);
-      try { human.socket.close(1000, 'Match ended'); } catch { /* socket already closed */ }
+      if (human.disconnectTimer) clearTimeout(human.disconnectTimer);
+      human.disconnectTimer = null;
+      if (human.socket) {
+        this.sockets.delete(human.socket);
+        try { human.socket.close(1000, 'Match ended'); } catch { /* socket already closed */ }
+      }
+      human.socket = null;
     }
     race.humans.clear();
   }
