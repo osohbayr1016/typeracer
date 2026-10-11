@@ -51,7 +51,7 @@ describe('six rarity collections, level economy and featured rotation', () => {
     for (const rarity of COLLECTION_RARITIES) {
       const three = NEW_CAR_COLLECTION.filter(car => car.rarity === rarity.id);
       expect(three).toHaveLength(3);
-      expect(three.every(car => car.preview.endsWith('.svg'))).toBe(true);
+      expect(three.every(car => car.preview === `/cars/${car.id}.webp`)).toBe(true);
       expect(three.every(car => car.minLevel !== undefined && car.minLevel >= rarity.level)).toBe(true);
       expect(three.every(car => car.price > 0 && !!car.effect)).toBe(true);
     }
