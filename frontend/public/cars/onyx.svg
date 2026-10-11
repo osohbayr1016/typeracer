@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 140" role="img" aria-label="Оникс сүүдэр">
+<defs>
+<linearGradient id="c" x1="0" y1="0" x2=".18" y2="1"><stop stop-color="#d1d1e8"/><stop offset=".42" stop-color="#737a9e"/><stop offset="1" stop-color="#23263e"/></linearGradient>
+<linearGradient id="w" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#c9e3ec"/><stop offset=".58" stop-color="#4b697c"/><stop offset="1" stop-color="#101923"/></linearGradient>
+<linearGradient id="m" x1="0" x2="1"><stop stop-color="#1a2734"/><stop offset=".55" stop-color="#c0a9ff"/><stop offset="1" stop-color="#1a2734"/></linearGradient>
+</defs>
+<ellipse cx="163" cy="117" rx="138" ry="9" fill="#05090b" opacity=".28"/>
+<path d="M39 85 L28 50 L46 46 L71 75 M254 75 L275 47 L292 48" fill="none" stroke="#c0a9ff" stroke-width="4"/>
+<path d="M12 96 L53 78 L107 72 L143 46 L205 47 L252 73 L298 90 L302 102 L14 106Z" fill="url(#c)" stroke="#182027" stroke-width="3.3" stroke-linejoin="round"/>
+<path d="M134 74 L153 53 L205 53 L230 75Z" fill="url(#w)" stroke="#12222c" stroke-width="3.5" stroke-linejoin="round"/>
+<path d="M163 54 L164 72" stroke="#d1d1e8" stroke-width="2.5" opacity=".85"/>
+<path d="M41 93 L119 78 L234 84 L290 94 M110 85 L209 89" stroke="#c0a9ff" stroke-width="3" fill="none"/>
+<path d="M17 92 L40 86 L43 99 L18 103 M288 85 L304 92 L299 104 L281 100" fill="#1c2930"/>
+<path d="M17 82 L35 76 L40 86 L21 89" fill="#f8ebbf"/><path d="M289 85 L300 91 L298 100 L283 96" fill="#f07d76"/>
+<circle cx="89" cy="106" r="23" fill="#101920" stroke="#03090e" stroke-width="3"/><circle cx="242" cy="106" r="23" fill="#101920" stroke="#03090e" stroke-width="3"/>
+<circle cx="89" cy="106" r="13.5" fill="url(#m)" stroke="#b9c4cc" stroke-width="2"/><circle cx="242" cy="106" r="13.5" fill="url(#m)" stroke="#b9c4cc" stroke-width="2"/>
+<path d="M89 95 V117 M78 106 H100 M242 95 V117 M231 106 H253" stroke="#283940" stroke-width="3.4"/>
+<rect x="145" y="85" width="36" height="17" rx="3" fill="#d1d1e8" stroke="#233139" stroke-width="1.5"/>
+<text x="163" y="97" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="11" fill="#19242b">25</text>
+<path d="M27 112 H291" stroke="#23263e" stroke-width="4" opacity=".86" stroke-linecap="round"/>
+</svg>
