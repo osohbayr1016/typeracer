@@ -16,6 +16,9 @@ describe('five-racer quick lobby mechanics', () => {
   });
   it('awards five deterministic virtual prize positions and no uncompleted rewards', () => {
     expect(QUICK_PRIZES).toHaveLength(5);
+    expect([...QUICK_PRIZES]).toEqual([30,27,24,21,18]);
+    expect(QUICK_PRIZES.every(x=>x>=18&&x<=30)).toBe(true);
+    expect(QUICK_PRIZES.every((x,i)=>i===0||x<QUICK_PRIZES[i-1])).toBe(true);
     for (let place = 1; place <= 5; place++) {
       expect(quickPrize(place, true)).toBe(QUICK_PRIZES[place - 1]);
       expect(quickPrize(place, false)).toBe(0);
