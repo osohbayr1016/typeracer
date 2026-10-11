@@ -1,3 +1,17 @@
+## 2026-10-11 — Critical cosmetic silhouette UX correction (Shop)
+
+**Confirmed user-visible issue:** Screenshot from the live staging Shop shows the six Mythic/Legendary vehicles as the same copied spiked wedge body with color changes; neighboring lower-rarity cars are similarly repeated. Earlier generated photorealistic concept renders are also predominantly a single hypercar archetype, so blindly uploading that existing ZIP would not fix the underlying vehicle diversity. The original PR #21 made artwork detailed but failed this visual distinctiveness requirement.
+
+**Reference researched:** Nitro Type's Shop and official September 2026 restock announcement have Featured/Daily selections, collectible variation and prices. Historical dealership categories include offroad/trucks, motorbikes, race cars, flying and novelty vehicles. This is inspiration only; no licensed Nitro Type visuals, model files or exact car identity are copied.
+
+**Implementation:** Replace the 18 same-body collection SVGs with **18 separately drawn body silhouettes and differing wheelbase/vehicle class** (rally coupe, 4×4, city hatch, drag muscle, open buggy, electric van, ice roadster, open-top sports car, long dragster, wheel-free stealth interceptor, six-wheel armored transport, open-wheel formula, steam locomotive, flying saucer, eagle wing racer, royal carriage, crystal six-wheel rover, fiery dragon hover vehicle). Keep their current Skin IDs, owned local profiles, six rarity levels, shop prices and public/private multiplayer references unchanged. Add explicit `modelType` to CarSkin, show it on collection cards and in enlarged accessible modal preview with true rarity/level/price/equip actions; mobile layouts and reduced-motion remain supported.
+
+**Quality gates:** Tests check 18 distinct SVG `path` bodies, wheel counts 0/2/3, image load, inspect modal behavior/level rules/viewport, existing Shop buy/equip persistence, real multiplayer, and staging smoke. Do not merge until CI genuinely passes.
+
+**Honest limitation:** The specific prior generated high-res PNG/WebP renders are *not* deployed as binary image assets through GitHub; this PR builds new self-contained original SVG illustrations with dramatically different vehicle classes. The app-stage URL is not accessible through the assistant's direct page-fetch tool, so browser-style QA relies on uploaded screenshot, source and Playwright CI. Never claim manual live browser inspection or uploaded raster originals.
+
+---
+
 ## 2026-10-11 — Premium car artwork across all rarity tiers
 
 **Confirmed issue:** The 18 collection car IDs had separate SVG files but the drawings shared similar flat, template-like proportions. The user requested different premium vehicle silhouettes and a higher-quality Nitro Type-inspired collector experience. The previous batch of photorealistic generated images remained separate from GitHub rather than being shipped as web assets.
