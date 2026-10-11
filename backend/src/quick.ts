@@ -256,12 +256,13 @@ export class QuickMatchmaker {
     if (human.paid || human.completedAt === null || race.startAt === null) return;
     human.paid = true;
     const place = quickPlacement(human, [...race.humans, ...race.bots]);
-    this.send(human.socket, {
+    human.lastResult = {
       type: 'quick-result', raceId: race.id, place, coins: quickPrize(place, true),
       wpm: wordsPerMinute(human.progress, Math.max(1, human.completedAt - race.startAt)),
       accuracy: human.strokes ? Math.round((human.strokes - human.mistakes) / human.strokes * 100) : 100,
       elapsedMs: Math.max(1, human.completedAt - race.startAt), verified: false
-    });
+    };
+    this.send(human.socket, human.lastResult);
   }
 
   private finish(race: QuickRace): void {
@@ -270,15 +271,19 @@ export class QuickMatchmaker {
     if (race.startAt !== null) this.tickBots(race);
     for (const human of race.humans) {
       if (human.completedAt !== null) this.awardFinish(race, human);
-      else this.send(human.socket, { type: 'quick-result', raceId: race.id, place: null, coins: 0,
-        wpm: wordsPerMinute(human.progress, Math.max(1, Date.now() - (race.startAt ?? Date.now()))),
-        accuracy: human.strokes ? Math.round((human.strokes - human.mistakes) / human.strokes * 100) : 100,
-        elapsedMs: Date.now() - (race.startAt ?? Date.now()), verified: false });
+      else {
+        human.lastResult = { type: 'quick-result', raceId: race.id, place: null, coins: 0,
+          wpm: wordsPerMinute(human.progress, Math.max(1, Date.now() - (race.startAt ?? Date.now()))),
+          accuracy: human.strokes ? Math.round((human.strokes - human.mistakes) / human.strokes * 100) : 100,
+          elapsedMs: Date.now() - (race.startAt ?? Date.now()), verified: false };
+        this.send(human.socket, human.lastResult);
+      }
     }
     this.broadcast(race);
     this.stopTimers(race);
-    // Keep final state visible briefly; moving to "play again" uses a fresh socket.
-    race.deadline = setTimeout(() => this.dispose(race), 4_000);
+    // Permit recently disconnected racers to recover their authoritative result.
+    race.deadline = setTimeout(() => this.dispose(race),
+      [...race.humans].some(h => h.socket === null) ? QUICK_RECONNECT_GRACE_MS : 4_000);
   }
 
   private receiveSnapshot(race: QuickRace): RoomSnapshot {
@@ -289,11 +294,13 @@ export class QuickMatchmaker {
       players: [...race.humans, ...race.bots].map(
         ({ id, name, car, trail, sticker, progress, mistakes, strokes, completedAt, ready, ...rest }) => ({
           id, name, car, trail, sticker, progress, mistakes, strokes, completedAt, ready,
-          bot: 'bot' in rest && rest.bot === true
+          bot: 'bot' in rest && rest.bot === true,
+          connected: 'socket' in rest ? rest.socket !== null : true
         }))
     };
   }
-  private send(socket: WebSocket, value: unknown): void {
+  private send(socket: WebSocket | null, value: unknown): void {
+    if (!socket) return;
     try { if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(value)); }
     catch { this.leave(socket); }
   }
@@ -310,9 +317,19 @@ export class QuickMatchmaker {
     if (!entry) return;
     this.sockets.delete(socket);
     const { race, human } = entry;
-    race.humans.delete(human);
-    if (race.humans.size === 0) this.dispose(race);
-    else this.broadcast(race);
+    // Closing an old socket after a successful resume cannot evict its new owner.
+    if (human.socket !== socket) return;
+    human.socket = null;
+    if (human.disconnectTimer) clearTimeout(human.disconnectTimer);
+    human.disconnectTimer = setTimeout(() => {
+      human.disconnectTimer = null;
+      if (human.socket !== null) return;
+      race.humans.delete(human);
+      if (race.humans.size === 0) this.dispose(race);
+      else this.broadcast(race);
+    }, QUICK_RECONNECT_GRACE_MS);
+    // Preserve race progress and the player slot during a brief network outage.
+    this.broadcast(race);
   }
   private stopTimers(race: QuickRace): void {
     if (race.deadline) clearTimeout(race.deadline);
@@ -328,8 +345,13 @@ export class QuickMatchmaker {
     if (this.pending === race) this.pending = null;
     this.active.delete(race);
     for (const human of race.humans) {
-      this.sockets.delete(human.socket);
-      try { human.socket.close(1000, 'Match ended'); } catch { /* socket already closed */ }
+      if (human.disconnectTimer) clearTimeout(human.disconnectTimer);
+      human.disconnectTimer = null;
+      if (human.socket) {
+        this.sockets.delete(human.socket);
+        try { human.socket.close(1000, 'Match ended'); } catch { /* socket already closed */ }
+      }
+      human.socket = null;
     }
     race.humans.clear();
   }
