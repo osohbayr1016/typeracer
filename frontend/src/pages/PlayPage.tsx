@@ -21,7 +21,7 @@ export function PlayPage({ best, carIcon, carName, onPlay, onMultiplayer, onCrea
         <div className="play-choice-art">
           <div className="play-choice-road" aria-hidden="true"/>
           <img className="play-choice-main-car" src={carIcon} alt={carName}/>
-          <img className="play-choice-rival-car" src="/cars/mint.webp" alt="" aria-hidden="true"/>
+          <img className="play-choice-rival-car" src="/cars/race/mint.webp" alt="" aria-hidden="true"/>
           <span className="play-choice-finish" aria-hidden="true"/>
         </div>
         <div className="play-choice-copy"><span className="play-choice-type">5 УРАЛДАГЧ · БОТООР НӨХНӨ</span><h2 id="play-live-title">ШУУД УРАЛДАХ</h2></div>
@@ -32,8 +32,8 @@ export function PlayPage({ best, carIcon, carName, onPlay, onMultiplayer, onCrea
         <div className="play-choice-top"><span className="play-choice-index">02 / ХУВИЙН ӨРӨӨ</span><span className="play-choice-people">2–6 ХҮН</span></div>
         <div className="play-choice-art">
           <div className="play-choice-road" aria-hidden="true"/>
-          <img className="play-choice-main-car" src="/cars/purple.webp" alt=""/>
-          <img className="play-choice-rival-car" src="/cars/mint.webp" alt="" aria-hidden="true"/>
+          <img className="play-choice-main-car" src="/cars/race/purple.webp" alt=""/>
+          <img className="play-choice-rival-car" src="/cars/race/mint.webp" alt="" aria-hidden="true"/>
           <span className="play-choice-finish" aria-hidden="true"/>
         </div>
         <div className="play-choice-copy"><span className="play-choice-type">НАЙЗАА КОДООР УРЬ</span><h2 id="play-friends-title">НАЙЗУУДТАЙГАА</h2></div>
