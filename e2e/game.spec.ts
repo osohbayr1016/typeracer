@@ -318,3 +318,60 @@ test('typing caret updates locally and highlights mistakes without blocking inpu
   await expect(phrase.locator('span.incorrect')).toHaveCount(1);
   await expect(phrase.locator('span.typed')).toHaveCount(1);
 });
+
+
+test('rarity shop has six distinct tiers, 18 original vehicle assets and responsive catalog', async ({page,request}) => {
+  const names = ['falcon','nomad','rover','sunflare','dune','cobalt','glacier','fox','streak',
+    'ghost','onyx','meteor','temple','nebula','eagle','royal','aurora-x','dragon'];
+  for (const id of names) {
+    const asset = await request.get('/cars/' + id + '.svg');
+    expect(asset.ok(), id).toBeTruthy();
+    expect(await asset.text()).toContain('<svg');
+  }
+  for (const width of [390,768,1440]) {
+    await page.setViewportSize({width,height:845});
+    await page.goto('/shop');
+    await expect(page.locator('.shop-rarity-tabs .rarity-filter')).toHaveCount(6);
+    await expect(page.locator('.shop-item-grid .shop-collectible')).toHaveCount(27);
+    await expect(page.locator('.shop-daily-item')).toHaveCount(3);
+    const dimensions = await page.evaluate(() => ({document:document.documentElement.scrollWidth, window:innerWidth}));
+    expect(dimensions.document).toBeLessThanOrEqual(dimensions.window+1);
+    await page.getByRole('button',{name:/Домогт 3 машин/}).click();
+    await expect(page.locator('.shop-item-grid .shop-collectible')).toHaveCount(3);
+    await expect(page.locator('.shop-item-grid [data-item-id="royal"]')).toBeVisible();
+    await expect(page.locator('.shop-item-grid [data-item-id="royal"] .item-action button')).toBeDisabled();
+  }
+});
+
+test('collection purchase spends coins once, equips in garage and level-gates legendary cars', async ({page}) => {
+  await page.goto('/shop');
+  await page.evaluate(() => localStorage.setItem('racer.profile.v1', JSON.stringify({xp:0,coins:50000,owned:[]})));
+  await page.reload();
+  const start = page.locator('[data-item-id="falcon"]');
+  await expect(start.locator('.item-action')).toContainText('300');
+  await start.locator('.item-action button').click();
+  await expect(start.locator('.item-action')).toContainText('ТАНЫХ');
+  await expect(page.locator('.coin-counter')).toContainText('49,700');
+  const legendary = page.locator('[data-item-id="dragon"]');
+  await expect(legendary.locator('.item-action button')).toBeDisabled();
+  await page.goto('/garage');
+  await page.getByRole('button',{name:/Шонхор GT/}).click();
+  await expect(page.locator('.garage-feature h2')).toContainText('Шонхор GT');
+  await expect(page.locator('.garage-preview-car img')).toHaveAttribute('src','/cars/falcon.svg');
+  await page.reload();
+  await expect(page.locator('.garage-feature h2')).toContainText('Шонхор GT');
+});
+
+test('level 35 veteran may buy and equip a legendary car, accessible on shop and garage', async ({page}) => {
+  await page.goto('/shop');
+  await page.evaluate(() => localStorage.setItem('racer.profile.v1', JSON.stringify({xp:10200,coins:8000,owned:[]})));
+  await page.reload();
+  const dragon = page.locator('[data-item-id="dragon"]');
+  await expect(dragon.locator('.item-action button')).toBeEnabled();
+  await dragon.locator('.item-action button').click();
+  await expect(dragon.locator('.item-action')).toContainText('ТАНЫХ');
+  await dragon.locator('.item-action button').click();
+  await page.goto('/garage');
+  await expect(page.locator('.garage-feature h2')).toContainText('Лууны дөл');
+  await expect(page.locator('.garage-preview-car')).toHaveClass(/garage-rarity-Домогт/);
+});
