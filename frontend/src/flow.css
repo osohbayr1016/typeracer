@@ -10,7 +10,7 @@
 .home-hero-copy { align-self: center; padding: 47px 25px 54px 44px; position: relative; z-index: 2; }
 .home-hero-copy .eyebrow { color: #b8bdbd; font-size: 12px; letter-spacing: 3px; }
 .home-hero h1,.flow-heading h1,.results-title h1,.no-result h1 {
-  font: italic 900 clamp(54px,7.1vw,106px)/.97 Impact,"Arial Narrow",sans-serif;
+  font: italic 900 clamp(54px,7.1vw,106px)/.97 var(--font-display);
   letter-spacing: -1px; color: #fff; margin: 22px 0 24px; }
 .home-hero h1 span,.flow-heading h1 span,.results-title h1 span,.no-result h1 span { color: var(--orange); }
 .home-hero-copy > p:not(.home-play-caption) { color: #c6cccb; max-width: 510px; font-size: 15px; line-height: 1.7; margin-bottom: 28px; }
@@ -33,19 +33,19 @@
 .home-car-image { position: absolute; width: 89%; max-width: 680px; left: 5%; top: 31%; z-index: 2;
   filter: drop-shadow(-35px 24px 20px #000d); transform: rotate(-4deg); }
 .hero-sideword { position: absolute; top: 42px; right: 37px; color: #9b9f9e; font-size: 10px; font-weight: 900; letter-spacing: 3px; }
-.home-road-stamp { position: absolute; left: 28px; bottom: 37px; font: 900 46px/1 Impact,sans-serif; color: #faf7f2; }
+.home-road-stamp { position: absolute; left: 28px; bottom: 37px; font: 900 46px/1 var(--font-display); color: #faf7f2; }
 .home-road-stamp span { display: block; margin-top: 5px; color: #f75a43; font: 800 11px/1.3 Arial,sans-serif; letter-spacing: 3px; }
 .home-finish-art { position: absolute; right: 2px; bottom: 60px; writing-mode: vertical-rl;
-  font: italic 900 49px/1 Impact,sans-serif; color: #aab3b426; letter-spacing: 6px; }
+  font: italic 900 49px/1 var(--font-display); color: #aab3b426; letter-spacing: 6px; }
 .home-lower { display: grid; grid-template-columns: 1fr 1.25fr auto; gap: 32px; padding: 35px 36px 18px; }
 .home-record,.home-steps { min-width: 0; }
 .home-record { border-right: 1px solid #444a4c; padding-right: 32px; }
-.home-record strong { display: block; font: 900 43px/1.4 Impact,sans-serif; margin-top: 11px; }
+.home-record strong { display: block; font: 900 43px/1.4 var(--font-display); margin-top: 11px; }
 .home-record strong small { color: #afb5b6; font: 600 10px Arial,sans-serif; letter-spacing: 1px; }
 .home-record p { color: #9da7a7; margin: 5px 0 0; font-size: 11px; line-height: 1.6; }
 .home-steps .section-kicker { margin-bottom: 14px; }
 .home-steps div { display: flex; gap: 18px; padding: 5px 0; font-size: 12px; color: #bdc4c3; }
-.home-steps b { color: #ff6b53; font-family: Impact,sans-serif; font-size: 16px; }
+.home-steps b { color: #ff6b53; font-family: var(--font-display); font-size: 16px; }
 .home-garage-link { align-self: center; background: #22292b; border: 1px solid #40494a; color: #fff;
   border-radius: 5px; padding: 16px 19px; font-size: 11px; font-weight: 800; white-space: nowrap; }
 .home-garage-link:hover { background: #303739; border-color: var(--orange); }
@@ -58,7 +58,7 @@
   border: 1px solid #454c4e; background: #212729; overflow: hidden; min-height: 460px; }
 .mode-card.solo-mode { border-color: #8e483d; background: linear-gradient(153deg,#3b2927 0,#202526 48%); }
 .mode-card-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-.mode-number { color: #e6e8e5; font: 900 12px/1.2 Impact,sans-serif; letter-spacing: 2px; }
+.mode-number { color: #e6e8e5; font: 900 12px/1.2 var(--font-display); letter-spacing: 2px; }
 .mode-pill { color: #aeb8b8; background: #161b1c; border: 1px solid #42494a; padding: 6px 9px; border-radius: 4px; font-size: 9px; font-weight: 850; letter-spacing: .7px; }
 .mode-car { object-fit: contain; width: min(88%,385px); height: 135px; align-self: center; margin: 1px 0 5px;
   filter: drop-shadow(-10px 13px 10px #0008); }
@@ -83,19 +83,19 @@
 .garage-feature { border: 1px solid #4e4e50; min-height: 270px; margin: 0 20px; padding: 28px 47px; display: flex;
   align-items: center; justify-content: space-between; gap: 30px;
   background: radial-gradient(ellipse at 74% 65%,#413537 0,transparent 67%),linear-gradient(135deg,#252b2d,#1a2022); }
-.garage-feature h2 { font: 900 59px/1.3 Impact,"Arial Narrow",sans-serif; margin: 9px 0 0; }
+.garage-feature h2 { font: 900 59px/1.3 var(--font-display); margin: 9px 0 0; }
 .garage-feature p { color: #a7b1b1; font-weight: 800; letter-spacing: 1px; font-size: 12px; margin: 0 0 24px; }
 .garage-feature p span { color: #ee604b; padding-inline: 8px; }
 .garage-feature img { width: min(55%,520px); height: 235px; object-fit: contain; filter: drop-shadow(-24px 20px 14px #0009); }
 .garage-collection-heading { display: flex; align-items: baseline; justify-content: space-between; margin: 31px 20px 16px; }
-.garage-collection-heading h2 { font: 900 23px/1 Impact,sans-serif; letter-spacing: 1px; margin: 0; }
+.garage-collection-heading h2 { font: 900 23px/1 var(--font-display); letter-spacing: 1px; margin: 0; }
 .garage-collection-heading span { font-size: 10px; color: #a1aaaa; letter-spacing: 1px; }
 .garage-page-grid { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 14px; padding: 0 20px; }
 .garage-car-tile { min-width: 0; padding: 13px; background: #232a2c; border: 1px solid #434b4d; color: #f0f2f0; text-align: left; border-radius: 6px; }
 .garage-car-tile:hover:not(:disabled) { border-color: #ff6047; transform: translateY(-2px); background: #303638; }
 .garage-car-tile.selected { background: #312825; border-color: #ff6047; }
 .garage-car-tile:disabled { opacity: .52; filter: grayscale(.7); }
-.garage-tile-number { color: #858e8f; font: 900 15px Impact,sans-serif; }
+.garage-tile-number { color: #858e8f; font: 900 15px var(--font-display); }
 .garage-car-tile img { display: block; width: 100%; height: 95px; object-fit: contain; }
 .garage-tile-footer { display: flex; gap: 6px; align-items: center; justify-content: space-between; }
 .garage-tile-footer b { font-size: 12px; }
@@ -110,30 +110,30 @@
 .results-car span { position: absolute; left: 24px; top: 23px; font-size: 9px; color: #fe7b65; letter-spacing: 2px; font-weight: 900; }
 .results-score { padding: 32px; }
 .results-score > span { color: #b5bcbc; font-size: 12px; letter-spacing: 2px; font-weight: 800; }
-.results-score strong { display: block; font: 900 103px/1.2 Impact,"Arial Narrow",sans-serif; margin-top: 12px; }
+.results-score strong { display: block; font: 900 103px/1.2 var(--font-display); margin-top: 12px; }
 .results-score em { color: #f26851; font: 900 24px/1 sans-serif; font-style: normal; }
 .results-score p { color: #a3abab; font-size: 12px; }
 .results-metrics { display: grid; grid-template-columns: repeat(3,1fr); background: #151a1c; border: 1px solid #3c4446; border-top: 0; }
 .results-metrics div { padding: 25px 29px; border-right: 1px solid #414749; }
 .results-metrics div:last-child { border: 0; }
 .results-metrics span { display: block; color: #9ba4a3; letter-spacing: 1px; font-size: 10px; }
-.results-metrics strong { font: 900 36px/1.5 Impact,sans-serif; }
+.results-metrics strong { font: 900 36px/1.5 var(--font-display); }
 .results-actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 23px 0; }
 .no-result { display: flex; flex-direction: column; align-items: start; justify-content: center; }
 .no-result p { color: #a7b0b0; }
 .game-header { min-height: 74px; display: flex; align-items: center; justify-content: space-between; padding: 14px 8px; gap: 15px; }
-.game-timer { font: 900 27px/1 Impact,sans-serif; font-variant-numeric: tabular-nums; color: #fb6b54; }
+.game-timer { font: 900 27px/1 var(--font-display); font-variant-numeric: tabular-nums; color: #fb6b54; }
 .back-link { border: 0; background: transparent; color: #b3babc; font-weight: 900; font-size: 10px; letter-spacing: 1.2px; padding: 9px 4px; }
 .back-link:hover { color: #ff765e; }
 .start-countdown { position: absolute; inset: 0; background: #111719db; z-index: 8; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .start-countdown > span { font-size: 12px; font-weight: 900; letter-spacing: 3px; color: #f0c5b9; }
-.start-countdown > strong { font: italic 900 115px/1.1 Impact,sans-serif; color: #ff5d43; text-shadow: 4px 6px 0 #60170f; }
+.start-countdown > strong { font: italic 900 115px/1.1 var(--font-display); color: #ff5d43; text-shadow: 4px 6px 0 #60170f; }
 .start-countdown > small { color: #dee0dd; letter-spacing: 1px; font-size: 11px; }
 .multiplayer-heading { padding: 26px 12px 20px; }
 .multiplayer-heading .back-link { display: block; margin: 0 0 18px; }
 .multiplayer-heading h1 { margin-bottom: 7px; }
 .lobby-start { max-width: 100%; padding: 30px 37px 38px; }
-.lobby-intro h3 { margin: 11px 0 6px; font: 900 32px/1 Impact,sans-serif; }
+.lobby-intro h3 { margin: 11px 0 6px; font: 900 32px/1 var(--font-display); }
 .lobby-intro p { max-width: 660px; }
 .lobby-start > .field { max-width: 530px; }
 .lobby-entry-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 25px; }
@@ -147,11 +147,11 @@
 .room-active { padding: 18px 28px 22px; }
 .room-info strong { color: #ffac99; }
 .lobby-waiting { border: 1px solid #444b4d; margin: 20px 0 0; background: #1c2224; padding: 18px 22px; }
-.lobby-waiting h3 { font: 900 19px/1 Impact,sans-serif; letter-spacing: 1.3px; margin: 0 0 18px; display: flex; justify-content: space-between; gap: 10px; }
+.lobby-waiting h3 { font: 900 19px/1 var(--font-display); letter-spacing: 1.3px; margin: 0 0 18px; display: flex; justify-content: space-between; gap: 10px; }
 .lobby-waiting h3 span { color: #f47860; }
 .lobby-player-grid { display: grid; gap: 7px; }
 .lobby-player { display: flex; align-items: center; gap: 17px; padding: 12px 14px; border: 1px solid #454c4e; background: #293033; }
-.lobby-player-num { color: #fc6e56; font: 900 17px Impact,sans-serif; }
+.lobby-player-num { color: #fc6e56; font: 900 17px var(--font-display); }
 .lobby-player-name { font-weight: 800; font-size: 13px; flex: 1; }
 .lobby-ready { font-size: 10px; letter-spacing: .6px; color: #a7b0af; }
 .lobby-ready.ready { color: #8ce5ae; }
@@ -161,7 +161,7 @@
 .multiplayer-panel .race-stats { display: flex; padding: 17px 20px; gap: 0; }
 .multiplayer-panel .race-stats > div { flex: 1; border-right: 1px solid #4a5052; padding: 0 15px; }
 .multiplayer-panel .race-stats > div:last-child { border: 0; }
-.multiplayer-panel .race-stats strong { font: 900 31px Impact,sans-serif; display: block; }
+.multiplayer-panel .race-stats strong { font: 900 31px var(--font-display); display: block; }
 .multiplayer-panel .race-stats span { color: #b1b8b7; font-size: 11px; }
 .multiplayer-panel .race-stats small { font-size: 13px; }
 @media(max-width:1080px) {
@@ -250,4 +250,18 @@
 }
 @media(prefers-reduced-motion:reduce) {
   .home-car-image,.mode-car,.garage-feature img { animation: none !important; transition-duration: .01ms !important; }
+}
+/* Heavy, compact Cyrillic type with comfortable line boxes for Ө and Ү. */
+.home-hero h1, .flow-heading h1, .results-title h1, .no-result h1,
+.lobby-intro h3, .garage-feature h2 {
+  font-family: var(--font-display);
+  font-weight: 900;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  line-height: 1.06;
+  letter-spacing: -.02em;
+}
+@media (max-width: 580px) {
+  .home-hero h1 { font-size: clamp(42px, 10vw, 74px); }
+  .flow-heading h1 { font-size: clamp(38px, 9.3vw, 51px); }
 }
