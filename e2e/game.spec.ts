@@ -594,21 +594,26 @@ test('Durable Object resumes the same public race and confirmed typing after soc
   const first = await page.evaluate(() =>
     (window as typeof window & { __quickRaceDebug: {
       welcomes: Array<{id:string;resumeToken:string;resumed:boolean}>
-    }}).__quickRaceDebug.welcomes[0]);
+    }}).__quickRaceDebug.welcomes.at(-1)!);
   expect(first.resumeToken).toMatch(/^[0-9a-f-]{36}$/);
+  const welcomeCountBeforeDrop = await page.evaluate(() =>
+    (window as typeof window & { __quickRaceDebug: { welcomes: unknown[] } })
+      .__quickRaceDebug.welcomes.length);
   await page.evaluate(() => {
     const sockets = (window as typeof window & { __quickRaceDebug: {
       sockets: WebSocket[]
     }}).__quickRaceDebug.sockets;
-    sockets[0].close(4001, 'Simulated dropped connection');
+    const active = sockets.filter(socket => socket.readyState === WebSocket.OPEN).at(-1);
+    if (!active) throw new Error('No active socket');
+    active.close(4001, 'Simulated dropped connection');
   });
   await expect.poll(() => page.evaluate(() =>
     (window as typeof window & { __quickRaceDebug: { welcomes: unknown[] } })
-      .__quickRaceDebug.welcomes.length), { timeout: 10_000 }).toBe(2);
+      .__quickRaceDebug.welcomes.length), { timeout: 10_000 }).toBe(welcomeCountBeforeDrop + 1);
   const second = await page.evaluate(() =>
     (window as typeof window & { __quickRaceDebug: {
       welcomes: Array<{id:string;resumeToken:string;resumed:boolean}>
-    }}).__quickRaceDebug.welcomes[1]);
+    }}).__quickRaceDebug.welcomes.at(-1)!);
   expect(second.id).toBe(first.id);
   expect(second.resumeToken).toBe(first.resumeToken);
   expect(second.resumed).toBe(true);
