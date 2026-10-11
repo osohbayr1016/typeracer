@@ -37,7 +37,11 @@ export function ShopPage({ profile, onBuy, onEquip, onRace }: Props) {
     if (profile.coins < item.price) return 'Зоос хүрэхгүй';
     return '◈ ХУДАЛДАН АВАХ';
   }
-  function openCollection(item: Cosmetic) { setTab('car'); setRarity(item.rarity); }
+  function openCollection(item: Cosmetic) {
+    setTab('car');
+    setRarity(item.rarity);
+    document.getElementById('shop-catalog')?.scrollIntoView({ behavior: 'instant', block: 'start' });
+  }
 
   return <div className="collection-page rarity-shop">
     <header className="collection-heading">
@@ -81,7 +85,7 @@ export function ShopPage({ profile, onBuy, onEquip, onRace }: Props) {
     </div>
     <p className="shop-spotlight-note">Онцлох бараа солигдсон ч машинууд бүрэн каталогт байнга үлдэнэ. Санамсаргүй хайрцаг, бодит мөнгө байхгүй.</p>
 
-    <div className="shop-catalog-head"><div><span className="section-kicker">ТАНЫ ГАРАЖИД НЭМЭХ</span>
+    <div id="shop-catalog" className="shop-catalog-head"><div><span className="section-kicker">ТАНЫ ГАРАЖИД НЭМЭХ</span>
       <h2>БҮХ ЦУГЛУУЛГА <small>{items.length} зүйл</small></h2></div>
       <button type="button" onClick={onRace}>▶ УРАЛДАЖ ЗООС ОЛОХ →</button></div>
     <nav className="collection-tabs" aria-label="Барааны төрөл">
