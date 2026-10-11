@@ -60,12 +60,22 @@ export class RaceRankingStore {
     return { player: first(this.sql.exec('SELECT * FROM leaderboard_players WHERE id=?', id))!, newToken: token };
   }
   publicPlayer(p: Row): object {
+    const identity=first(this.sql.exec('SELECT provider FROM leaderboard_identities WHERE player_id=? LIMIT 1',p.id));
     return {
       id:p.id, name:p.name, points:p.points, races:p.races, bestWpm:p.best_wpm,
       avgWpm: Number(p.races) ? Math.round(Number(p.total_wpm)/Number(p.races)) : 0,
       avgAccuracy: Number(p.races) ? Math.round(Number(p.total_accuracy)/Number(p.races)) : 0,
-      teamId:p.team_id, guest:!first(this.sql.exec('SELECT provider FROM leaderboard_identities WHERE player_id=? LIMIT 1',p.id))
+      teamId:p.team_id, guest:!identity,provider:identity?.provider??null
     };
+  }
+  logout(cookie:string|null):{player:Row;newToken:string} {
+    const previous=this.fromCookie(cookie);
+    if(previous){
+      const rotated=crypto.randomUUID().replace(/-/g,'')+crypto.randomUUID().replace(/-/g,'');
+      this.sql.exec('UPDATE leaderboard_players SET guest_token=? WHERE id=?',rotated,previous.id);
+    }
+    const created=this.session(null);
+    return {player:created.player,newToken:created.newToken!};
   }
   rename(player: Row, name: string): Row {
     this.sql.exec('UPDATE leaderboard_players SET name=? WHERE id=?', safePlayerName(name), player.id);
