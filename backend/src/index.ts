@@ -45,7 +45,7 @@ const publicRanking = (c: {env:Env;req:{raw:Request}},path:string) => {
 };
 app.get('/api/account',c=>publicRanking(c,'/account?secure='+(new URL(c.req.url).protocol==='https:'?'1':'0')));
 app.post('/api/account/name',c=>publicRanking(c,'/ranking/name'));
-app.get('/api/leaderboard',c=>publicRanking(c,'/ranking/players'));
+app.get('/api/leaderboard',c=>publicRanking(c,'/ranking/players'+new URL(c.req.url).search));
 app.get('/api/teams',c=>publicRanking(c,'/ranking/teams'));
 app.get('/api/teams/me',c=>publicRanking(c,'/ranking/team'));
 app.post('/api/teams',c=>publicRanking(c,'/ranking/team'));
