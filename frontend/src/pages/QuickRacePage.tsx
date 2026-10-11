@@ -79,10 +79,12 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
     return () => window.clearInterval(timer);
   }, []);
   const self = snapshot?.players.find(p => p.id === myId);
-  const queueSeconds = snapshot?.phase === 'waiting' && snapshot.queueEndsAt
-    ? Math.max(0, Math.ceil((snapshot.queueEndsAt - now) / 1000)) : 0;
-  const count = snapshot?.phase === 'countdown' && snapshot.startAt
+  const countdown = snapshot?.phase === 'countdown' && snapshot.startAt
     ? Math.max(1, Math.ceil((snapshot.startAt - now) / 1000)) : 0;
+  const filled = snapshot?.players.length ?? 0;
+  const myRank = snapshot && self ? 1 + snapshot.players.filter(p => p.id !== myId &&
+    (p.progress > self.progress || (p.progress === self.progress &&
+    p.completedAt !== null && (self.completedAt === null || p.completedAt < self.completedAt)))).length : null;
   const isRacing = snapshot?.phase === 'racing' && !result && connection === 'connected';
   const sendKey = useCallback((key: string) => {
     const socket = socketRef.current;
@@ -90,26 +92,81 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
   }, []);
 
   return <div className="quick-page" data-testid="quick-race">
-    <div className="quick-topline">
-      <button className="back-link" onClick={onBack}>← ТОГЛОХ ХЭСЭГ</button>
-      <span className="section-kicker">ОЛОН ТОГЛОГЧ · ШУУД УРАЛДААН</span>
-      <span className="quick-connection">{connection === 'connected' ? '● ОНЛАЙН' :
-        connection === 'error' ? '● ХОЛБОЛТ ТАСАРСАН' : '○ ХОЛБОГДОЖ БАЙНА'}</span>
-    </div>
-    <div className="quick-heading">
-      <div><span className="section-kicker">МОНГОЛ ХЭЛНИЙ УРАЛДААН</span>
-        <h1>{result ? <>БАРИА <span>ҮР ДҮН</span></> : <>ШУУД <span>УРАЛДААН</span></>}</h1>
-        <p>Бодит тоглогчидтой уралдана. Хүн хүрэлцэхгүй бол бот уралдагчид нэмэгдэнэ.</p></div>
-      <div className="quick-small-stat"><small>ТЭРГҮҮН БАЙРЫН ШАГНАЛ</small><strong>◈ 120</strong><span>Зөвхөн тоглоомын зоос</span></div>
-    </div>
+    <header className="quick-topline">
+      <button className="back-link" onClick={onBack}>← БУЦАХ</button>
+      <div className="quick-page-id">
+        <strong>ШУУД УРАЛДААН</strong><span>5 ТОГЛОГЧ · МОНГОЛ ХЭЛ</span>
+      </div>
+      <span className={'quick-connection'+(connection === 'error' ? ' offline' : '')}>
+        {connection === 'connected' ? '● ОНЛАЙН' : connection === 'error' ? '● ТАСАРСАН' : '○ ХОЛБОГДОЖ БАЙНА'}
+      </span>
+    </header>
 
     {connection === 'error' && !result && <section className="quick-state-panel" role="alert">
       <h2>ХОЛБОЛТ ТАСАРЛАА</h2><p>{error}</p>
       <button className="primary-button" onClick={() => setAttempt(n => n + 1)}>↻ ДАХИН НЭГДЭХ</button>
     </section>}
-    {connection === 'connecting' && !snapshot && <section className="quick-state-panel">
-      <h2>СЕРВЕРТЭЙ ХОЛБОГДОЖ БАЙНА</h2><p>Бодит тоглогчидтой уралдах өрөөг хайж байна...</p>
+    {connection === 'connecting' && !snapshot && <section className="quick-state-panel" role="status">
+      <h2>ТОГЛОГЧИДТОЙ ХОЛБОГДОЖ БАЙНА</h2><p>Уралдааны өрөөг нээж байна…</p>
     </section>}
+
+    {snapshot && <div className={'quick-phase phase-'+snapshot.phase}
+      data-testid="quick-phase" data-phase={snapshot.phase} role="status" aria-live="polite">
+      {snapshot.phase === 'waiting' ? <>
+        <span className="quick-phase-badge">1 / 2</span>
+        <div className="quick-phase-copy">
+          <strong>ТОГЛОГЧ ЦУГЛУУЛЖ БАЙНА</strong>
+          <small>Хүн хүрэлцэхгүй бол бот нэг нэгээр нэгдэнэ. Одоохондоо бичихгүй.</small>
+        </div>
+        <span className="quick-phase-value">{filled}<em>/5</em></span>
+      </> : snapshot.phase === 'countdown' ? <>
+        <span className="quick-phase-badge">2 / 2</span>
+        <div className="quick-phase-copy"><strong>БҮГД БЭЛЭН · ГАРААНЫ ТООЛОЛ</strong>
+          <small>Бичих текстээ хараарай. Тэг болоход бичиж эхэлнэ.</small></div>
+        <strong className="quick-phase-value" data-testid="race-start-countdown">{countdown}</strong>
+      </> : snapshot.phase === 'racing' ? <>
+        <span className="quick-phase-live">● ЭХЭЛЛЭЭ</span>
+        <div className="quick-phase-copy"><strong>ОДОО БИЧЭЭРЭЙ!</strong>
+          <small>Зөв бичих бүрт таны машин урагшилна.</small></div>
+        <span className="quick-phase-rank">{myRank ? 'МИНИЙ БАЙР: ' + myRank + '/5' : 'УРАЛДАЖ БАЙНА'}</span>
+      </> : <>
+        <span className="quick-phase-live">✓ БАРИА</span>
+        <strong className="quick-phase-copy">УРАЛДААН ДУУССАН</strong>
+      </>}
+    </div>}
+
+    {snapshot && <section className="quick-track" aria-label="Таван тоглогчийн байрлал">
+      <div className="quick-track-head">
+        <span>УРАЛДАГЧИД</span>
+        <strong>{filled} / 5 · {snapshot.players.filter(p => !p.bot).length} ХҮН · {snapshot.players.filter(p => p.bot).length} БОТ</strong>
+      </div>
+      <div className="quick-lanes">
+        {snapshot.players.map((player,index) => {
+          const which = carOf(player,index);
+          const done = progressPercent(player.progress,snapshot.prompt.text);
+          const rank = 1 + snapshot.players.filter(p => p.id !== player.id &&
+            (p.progress > player.progress || (p.progress === player.progress &&
+             p.completedAt !== null && (player.completedAt === null || p.completedAt < player.completedAt)))).length;
+          return <div className={'quick-lane'+(player.id === myId?' me':'')} key={player.id}>
+            <div className="quick-lane-meta">
+              <span className="quick-lane-order">{snapshot.phase === 'racing' || snapshot.phase === 'finished' ? rank : index + 1}</span>
+              <div><strong>{player.name}{player.id===myId ? ' · ТА' : ''}</strong>
+                <small>{player.bot ? 'БОТ' : 'ТОГЛОГЧ'}</small></div>
+              <b>{done}%</b>
+            </div>
+            <div className="quick-road">
+              <span className="quick-road-progress" style={{ width: done+'%' }}/>
+              <img src={CARS[which].icon} alt="" draggable={false}
+                style={{ left: (done * .71)+'%' }}/>
+              <span className="quick-flag" aria-hidden="true"/>
+            </div>
+          </div>;
+        })}
+        {snapshot.phase === 'waiting' && Array.from({length: Math.max(0,5 - filled)},(_,i) =>
+          <div className="quick-empty" key={'empty'+i}><span>+</span> УРАЛДАГЧ ХҮЛЭЭЖ БАЙНА</div>)}
+      </div>
+    </section>}
+
     {snapshot && snapshot.phase !== 'finished' && <QuickTypingPanel
       key={snapshot.matchId || snapshot.prompt.id}
       text={snapshot.prompt.text}
@@ -120,41 +177,6 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
       startedAt={snapshot.startAt}
       sendKey={sendKey}
     />}
-
-    {snapshot && <section className="quick-track" aria-label="Шууд уралдааны зам">
-      <div className="quick-track-head">
-        <span>{snapshot.phase === 'waiting' ? 'ТОГЛОГЧ ХАЙЖ БАЙНА' :
-          snapshot.phase === 'countdown' ? 'ГАРААНД БЭЛЭН' :
-          snapshot.phase === 'racing' ? 'УРАЛДААН ҮРГЭЛЖИЛЖ БАЙНА' : 'УРАЛДААН ДУУССАН'}</span>
-        <strong>{snapshot.players.length} / 10 · {snapshot.players.filter(p => !p.bot).length} ХҮН · {snapshot.players.filter(p => p.bot).length} БОТ</strong>
-      </div>
-      {(snapshot.phase === 'waiting' || snapshot.phase === 'countdown') && <div className="quick-lobby-status" role="status">
-        <strong>{snapshot.phase === 'waiting' ? queueSeconds : count}</strong>
-        <span>{snapshot.phase === 'waiting' ? 'секундын дараа бүрэлдэхүүн бэлэн болно · ботууд нэг нэгээр нэгдэж байна' : 'Бүх 10 уралдагч бэлэн · Гарааны тоолол'}</span>
-      </div>}
-      <div className={'quick-lanes'+(snapshot.phase === 'waiting' ? ' assembling' : '')}>
-        {snapshot.players.map((player,index) => {
-          const which = carOf(player,index);
-          const done = progressPercent(player.progress,snapshot.prompt.text);
-          return <div className={'quick-lane'+(player.id === myId?' me':'')} key={player.id}>
-            <div className="quick-lane-meta">
-              <span className="quick-lane-order">{String(index+1).padStart(2,'0')}</span>
-              <div><strong>{player.name}{player.id===myId ? ' · ТА' : ''}</strong>
-                <small>{player.bot ? 'БОТ УРАЛДАГЧ' : 'БОДИТ ТОГЛОГЧ'}</small></div>
-              <b>{done}%</b>
-            </div>
-            <div className="quick-road">
-              <span className="quick-road-progress" style={{ width: done+'%' }}/>
-              <img src={CARS[which].icon} alt="" draggable={false}
-                style={{ left: (2 + done*.70)+'%' }}/>
-              <span className="quick-flag"/>
-            </div>
-          </div>;
-        })}
-        {snapshot.phase === 'waiting' && Array.from({length: Math.max(0,10 - snapshot.players.length)},(_,i) =>
-          <div className="quick-empty" key={'empty'+i}>+ ТОГЛОГЧ ХҮЛЭЭЖ БАЙНА</div>)}
-      </div>
-    </section>}
 
     {result && <section className="quick-result-panel" aria-label="Уралдааны үр дүн">
       <div className="quick-result-top">{result.place ? 'УРАЛДААНЫГ ДУУСГАЛАА' : 'ХУГАЦАА ДУУССАН'}</div>
