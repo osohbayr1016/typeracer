@@ -32,6 +32,7 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
   const socketRef = useRef<WebSocket | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const rewardRef = useRef(onReward);
+  const awardedMatches = useRef(new Set<string>());
   rewardRef.current = onReward;
 
   useEffect(() => {
@@ -53,11 +54,11 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
         if (data.type === 'welcome') setMyId(data.id);
         else if (data.type === 'state' && data.mode === 'quick') setSnapshot(data);
         else if (data.type === 'quick-result') {
-          setResult(previous => {
-            if (previous?.raceId === data.raceId) return previous;
+          if (!awardedMatches.current.has(data.raceId)) {
+            awardedMatches.current.add(data.raceId);
             rewardRef.current(data);
-            return data;
-          });
+          }
+          setResult(data);
         }
       } catch { setError('Серверийн хариу ойлгомжгүй байна.'); }
     };
@@ -113,7 +114,7 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
     </div>
     <div className="quick-heading">
       <div><span className="section-kicker">МОНГОЛ ХЭЛНИЙ УРАЛДААН</span>
-        <h1>{result ? 'БАРИА <span>ҮР ДҮН</span>' : 'ШУУД <span>УРАЛДААН</span>'}</h1>
+        <h1>{result ? <>БАРИА <span>ҮР ДҮН</span></> : <>ШУУД <span>УРАЛДААН</span></>}</h1>
         <p>Бодит тоглогчидтой уралдана. Хүн хүрэлцэхгүй бол бот уралдагчид нэмэгдэнэ.</p></div>
       <div className="quick-small-stat"><small>ТЭРГҮҮН БАЙРЫН ШАГНАЛ</small><strong>◈ 120</strong><span>Зөвхөн тоглоомын зоос</span></div>
     </div>
