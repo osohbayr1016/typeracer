@@ -218,3 +218,48 @@ test('play page has safe Cyrillic headings and accessible primary CTA at phone, 
     expect(measurements.buttonHeight).toBeGreaterThanOrEqual(44);
   }
 });
+
+test('race loading screen finishes and does not repeat on every internal page', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByTestId('race-boot')).toHaveCount(0, { timeout: 3500 });
+  const seen = await page.evaluate(() => sessionStorage.getItem('typeracer.boot.seen.v1'));
+  expect(seen).toBe('1');
+  await page.getByRole('button', { name: 'Гараж', exact: true }).click();
+  await expect(page).toHaveURL(/\/garage$/);
+  await expect(page.getByTestId('race-boot')).toHaveCount(0);
+  await expect(page.getByTestId('race-route-motion')).toHaveCount(0, { timeout: 2500 });
+  await page.reload();
+  await expect(page.getByTestId('race-boot')).toHaveCount(0);
+});
+
+test('page transitions use equipped car and survive fast navigation and history', async ({ page }) => {
+  await page.goto('/garage');
+  await expect(page.getByTestId('race-boot')).toHaveCount(0, { timeout: 3500 });
+  await page.getByRole('button', { name: /Цэнхэр салхи/ }).click();
+  await page.getByRole('button', { name: 'Тоглох', exact: true }).click();
+  await expect(page).toHaveURL(/\/play$/);
+  await expect(page.getByTestId('race-route-motion')).toBeVisible();
+  await expect(page.locator('.race-route-lane img')).toHaveAttribute('src', '/cars/blue-sprint.svg');
+  await page.getByRole('button', { name: 'Дэлгүүр', exact: true }).click();
+  await expect(page).toHaveURL(/\/shop$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/play$/);
+  await expect(page.getByTestId('race-route-motion')).toHaveCount(0, { timeout: 2600 });
+  await expect(page.locator('.play-start-button')).toBeEnabled();
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test('reduced motion removes both boot and vehicle wipes but keeps instant navigation', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  await expect(page.getByTestId('race-boot')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Тоглох', exact: true }).click();
+  await expect(page).toHaveURL(/\/play$/);
+  await expect(page.getByTestId('race-route-motion')).toHaveCount(0);
+  await page.locator('.play-start-button').click();
+  await expect(page).toHaveURL(/\/race$/);
+  const animation = await page.locator('main').evaluate(el => getComputedStyle(el).animationName);
+  expect(animation).toBe('none');
+  await expect(page.getByRole('textbox', { name: 'Энд бичиж эхлээрэй' })).toBeEditable({ timeout: 8000 });
+});

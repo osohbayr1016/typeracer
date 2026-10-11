@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties } from 'react';
 import { HomePage } from './pages/HomePage';
+import { RaceMotion, type RouteMotionEvent } from './RaceMotion';
 import { PlayPage } from './pages/PlayPage';
 import { GaragePage } from './pages/GaragePage';
 import { ResultsPage } from './pages/ResultsPage';
@@ -24,6 +25,17 @@ function routeFromLocation(): Page {
   if (new URLSearchParams(window.location.search).has('room')) return 'multiplayer';
   return (Object.entries(PAGE_URLS).find(([, url]) => url === path)?.[0] || 'home') as Page;
 }
+const PAGE_TITLES: Record<Page, string> = {
+  home: 'НҮҮР ХУУДАС',
+  play: 'УРАЛДААН СОНГОХ',
+  race: 'ГАНЦААРЧИЛСАН УРАЛДААН',
+  garage: 'МИНИЙ ГАРАЖ',
+  results: 'УРАЛДААНЫ ҮР ДҮН',
+  shop: 'ТОГЛООМЫН ДЭЛГҮҮР',
+  season: 'УЛИРЛЫН ШАГНАЛ',
+  multiplayer: 'НАЙЗУУДЫН ӨРӨӨ',
+  multiplayerRace: 'ХАМТЫН УРАЛДААН'
+};
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 const roomCodePattern = /^[A-F0-9]{8}$/;
 function storedNumber(key: string): number {
@@ -71,6 +83,11 @@ function Lane({ name, progress, color, icon, subtitle, isYou, position = 1, trai
 
 export function App() {
   const [page, setPage] = useState<Page>(routeFromLocation);
+  const currentPageRef = useRef(page);
+  currentPageRef.current = page;
+  const [routeMotion, setRouteMotion] = useState<RouteMotionEvent | null>(null);
+  const routeMotionTimer = useRef<number | null>(null);
+  const routeMotionSequence = useRef(0);
   const [countdown, setCountdown] = useState<number | null>(() => routeFromLocation() === 'race' ? 3 : null);
   const [language, setLanguage] = useState<Language>('mn');
   const [prompt, setPrompt] = useState<Prompt>(() => choosePrompt('mn', 0));
@@ -104,6 +121,9 @@ export function App() {
     return () => window.clearInterval(id);
   }, [startedAt, finishedAt]);
   useEffect(() => () => socketRef.current?.close(), []);
+  useEffect(() => () => {
+    if (routeMotionTimer.current !== null) window.clearTimeout(routeMotionTimer.current);
+  }, []);
   useEffect(() => {
     if (snapshot?.phase !== 'racing') return;
     const id = window.setInterval(() => setNow(Date.now()), 125);
@@ -229,9 +249,26 @@ export function App() {
   }
 
 
+  function animateRoute(next: Page) {
+    if (routeMotionTimer.current !== null) window.clearTimeout(routeMotionTimer.current);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setRouteMotion(null);
+      routeMotionTimer.current = null;
+      return;
+    }
+    setRouteMotion({ id: ++routeMotionSequence.current, destination: PAGE_TITLES[next] });
+    routeMotionTimer.current = window.setTimeout(() => {
+      setRouteMotion(null);
+      routeMotionTimer.current = null;
+    }, 580);
+  }
   useEffect(() => {
     const onPopstate = () => {
       const next = routeFromLocation();
+      if (next !== currentPageRef.current) {
+        currentPageRef.current = next;
+        animateRoute(next);
+      }
       if (next !== 'multiplayer' && next !== 'multiplayerRace' && socketRef.current) {
         socketRef.current.close();
         socketRef.current = null;
@@ -265,6 +302,10 @@ export function App() {
     if ((page === 'multiplayer' || page === 'multiplayerRace') &&
         next !== 'multiplayer' && next !== 'multiplayerRace') disconnect();
     const url = PAGE_URLS[next];
+    if (next !== currentPageRef.current) {
+      currentPageRef.current = next;
+      animateRoute(next);
+    }
     if (window.location.pathname + window.location.search !== url) window.history.pushState(null, '', url);
     setPage(next);
     window.scrollTo({ top: 0, behavior: 'auto' });
@@ -313,7 +354,7 @@ export function App() {
         </div>
       </div>
     </header>
-    <main className="shell main">
+    <main className="shell main route-page-enter" key={page}>
       {page === 'home' && <HomePage best={best} xp={xp} onPlay={() => navigate('play')}
         onMultiplayer={() => navigate('multiplayer')} onGarage={() => navigate('garage')}/>}
       {page === 'play' && <PlayPage best={best} carIcon={CARS[skin].icon} carName={CARS[skin].label}
@@ -472,5 +513,6 @@ export function App() {
       </>}
       <footer>© TypeRacer Mongolia <span>·</span> PLAY FAIR. TYPE FAST. <span>·</span> BETA</footer>
     </main>
+    <RaceMotion carIcon={CARS[skin].icon} carName={CARS[skin].label} transition={routeMotion}/>
   </div>;
 }
