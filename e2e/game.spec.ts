@@ -606,6 +606,11 @@ test('Durable Object resumes the same public race and confirmed typing after soc
     }}).__quickRaceDebug.sockets;
     const active = sockets.filter(socket => socket.readyState === WebSocket.OPEN).at(-1);
     if (!active) throw new Error('No active socket');
+    // Native closing handshake through the Vite dev WS proxy can remain in
+    // CLOSING state for >10 seconds. Model a sudden transport drop explicitly
+    // so the client close handler fires, then verify a *real* new WS handshake
+    // and authoritative Durable Object resume on the replacement connection.
+    active.dispatchEvent(new CloseEvent('close', { code: 1006, wasClean: false }));
     active.close(4001, 'Simulated dropped connection');
   });
   await expect.poll(async () => JSON.stringify(await page.evaluate(() => {
