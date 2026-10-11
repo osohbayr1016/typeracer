@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 140" role="img" aria-label="Одон манан">
+<defs><linearGradient id="paint" x1="0" y1="0" x2=".28" y2="1"><stop stop-color="#ffd0fa"/><stop offset=".43" stop-color="#b86ae7"/><stop offset="1" stop-color="#552580"/></linearGradient><linearGradient id="glass" x1="0" y1="0" x2=".85" y2="1"><stop stop-color="#b9e8ef"/><stop offset=".53" stop-color="#496578"/><stop offset="1" stop-color="#101a27"/></linearGradient><linearGradient id="rims" x1="0" x2="1"><stop stop-color="#14282e"/><stop offset=".5" stop-color="#edb5ff"/><stop offset="1" stop-color="#1d333d"/></linearGradient></defs>
+<ellipse cx="157" cy="116" rx="137" ry="10" fill="#000" opacity=".28"/>
+<path d='M33 73 L52 45 L71 47 L94 63 M248 77 L277 49' stroke='#d5a0ff' fill='none' stroke-width='5'/><circle cx='242' cy='42' r='7' fill='#f3d4ff'/><circle cx='258' cy='30' r='3' fill='#f3d4ff'/>
+<path d="M18 92 L41 76 L91 65 L132 36 L193 37 L234 67 L283 77 L300 90 L290 106 L18 106 Z" fill="url(#paint)" stroke="#121c23" stroke-width="3.3" stroke-linejoin="round"/>
+<path d="M123 68 L144 43 L193 43 L219 70 Z" fill="url(#glass)" stroke="#172630" stroke-width="3.5" stroke-linejoin="round"/>
+<path d="M34 92 L105 79 M181 83 L275 87 M86 100 L228 100" stroke="#edb5ff" stroke-width="3" fill="none" opacity=".94"/>
+<path d="M24 93 L36 90 L37 99 L25 100 M283 89 L296 92 L291 100 L281 100" fill="#17242c"/>
+<path d="M27 83 L37 78 L43 87 L29 89" fill="#f6edb2"/><path d="M286 83 L295 87 L296 94 L284 90" fill="#fa6d69"/>
+<circle cx="89" cy="104" r="23" fill="#111920" stroke="#050a0e" stroke-width="3"/><circle cx="235" cy="104" r="23" fill="#111920" stroke="#050a0e" stroke-width="3"/>
+<circle cx="89" cy="104" r="13" fill="url(#rims)" stroke="#d4e4e0" stroke-width="2"/><circle cx="235" cy="104" r="13" fill="url(#rims)" stroke="#d4e4e0" stroke-width="2"/>
+<path d="M89 93 V115 M78 104 H100 M235 93 V115 M224 104 H246" stroke="#223039" stroke-width="3.5"/>
+<rect x="139" y="84" width="39" height="18" rx="3" fill="#ffd0fa" stroke="#2a3236" stroke-width="2"/><text x="158" y="97" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="11" fill="#162428">18</text>
+<path d="M35 109 H279" stroke="#552580" stroke-width="4" stroke-linecap="round"/>
+</svg>
