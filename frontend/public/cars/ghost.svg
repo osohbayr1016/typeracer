@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 140" role="img" aria-label="Хий үзэгдэл">
+<defs><linearGradient id="paint" x1="0" y1="0" x2=".28" y2="1"><stop stop-color="#c5b5ff"/><stop offset=".43" stop-color="#6963ab"/><stop offset="1" stop-color="#262043"/></linearGradient><linearGradient id="glass" x1="0" y1="0" x2=".85" y2="1"><stop stop-color="#b9e8ef"/><stop offset=".53" stop-color="#496578"/><stop offset="1" stop-color="#101a27"/></linearGradient><linearGradient id="rims" x1="0" x2="1"><stop stop-color="#14282e"/><stop offset=".5" stop-color="#bcb0ff"/><stop offset="1" stop-color="#1d333d"/></linearGradient></defs>
+<ellipse cx="157" cy="116" rx="137" ry="10" fill="#000" opacity=".28"/>
+<path d='M50 70 L44 40 L52 37 L77 65 M248 72 L267 51 L280 52 L267 75' fill='none' stroke='#9e87ee' stroke-width='4'/><path d='M113 42 L124 21 L142 24 L151 45' fill='#5f4ea3'/>
+<path d="M26 86 L54 72 L89 66 L128 42 L194 43 L239 69 L278 73 L294 91 L287 107 L24 107 Z" fill="url(#paint)" stroke="#121c23" stroke-width="3.3" stroke-linejoin="round"/>
+<path d="M117 67 L141 50 L190 49 L220 71 Z" fill="url(#glass)" stroke="#172630" stroke-width="3.5" stroke-linejoin="round"/>
+<path d="M51 88 L106 77 M164 86 L254 88 M79 98 L215 98" stroke="#bcb0ff" stroke-width="3" fill="none" opacity=".94"/>
+<path d="M24 93 L36 90 L37 99 L25 100 M283 89 L296 92 L291 100 L281 100" fill="#17242c"/>
+<path d="M27 83 L37 78 L43 87 L29 89" fill="#f6edb2"/><path d="M286 83 L295 87 L296 94 L284 90" fill="#fa6d69"/>
+<circle cx="89" cy="104" r="23" fill="#111920" stroke="#050a0e" stroke-width="3"/><circle cx="235" cy="104" r="23" fill="#111920" stroke="#050a0e" stroke-width="3"/>
+<circle cx="89" cy="104" r="13" fill="url(#rims)" stroke="#d4e4e0" stroke-width="2"/><circle cx="235" cy="104" r="13" fill="url(#rims)" stroke="#d4e4e0" stroke-width="2"/>
+<path d="M89 93 V115 M78 104 H100 M235 93 V115 M224 104 H246" stroke="#223039" stroke-width="3.5"/>
+<rect x="139" y="84" width="39" height="18" rx="3" fill="#c5b5ff" stroke="#2a3236" stroke-width="2"/><text x="158" y="97" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="11" fill="#162428">16</text>
+<path d="M35 109 H279" stroke="#262043" stroke-width="4" stroke-linecap="round"/>
+</svg>
