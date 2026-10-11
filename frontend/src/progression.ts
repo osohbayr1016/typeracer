@@ -59,7 +59,8 @@ export function starterProfile(): Profile {
     car: 'sunset', trail: 'none', title: 'rookie', sticker: 'none', history: [] };
 }
 function owned(p: Profile, kind: CosmeticKind, id: string): boolean {
-  if (kind === 'car' && id in CARS) return p.xp >= CARS[id as Skin].unlockAt;
+  if (kind === 'car' && ['mint', 'sunset', 'purple', 'lime', 'phantom'].includes(id))
+    return p.xp >= CARS[id as Skin].unlockAt;
   if (kind === 'trail' && id === 'none') return true;
   if (kind === 'title' && id === 'rookie') return true;
   if (kind === 'sticker' && id === 'none') return true;
