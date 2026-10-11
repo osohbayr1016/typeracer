@@ -40,7 +40,7 @@ export function ShopPage({ profile, onBuy, onEquip, onRace }: Props) {
   function openCollection(item: Cosmetic) {
     setTab('car');
     setRarity(item.rarity);
-    document.getElementById('shop-catalog')?.scrollIntoView({ behavior: 'instant', block: 'start' });
+    document.getElementById('shop-catalog')?.scrollIntoView({ behavior: 'auto', block: 'start' });
   }
 
   return <div className="collection-page rarity-shop">
