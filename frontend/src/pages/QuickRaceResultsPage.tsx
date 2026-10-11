@@ -1,5 +1,5 @@
 import { CARS, type Skin } from './cars';
-import { claimAvailableRewards, DAILY_QUESTS, dailyQuests, playerLevel, quickDayStreak, seasonProgress,
+import { DAILY_QUESTS, dailyQuests, playerLevel, quickDayStreak, seasonProgress,
   type DailyQuestId, type Profile } from '../progression';
 import { raceStandings, type QuickRaceOutcome } from './quickResultsModel';
 import './QuickRaceResultsPage.css';
