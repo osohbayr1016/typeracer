@@ -73,7 +73,7 @@
 .rarity-gem { display:inline-block; width:10px; height:10px; background:var(--rare-accent,#f4cca2);
  transform:rotate(45deg) scale(.85); box-shadow:0 0 7px var(--rare-glow,#ffffff24); margin-right:3px; }
 .shop-item-grid { margin-top:13px; }
-.shop-collectible { --rare-accent:#c9d0d0; --rare-glow:#c9d0d015; position:relative;
+.shop-collectible { position:relative;
  border-top:3px solid var(--rare-accent); background:linear-gradient(165deg,#232b2d,#1b2426);
  transition:border-color .18s,transform .18s; }
 .shop-collectible:hover { border-color:var(--rare-accent); transform:translateY(-2px); }
