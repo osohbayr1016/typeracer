@@ -316,8 +316,8 @@ export function App() {
     <main className="shell main">
       {page === 'home' && <HomePage best={best} xp={xp} onPlay={() => navigate('play')}
         onMultiplayer={() => navigate('multiplayer')} onGarage={() => navigate('garage')}/>}
-      {page === 'play' && <PlayPage best={best}
-        onSolo={startSolo} onMultiplayer={() => navigate('multiplayer')} onGarage={() => navigate('garage')}/>}
+      {page === 'play' && <PlayPage best={best} carIcon={CARS[skin].icon} carName={CARS[skin].label}
+        onSolo={startSolo} onMultiplayer={() => navigate('multiplayer')} onGarage={() => navigate('garage')}/>} 
       {page === 'garage' && <GaragePage profile={profile} onEquip={handleEquip} onPlay={() => navigate('play')}
         onShop={() => navigate('shop')} onSeason={() => navigate('season')}/>}
       {page === 'shop' && <ShopPage profile={profile} onBuy={handleBuy}

@@ -171,3 +171,50 @@ test('Ө Ү typography uses Cyrillic-safe display, body and typing fonts without
   await page.goto('/shop');
   await expect(page.locator('h1').first()).toContainText('Ү');
 });
+
+test('play page has one obvious solo start, a separate friends action and no dead-end', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByRole('heading', { name: /УРАЛДАХАД БЭЛЭН ҮҮ/ })).toBeVisible();
+  await expect(page.locator('.play-start-button')).toHaveCount(1);
+  await expect(page.locator('.play-friends-button')).toHaveCount(1);
+  await expect(page.locator('.play-preview-lane')).toHaveCount(3);
+  await expect(page.locator('.play-preview-disclaimer')).toContainText('бодит тоглогч биш');
+  await page.locator('.play-start-button').click();
+  await expect(page).toHaveURL(/\/race$/);
+  await expect(page.getByText('БЭЛДЭЭРЭЙ')).toBeVisible();
+});
+
+test('play page friend path opens the real lobby; equipped car appears in play preview', async ({ page }) => {
+  await page.goto('/garage');
+  await page.getByRole('button', { name: /Цэнхэр салхи/ }).click();
+  await page.goto('/play');
+  await expect(page.locator('.play-preview-lane-you img')).toHaveAttribute('src', '/cars/blue-sprint.svg');
+  await expect(page.locator('.play-preview-bottom')).toContainText('Цэнхэр салхи');
+  await page.locator('.play-preview-bottom button').click();
+  await expect(page).toHaveURL(/\/garage$/);
+  await page.goto('/play');
+  await page.locator('.play-friends-button').click();
+  await expect(page).toHaveURL(/\/multiplayer$/);
+  await expect(page.getByRole('button', { name: /ӨРӨӨ ҮҮСГЭХ/ })).toBeVisible();
+});
+
+test('play page has safe Cyrillic headings and accessible primary CTA at phone, tablet and desktop sizes', async ({ page }) => {
+  for (const width of [360, 390, 768, 1440]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto('/play');
+    const primary = page.locator('.play-start-button');
+    await expect(primary).toBeVisible();
+    await expect(primary).toBeInViewport({ ratio: 0.5 });
+    const heading = page.locator('.play-entry-heading h1');
+    await expect(heading).toBeVisible();
+    const font = await heading.evaluate(el => getComputedStyle(el).fontFamily);
+    expect(font).toContain('Roboto Condensed');
+    const measurements = await page.evaluate(() => ({
+      documentWidth: document.documentElement.scrollWidth,
+      windowWidth: window.innerWidth,
+      buttonHeight: document.querySelector('.play-start-button')!.getBoundingClientRect().height
+    }));
+    expect(measurements.documentWidth).toBeLessThanOrEqual(measurements.windowWidth + 1);
+    expect(measurements.buttonHeight).toBeGreaterThanOrEqual(44);
+  }
+});
