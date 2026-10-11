@@ -114,12 +114,14 @@ export type Profile = {
   xp: number; coins: number; races: number; seasonXp: number; claimed: number[];
   owned: string[]; car: Skin; trail: Trail; title: Title; sticker: Sticker;
   history: RaceHistory[];
+  /** Device-local, non-transferable daily mission claims. */
+  questClaims: string[];
 };
 const STORE_KEY = 'racer.profile.v1';
 function safeNumber(n: unknown, fallback = 0) { return typeof n === 'number' && Number.isFinite(n) ? Math.max(0, Math.min(1e8, Math.floor(n))) : fallback; }
 export function starterProfile(): Profile {
   return { xp: 0, coins: 200, races: 0, seasonXp: 0, claimed: [], owned: [],
-    car: 'sunset', trail: 'none', title: 'rookie', sticker: 'none', history: [] };
+    car: 'sunset', trail: 'none', title: 'rookie', sticker: 'none', history: [], questClaims: [] };
 }
 function owned(p: Profile, kind: CosmeticKind, id: string): boolean {
   if (kind === 'car' && ['mint', 'sunset', 'purple', 'lime', 'phantom'].includes(id))
@@ -149,6 +151,7 @@ export function loadProfile(): Profile {
       claimed: Array.isArray(x.claimed) ? x.claimed.filter(v => SEASON_REWARDS.some(r => r.tier === v)) : [],
       owned: Array.isArray(x.owned) ? x.owned.filter(v => typeof v === 'string' && ITEMS.some(i => itemKey(i.kind, i.id) === v)) : [],
       history: Array.isArray(x.history) ? x.history.filter((v): v is RaceHistory => !!v && typeof v.wpm === 'number').slice(0, 30) : [],
+      questClaims: Array.isArray(x.questClaims) ? x.questClaims.filter((v): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}:(first-finish|precision|speed)$/.test(v)).slice(-120) : [],
       car: x.car && x.car in CARS ? x.car : initial.car,
       trail: x.trail && ['none','ember','steppe','ice','aurora'].includes(x.trail) ? x.trail : initial.trail,
       title: x.title && ['rookie','swift','khan','legend'].includes(x.title) ? x.title : initial.title,
@@ -219,3 +222,52 @@ export function equipItem(p: Profile, kind: CosmeticKind, id: string): Profile {
 export const TRAIL_NAMES: Record<Trail,string> = { none: 'Мөргүй', ember: 'Галын мөр', steppe: 'Салхин мөр', ice: 'Мөсөн мөр', aurora: 'Туяан мөр' };
 export const TITLE_NAMES: Record<Title,string> = { rookie: 'Шинэ уралдагч', swift: 'Түргэн хуруу', khan: 'Талын хаан', legend: 'Бичгийн мастер' };
 export const STICKER_SYMBOLS: Record<Sticker,string> = { none: '', horse: '♞', bolt: 'ϟ', star: '✦' };
+
+/** Guest-only missions are calculated from recorded completed quick races; there
+ * are no fabricated lifetime milestones or paid/random rewards.
+ */
+export const DAILY_QUESTS = [
+  { id: 'first-finish', name: 'Эхний бариа', detail: 'Өнөөдөр нэг уралдаан дуусгах', target: 1, coins: 25 },
+  { id: 'precision', name: 'Алдаагүй ойролцоо', detail: '95% буюу түүнээс дээш нарийвчлалтай дуусгах', target: 1, coins: 35 },
+  { id: 'speed', name: 'Хурдны сорилт', detail: '70 WPM буюу түүнээс хурдан дуусгах', target: 1, coins: 50 }
+] as const;
+export type DailyQuestId = (typeof DAILY_QUESTS)[number]['id'];
+
+/** Mongolia local calendar date. Explicit TZ avoids server/visitor TZ drift. */
+export function mongoliaDayKey(at: number): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Ulaanbaatar', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(new Date(at));
+}
+export function dailyQuests(profile: Pick<Profile, 'history' | 'questClaims'>, at = Date.now()) {
+  const day = mongoliaDayKey(at);
+  const races = profile.history.filter(h => h.id.startsWith('quick:') && mongoliaDayKey(h.at) === day);
+  const completed = {
+    'first-finish': races.length,
+    precision: races.filter(h => h.accuracy >= 95).length,
+    speed: races.filter(h => h.wpm >= 70).length
+  };
+  return DAILY_QUESTS.map(quest => ({
+    ...quest, progress: Math.min(quest.target, completed[quest.id]),
+    done: completed[quest.id] >= quest.target,
+    claimed: profile.questClaims.includes(day + ':' + quest.id)
+  }));
+}
+/** Idempotent browser-local reward for a completed goal; no client-side purchase. */
+export function claimDailyQuest(profile: Profile, id: DailyQuestId, at = Date.now()): Profile {
+  const quest = dailyQuests(profile, at).find(q => q.id === id);
+  if (!quest || !quest.done || quest.claimed) return profile;
+  return { ...profile, coins: profile.coins + quest.coins,
+    questClaims: [...profile.questClaims, mongoliaDayKey(at) + ':' + id].slice(-120) };
+}
+/** Consecutive days with at least one recorded quick finish, in Mongolia time. */
+export function quickDayStreak(profile: Pick<Profile, 'history'>, at = Date.now()): number {
+  const days = new Set(profile.history.filter(h => h.id.startsWith('quick:')).map(h => mongoliaDayKey(h.at)));
+  let lookBack = days.has(mongoliaDayKey(at)) ? 0 : 1;
+  let count = 0;
+  while (days.has(mongoliaDayKey(at - lookBack * 86_400_000))) {
+    count++;
+    lookBack++;
+  }
+  return count;
+}
