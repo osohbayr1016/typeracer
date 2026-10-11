@@ -1,3 +1,16 @@
+test('start lights do not enable typing until the server starts the race', async ({page}) => {
+  await page.goto('/quick-race');
+  await expect(page.getByTestId('quick-phase')).toHaveAttribute('data-phase', 'countdown', {timeout:11000});
+  await expect(page.getByTestId('race-start-lights')).toHaveAttribute('data-signal', /red|yellow/);
+  const geometry = await page.locator('.quick-start-lights').boundingBox();
+  const track = await page.locator('.quick-track').boundingBox();
+  expect(geometry).not.toBeNull();expect(track).not.toBeNull();
+  expect(Math.abs((geometry!.x+geometry!.width/2)-(track!.x+track!.width/2))).toBeLessThan(7);
+  await expect(page.locator('.quick-type-input')).toBeDisabled();
+  await expect(page.getByTestId('quick-phase')).toHaveAttribute('data-phase','racing',{timeout:10000});
+  await expect(page.locator('.quick-type-input')).toBeEditable();
+});
+
 test('server-synced car reaches the checkered finish marker instead of stopping at 71 percent', async ({ page }) => {
   await page.goto('/quick-race');
   const input = page.getByRole('textbox',{name:'Шууд уралдааны бичих талбар'});
@@ -291,7 +304,7 @@ test('four distinct bots join, with ONE start countdown after matchmaking', asyn
   await page.goto('/quick-race');
   await expect(page.locator('.quick-type-panel.prepare .quick-phrase')).toBeVisible();
   await expect(page.getByTestId('quick-phase')).toHaveAttribute('data-phase', 'waiting');
-  await expect(page.getByTestId('race-start-countdown')).toHaveCount(0);
+  await expect(page.getByTestId('race-start-lights')).toHaveCount(0);
   await expect(page.getByTestId('quick-phase')).toContainText('ТОГЛОГЧ ЦУГЛУУЛЖ БАЙНА');
   await expect(page.locator('.quick-lane')).toHaveCount(5, { timeout: 11000 });
   const bots = page.locator('.quick-lane').filter({ hasText: 'БОТ' });
@@ -299,7 +312,10 @@ test('four distinct bots join, with ONE start countdown after matchmaking', asyn
   const names = await bots.locator('.quick-lane-meta strong').allInnerTexts();
   expect(new Set(names).size).toBe(4);
   await expect(page.getByTestId('quick-phase')).toHaveAttribute('data-phase', 'countdown', { timeout: 11000 });
-  await expect(page.getByTestId('race-start-countdown')).toBeVisible();
+  await expect(page.getByTestId('race-start-lights')).toBeVisible();
+  await expect(page.getByTestId('race-start-lights')).toHaveAttribute('data-signal', /red|yellow/);
+  await expect(page.locator('.quick-type-input')).toBeDisabled();
+  await expect(page.getByTestId('race-start-lights')).toHaveAttribute('data-signal', 'yellow', {timeout: 3500});
   await expect(page.locator('.quick-type-panel.prepare .quick-phrase')).toBeVisible();
   await expect(page.locator('.quick-type-input')).toBeDisabled();
   await expect(page.getByTestId('quick-phase')).toHaveAttribute('data-phase', 'racing', { timeout: 13000 });
