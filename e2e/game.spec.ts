@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test('Play Now leads to mode selection, solo countdown, results and replay', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: /ХУРДАН БИЧ/ })).toBeVisible();
-  await page.getByRole('button', { name: /ТОГЛОХ/ }).click();
+  await page.locator('.home-hero').getByRole('button', { name: /ТОГЛОХ/ }).click();
   await expect(page).toHaveURL(/\/play$/);
   await expect(page.getByRole('heading', { name: /УРАЛДАХАД/ })).toBeVisible();
 
