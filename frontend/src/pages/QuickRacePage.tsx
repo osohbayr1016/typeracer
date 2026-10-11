@@ -88,7 +88,9 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
   const isRacing = snapshot?.phase === 'racing' && !result && connection === 'connected';
   const sendKey = useCallback((key: string) => {
     const socket = socketRef.current;
-    if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'key', key }));
+    if (!socket || socket.readyState !== WebSocket.OPEN) return false;
+    try { socket.send(JSON.stringify({ type: 'key', key })); return true; }
+    catch { return false; }
   }, []);
 
   return <div className="quick-page" data-testid="quick-race">
