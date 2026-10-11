@@ -75,7 +75,11 @@
 .battle-roadmap { margin:29px 0 0; }
 .battle-roadmap-top { display:flex; justify-content:space-between; align-items:end; gap:15px; padding:0 1px; }
 .battle-roadmap-top h2 { font:900 28px/1 var(--font-display); margin:7px 0 16px; }
-.battle-scroll-hint { font-size:10px; font-weight:850; letter-spacing:.5px; color:#a8bbb8; padding-bottom:16px; white-space:nowrap; }
+.battle-rail-controls { display:flex; align-items:center; gap:6px; padding-bottom:12px; }
+.battle-scroll-hint { font-size:10px; font-weight:850; letter-spacing:.5px; color:#a8bbb8; margin-right:9px; white-space:nowrap; }
+.battle-rail-controls button { background:#293637; color:#f2f0eb; border:1px solid #556a6b; min-width:38px; min-height:38px; font:900 24px var(--font-display); }
+.battle-rail-controls button:not(:disabled):hover { border-color:#ffc18c; background:#364649; }
+.battle-rail-controls button:disabled { opacity:.35; }
 .battle-rail-wrap { overflow-x:auto; overflow-y:hidden; scrollbar-width:thin; scrollbar-color:#657a7a #1a2326; overscroll-behavior-x:contain; padding:3px 2px 17px; scroll-snap-type:x proximity; }
 .battle-rail { position:relative; display:flex; gap:11px; list-style:none; padding:0 0 30px; margin:0; min-width:max-content; }
 .battle-rail::after { content:""; position:absolute; bottom:13px; left:0; width:100%; height:4px; background:linear-gradient(90deg,#f47758,#b9845c 25%,#39494b 70%); border-radius:3px; z-index:-1; }
