@@ -7,7 +7,7 @@ import { ShopPage } from './pages/ShopPage';
 import { SeasonPage } from './pages/SeasonPage';
 import { loadProfile, saveProfile, raceReward, buyItem, claimReward, equipItem,
   TITLE_NAMES, STICKER_SYMBOLS, type CosmeticKind, type Cosmetic } from './progression';
-import { CARS } from './pages/cars';
+import { CARS, type Skin } from './pages/cars';
 import {
   accuracyPercent, characters, choosePrompt, normalizeText, progressPercent,
   PROMPTS, wordsPerMinute, type Language, type Prompt, type RoomSnapshot
@@ -185,7 +185,9 @@ export function App() {
     if (!roomCodePattern.test(clean)) { setError('Өрөөний код 8 тэмдэгттэй байх ёстой.'); return; }
     disconnect(); setCode(clean); setError(''); setStatus('connecting');
     const base = API_BASE || window.location.origin;
-    const url = base.replace(/^http/, 'ws') + '/api/rooms/' + clean + '/ws?name=' + encodeURIComponent(nickname);
+    const url = base.replace(/^http/, 'ws') + '/api/rooms/' + clean + '/ws?' +
+      new URLSearchParams({ name: nickname, car: profile.car, trail: profile.trail,
+        sticker: profile.sticker, title: profile.title }).toString();
     let socket: WebSocket;
     try { socket = new WebSocket(url); }
     catch { setError('Сервертэй холбогдож чадсангүй.'); setStatus('disconnected'); return; }
@@ -433,13 +435,14 @@ export function App() {
               </div>
             </div>}
             {snapshot.phase !== 'waiting' && <div className="multiplayer-track">
-              {snapshot.players.map((player, index) => <Lane key={player.id} name={player.name} position={index + 1} isYou={player.id === myId}
-                trail={player.id === myId ? profile.trail : 'none'}
-                sticker={player.id === myId ? STICKER_SYMBOLS[profile.sticker] : ''}
-                progress={progressPercent(player.progress, snapshot.prompt.text)}
-                color={player.id === myId ? CARS[skin].color : ['#ec6b55', '#66788f', '#3679e8'][index % 3]}
-                icon={player.id === myId ? CARS[skin].icon : ['/cars/coral-gt.svg', '/cars/graphite-r.svg', '/cars/blue-sprint.svg'][index % 3]}
-                subtitle={player.completedAt ? 'ДУУССАН' : player.ready ? 'БЭЛЭН' : 'ХҮЛЭЭЖ БАЙНА'}/>)}
+              {snapshot.players.map((player, index) => {
+                const car = player.car && player.car in CARS ? CARS[player.car as Skin] : CARS[['sunset','purple','mint'][index % 3] as Skin];
+                return <Lane key={player.id} name={player.name} position={index + 1} isYou={player.id === myId}
+                  trail={player.trail || 'none'} sticker={STICKER_SYMBOLS[player.sticker as keyof typeof STICKER_SYMBOLS] || ''}
+                  progress={progressPercent(player.progress, snapshot.prompt.text)}
+                  color={car.color} icon={car.icon}
+                  subtitle={player.completedAt ? 'ДУУССАН' : player.ready ? 'БЭЛЭН' : 'ХҮЛЭЭЖ БАЙНА'}/>;
+              })}
             </div>}
             {snapshot.phase === 'waiting' && <div className="ready-area">
               <p>Бүх тоглогч бэлэн болмогц 3 секундын дараа уралдаан эхэлнэ.</p>
