@@ -42,7 +42,7 @@ export const QUICK_BOT_ROSTER = [
   { name: 'Уудам тал', pace: 43, car: 'dawn' },
   { name: 'Алтан соёмбо', pace: 81, car: 'khan' },
   { name: 'Говийн шонхор', pace: 57, car: 'sunset' },
-  { name: 'Мөнгөн сум', pace: 90, car: 'cosmic', 'falcon', 'nomad', 'rover', 'sunflare', 'dune', 'cobalt', 'glacier', 'fox', 'streak', 'ghost', 'onyx', 'meteor', 'temple', 'nebula', 'eagle', 'royal', 'aurora-x', 'dragon' },
+  { name: 'Мөнгөн сум', pace: 90, car: 'cosmic' },
   { name: 'Өндөр уул', pace: 48, car: 'purple' },
   { name: 'Цахилгаан Үүл', pace: 100, car: 'lime' },
   { name: 'Салхин жигүүр', pace: 63, car: 'phantom' },
@@ -56,7 +56,7 @@ export function quickBotForSlot(offset: number, slot: number) {
 }
 
 
-const carIds = ['mint', 'sunset', 'purple', 'lime', 'phantom', 'steppe', 'thunder', 'midnight', 'khan', 'dawn', 'cosmic'];
+const carIds = ['mint', 'sunset', 'purple', 'lime', 'phantom', 'steppe', 'thunder', 'midnight', 'khan', 'dawn', 'cosmic', 'falcon', 'nomad', 'rover', 'sunflare', 'dune', 'cobalt', 'glacier', 'fox', 'streak', 'ghost', 'onyx', 'meteor', 'temple', 'nebula', 'eagle', 'royal', 'aurora-x', 'dragon'];
 const trailIds = ['none','ember','steppe','ice','aurora'];
 const stickerIds = ['none','horse','bolt','star'];
 
