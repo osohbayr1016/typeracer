@@ -55,7 +55,7 @@ export function SeasonPage({profile,onClaim,onClaimAll,onRace,onShop}:Props) {
     .format(new Date(SEASON.until-1));
   const claimed=SEASON_REWARDS.filter(r=>profile.claimed.includes(r.tier)).length;
 
-  return <main className="season-pass" data-testid="season-pass">
+  return <div className="season-pass" data-testid="season-pass">
     <header className="battle-head">
       <div className="battle-heading-group">
         <span className="battle-overline">SEASON 01 <span aria-hidden="true">/</span> ЭХНИЙ ГАРАА</span>
@@ -170,5 +170,5 @@ export function SeasonPage({profile,onClaim,onClaimAll,onRace,onShop}:Props) {
       <button type="button" onClick={onShop}>ДЭЛГҮҮР ҮЗЭХ ↗</button>
     </div>
     <p className="battle-disclaimer">2026.10.01–2026.11.30 · Улаанбаатарын цаг · Бүх шагнал үнэгүй. Ахиц энэ төхөөрөмжид хадгалагдана.</p>
-  </main>;
+  </div>;
 }
