@@ -7,8 +7,10 @@ test('main Play starts live matchmaking, adds bots and awards a finished match',
   await page.locator('.play-start-button').click();
   await expect(page).toHaveURL(/\/quick-race$/);
   await expect(page.getByTestId('quick-race')).toBeVisible();
-  await expect(page.locator('.quick-lane')).toHaveCount(4, { timeout: 12000 });
-  await expect(page.locator('.quick-lane').filter({ hasText: 'БОТ УРАЛДАГЧ' })).toHaveCount(3);
+  await expect(page.locator('.quick-phrase')).toBeVisible();
+  await expect(page.locator('.quick-type-input')).toBeDisabled();
+  await expect(page.locator('.quick-lane')).toHaveCount(10, { timeout: 13000 });
+  await expect(page.locator('.quick-lane').filter({ hasText: 'БОТ УРАЛДАГЧ' })).toHaveCount(9);
   const input = page.getByRole('textbox', { name: 'Шууд уралдааны бичих талбар' });
   await expect(input).toBeEditable({ timeout: 13000 });
   const prompt = (await page.locator('.quick-phrase').innerText()).replace(/\u00a0/g, ' ').trim();
@@ -18,7 +20,7 @@ test('main Play starts live matchmaking, adds bots and awards a finished match',
   await expect(page.locator('.quick-result-score')).toContainText('120');
   await page.getByRole('button', { name: /ДАХИН УРАЛДАХ/ }).click();
   await expect(page.locator('.quick-result-panel')).toHaveCount(0);
-  await expect(page.locator('.quick-lane')).toHaveCount(4, { timeout: 12000 });
+  await expect(page.locator('.quick-lane')).toHaveCount(10, { timeout: 13000 });
 });
 test('two real browsers create a waiting lobby, join, ready and race live', async ({ browser }) => {
   const creator = await browser.newPage();
@@ -238,7 +240,7 @@ test('reduced motion still supports live public Play without loading animations'
   await page.locator('.play-start-button').click();
   await expect(page).toHaveURL(/\/quick-race$/);
   await expect(page.getByTestId('race-route-motion')).toHaveCount(0);
-  await expect(page.locator('.quick-lane')).toHaveCount(4,{timeout:12000});
+  await expect(page.locator('.quick-lane')).toHaveCount(10,{timeout:13000});
 });
 
 
@@ -248,9 +250,9 @@ test('two humans share public queue, see real players plus bots, and receive ser
   try {
     await Promise.all([first.goto('http://127.0.0.1:5173/quick-race'),
       second.goto('http://127.0.0.1:5173/quick-race')]);
-    await expect(first.locator('.quick-lane')).toHaveCount(4,{timeout:13000});
-    await expect(second.locator('.quick-lane')).toHaveCount(4,{timeout:13000});
-    await expect(first.locator('.quick-lane').filter({hasText:'БОТ УРАЛДАГЧ'})).toHaveCount(2);
+    await expect(first.locator('.quick-lane')).toHaveCount(10,{timeout:13000});
+    await expect(second.locator('.quick-lane')).toHaveCount(10,{timeout:13000});
+    await expect(first.locator('.quick-lane').filter({hasText:'БОТ УРАЛДАГЧ'})).toHaveCount(8);
     await expect(first.locator('.quick-lane').filter({hasText:'БОДИТ ТОГЛОГЧ'})).toHaveCount(2);
     const input = first.getByRole('textbox',{name:'Шууд уралдааны бичих талбар'});
     await expect(input).toBeEditable({timeout:12000});
@@ -259,4 +261,34 @@ test('two humans share public queue, see real players plus bots, and receive ser
     await expect(second.locator('.quick-lane').filter({hasText:'БОДИТ ТОГЛОГЧ'}).first()).toContainText(/\d+%/, {timeout:5000});
     await expect(first.getByTestId('race-boot')).toHaveCount(0);
   } finally { await Promise.allSettled([first.close(), second.close()]); }
+});
+
+
+test('nine uniquely named bot racers arrive one at a time before countdown', async ({ page }) => {
+  await page.goto('/quick-race');
+  await expect(page.locator('.quick-type-panel.prepare .quick-phrase')).toBeVisible();
+  await expect(page.locator('.quick-lane')).toHaveCount(1);
+  await expect.poll(() => page.locator('.quick-lane').count(), { timeout: 2200 }).toBeGreaterThan(1);
+  const partial = await page.locator('.quick-lane').count();
+  expect(partial).toBeLessThan(10);
+  await expect(page.locator('.quick-lane')).toHaveCount(10, { timeout: 11000 });
+  const bots = page.locator('.quick-lane').filter({ hasText: 'БОТ УРАЛДАГЧ' });
+  await expect(bots).toHaveCount(9);
+  const names = await bots.locator('.quick-lane-meta strong').allInnerTexts();
+  expect(new Set(names).size).toBe(9);
+  await expect(page.locator('.quick-type-input')).toBeDisabled();
+  await expect(page.locator('.quick-type-panel.active')).toBeVisible({ timeout: 13000 });
+});
+
+test('typing caret updates locally and highlights mistakes without blocking input', async ({ page }) => {
+  await page.goto('/quick-race');
+  const input = page.getByRole('textbox', { name: 'Шууд уралдааны бичих талбар' });
+  await expect(input).toBeEditable({ timeout: 14000 });
+  const phrase = page.locator('.quick-phrase');
+  const first = (await phrase.innerText()).replace(/\u00a0/g, ' ')[0];
+  await input.pressSequentially(first, { delay: 0 });
+  await expect(phrase.locator('span.typed')).toHaveCount(1, { timeout: 700 });
+  await input.pressSequentially(first === 'x' ? 'z' : 'x', { delay: 0 });
+  await expect(phrase.locator('span.incorrect')).toHaveCount(1);
+  await expect(phrase.locator('span.typed')).toHaveCount(1);
 });
