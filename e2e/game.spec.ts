@@ -757,7 +757,7 @@ test('guest racing contributes authenticated-by-cookie server points to ALL play
   const input=page.getByRole('textbox',{name:'Шууд уралдааны бичих талбар'});
   await expect(input).toBeEditable({timeout:14000});
   const prompt=(await page.locator('.quick-phrase').innerText()).replace(/\u00a0/g,' ').trim();
-  await input.pressSequentially(prompt,{delay:44});
+  await input.pressSequentially(prompt,{delay:82});
   await expect(page).toHaveURL(/\/quick-results$/,{timeout:15000});
   const response=await page.request.get('/api/leaderboard?limit=20&offset=0');
   expect(response.status()).toBe(200);
