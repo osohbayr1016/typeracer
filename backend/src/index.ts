@@ -52,7 +52,7 @@ app.post('/api/auth/logout',c=>publicRanking(c,'/account/logout?secure='+(new UR
 function oauthOrigin(c:{env:Env;req:{url:string}}):string {
   const requested=new URL(c.req.url).origin;
   // Configured origin prevents callback URL manipulation via Host headers.
-  return c.env.OAUTH_REDIRECT_ORIGIN?.replace(/\/$/,'')||requested;
+  return c.env.OAUTH_REDIRECT_ORIGIN?.replace(/\/$/,'') || '';
 }
 async function oauthInternal(c:{env:Env;req:{raw:Request;header:(x:string)=>string|undefined}},action:'start'|'finish',data:object,secure=false):Promise<Response> {
   const ns=c.env.RACE_ROOMS;
@@ -66,6 +66,7 @@ app.get('/api/auth/:provider/start',async c=>{
   const p=c.req.param('provider');
   if(!isOAuthProvider(p))return c.json({error:'Provider not found'},404);
   if(!providerReady(c.env,p))return c.json({error:'Provider not configured'},503);
+  if(!oauthOrigin(c))return c.json({error:'OAuth redirect origin not configured'},503);
   if(c.env.OAUTH_REDIRECT_ORIGIN && oauthOrigin(c)!==new URL(c.req.url).origin)
     return c.json({error:'OAuth origin mismatch'},403);
   const state=crypto.randomUUID();
@@ -75,7 +76,7 @@ app.get('/api/auth/:provider/start',async c=>{
 });
 app.get('/api/auth/:provider/callback',async c=>{
   const p=c.req.param('provider');
-  if(!isOAuthProvider(p)||!providerReady(c.env,p))return c.redirect('/profile?auth=unavailable',302);
+  if(!isOAuthProvider(p)||!providerReady(c.env,p)||!oauthOrigin(c))return c.redirect('/profile?auth=unavailable',302);
   const state=c.req.query('state')||'',code=c.req.query('code')||'';
   if(!/^[0-9a-f-]{36}$/.test(state)||!code||c.req.query('error'))
     return c.redirect('/profile?auth=denied',302);
