@@ -131,7 +131,7 @@ a { color: inherit; }
 .typing-area { background: var(--paper); color: #242729; padding: 25px clamp(18px,4vw,56px) 18px; position: relative; }
 .typing-label { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 10px; letter-spacing: 1.4px; font-weight: 850; color: #5a5f60; }
 .typing-label i { color: var(--orange); font: italic 900 23px/1 var(--font-display); vertical-align: middle; margin-right: 13px; }
-.phrase { font: 500 clamp(20px,2.05vw,30px)/1.65 "DejaVu Sans Mono", "Noto Sans Mono", ui-monospace, Consolas, monospace;
+.phrase { font: 500 clamp(20px,2.05vw,30px)/1.65 "Roboto Mono", "DejaVu Sans Mono", "Noto Sans", ui-monospace, monospace;
   letter-spacing: .3px; margin: 14px 0 16px; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 80px; }
 .letter { color: #767b7d; }
 .letter.correct { color: #122916; background: #c4e8ab; }
