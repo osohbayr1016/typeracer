@@ -24,13 +24,40 @@ function fixture() {
     return {toArray: () => []};
   }};
   const store = new RaceRankingStore(sql as unknown as Pick<SqlStorage, 'exec'>);
-  return {db, store};
+  return {db, store, sql};
 }
 const cookie = (token: string) => 'tr_guest=' + token;
 const state = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 afterEach(() => {for(const db of databases.splice(0)) db.close();});
 
 describe('SQLite-backed independent player sessions', () => {
+  it('reweights historical race events once so old 120-point accounts cannot dominate the new scale', async () => {
+    const {db,store,sql}=fixture();
+    const account=await store.session(null);
+    const playerId=account.player.id as string;
+    const teamId='historic-team';
+    db.prepare('INSERT INTO leaderboard_teams(id,name,tag,join_code,captain_id,created_at) VALUES(?,?,?,?,?,?)')
+      .run(teamId,'Талын баг','TAL','ABCDEF12',playerId,Date.now());
+    db.prepare('UPDATE leaderboard_players SET team_id=?,points=120,team_points=120,races=1 WHERE id=?')
+      .run(teamId,playerId);
+    db.prepare('INSERT INTO leaderboard_races(race_id,player_id,points,wpm,accuracy,finished_at,team_id) VALUES(?,?,?,?,?,?,?)')
+      .run('historic-race',playerId,120,80,95,Date.now(),teamId);
+    // Recreate a pre-v2 database, then run the real additive migration.
+    db.prepare('DELETE FROM leaderboard_meta WHERE key=?').run('scoring');
+    const upgraded=new RaceRankingStore(sql as unknown as Pick<SqlStorage,'exec'>);
+    expect(db.prepare('SELECT points FROM leaderboard_races WHERE race_id=?')
+      .get('historic-race')?.points).toBe(23);
+    const row=db.prepare('SELECT points,team_points FROM leaderboard_players WHERE id=?').get(playerId);
+    expect(row?.points).toBe(23);
+    expect(row?.team_points).toBe(23);
+    const standings=upgraded.leaderboard(Date.now()) as {players:Array<{points:number}>};
+    expect(standings.players[0].points).toBe(23);
+    const teams=upgraded.teams(Date.now()) as {teams:Array<{points:number}>};
+    expect(teams.teams[0].points).toBe(23);
+    new RaceRankingStore(sql as unknown as Pick<SqlStorage,'exec'>);
+    expect(db.prepare('SELECT points FROM leaderboard_players WHERE id=?').get(playerId)?.points).toBe(23);
+    expect(db.prepare('SELECT COUNT(*) AS n FROM leaderboard_races WHERE player_id=?').get(playerId)?.n).toBe(1);
+  });
   it('creates opaque device cookies but persists only SHA-256 session digests', async () => {
     const {db,store} = fixture();
     const first = await store.session(null);
