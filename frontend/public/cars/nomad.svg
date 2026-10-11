@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 140" role="img" aria-label="Говийн нүүдэл">
+<defs><linearGradient id="paint" x1="0" y1="0" x2=".28" y2="1"><stop stop-color="#e9dda6"/><stop offset=".43" stop-color="#af8c49"/><stop offset="1" stop-color="#59401e"/></linearGradient><linearGradient id="glass" x1="0" y1="0" x2=".85" y2="1"><stop stop-color="#b9e8ef"/><stop offset=".53" stop-color="#496578"/><stop offset="1" stop-color="#101a27"/></linearGradient><linearGradient id="rims" x1="0" x2="1"><stop stop-color="#14282e"/><stop offset=".5" stop-color="#ffe0a1"/><stop offset="1" stop-color="#1d333d"/></linearGradient></defs>
+<ellipse cx="157" cy="116" rx="137" ry="10" fill="#000" opacity=".28"/>
+<rect x='103' y='31' width='76' height='9' rx='3' fill='#382f26'/><path d='M45 64 L43 42 L58 42 L67 62 M250 64 L268 47' stroke='#ffdb8f' stroke-width='5' fill='none'/>
+<path d="M29 84 L45 66 L68 64 L84 42 L187 42 L209 60 L258 62 L288 82 L287 107 L26 107 Z" fill="url(#paint)" stroke="#121c23" stroke-width="3.3" stroke-linejoin="round"/>
+<path d="M92 66 L101 49 L180 49 L199 67 Z" fill="url(#glass)" stroke="#172630" stroke-width="3.5" stroke-linejoin="round"/>
+<path d="M38 94 L60 78 M109 86 L210 86 M234 75 L274 79" stroke="#ffe0a1" stroke-width="3" fill="none" opacity=".94"/>
+<path d="M24 93 L36 90 L37 99 L25 100 M283 89 L296 92 L291 100 L281 100" fill="#17242c"/>
+<path d="M27 83 L37 78 L43 87 L29 89" fill="#f6edb2"/><path d="M286 83 L295 87 L296 94 L284 90" fill="#fa6d69"/>
+<circle cx="89" cy="104" r="23" fill="#111920" stroke="#050a0e" stroke-width="3"/><circle cx="235" cy="104" r="23" fill="#111920" stroke="#050a0e" stroke-width="3"/>
+<circle cx="89" cy="104" r="13" fill="url(#rims)" stroke="#d4e4e0" stroke-width="2"/><circle cx="235" cy="104" r="13" fill="url(#rims)" stroke="#d4e4e0" stroke-width="2"/>
+<path d="M89 93 V115 M78 104 H100 M235 93 V115 M224 104 H246" stroke="#223039" stroke-width="3.5"/>
+<rect x="139" y="84" width="39" height="18" rx="3" fill="#e9dda6" stroke="#2a3236" stroke-width="2"/><text x="158" y="97" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="11" fill="#162428">15</text>
+<path d="M35 109 H279" stroke="#59401e" stroke-width="4" stroke-linecap="round"/>
+</svg>
