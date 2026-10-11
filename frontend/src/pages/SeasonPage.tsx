@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import './SeasonPage.css';
 import {
   SEASON, SEASON_REWARDS, getItem, seasonProgress,
@@ -34,6 +34,15 @@ function RewardArt({reward,large=false}:{reward:SeasonReward;large?:boolean}) {
 export function SeasonPage({profile,onClaim,onClaimAll,onRace,onShop}:Props) {
   const progress=seasonProgress(profile);
   const [selected,setSelected]=useState<number>(()=>progress.focused.tier);
+  const railRef=useRef<HTMLDivElement>(null);
+  useEffect(()=>{
+    const track=railRef.current;
+    const tile=track?.querySelector<HTMLElement>('.season-tier[data-tier="'+selected+'"]');
+    if(!track||!tile)return;
+    const left=tile.offsetLeft+tile.offsetWidth/2-track.clientWidth/2;
+    const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    track.scrollTo({left,behavior:reduced?'instant':'smooth'});
+  },[selected]);
   const reward=SEASON_REWARDS.find(x=>x.tier===selected)??progress.focused;
   const received=profile.claimed.includes(reward.tier);
   const unlocked=profile.seasonXp>=reward.xp;
@@ -114,9 +123,15 @@ export function SeasonPage({profile,onClaim,onClaimAll,onRace,onShop}:Props) {
       <div className="battle-roadmap-top">
         <div><span className="battle-overline">01 / ШАГНАЛЫН ЗАМ</span>
           <h2 id="battle-roadmap-title">ШАТУУД</h2></div>
-        <span className="battle-scroll-hint">ХАЖУУ ТИЙШ ГҮЙЛГЭ →</span>
+        <div className="battle-rail-controls">
+          <span className="battle-scroll-hint">8 ШАТ · ГҮЙЛГЭНЭ ҮҮ</span>
+          <button type="button" aria-label="Өмнөх шагнал" disabled={selected<=1}
+            onClick={()=>setSelected(Math.max(1,selected-1))}>‹</button>
+          <button type="button" aria-label="Дараагийн шагнал" disabled={selected>=SEASON_REWARDS.length}
+            onClick={()=>setSelected(Math.min(SEASON_REWARDS.length,selected+1))}>›</button>
+        </div>
       </div>
-      <div className="battle-rail-wrap" tabIndex={0} aria-label="Battle Pass-ийн 8 шаттай шагналын зам. Хэвтээ гүйлгэнэ.">
+      <div className="battle-rail-wrap" ref={railRef} tabIndex={0} aria-label="Battle Pass-ийн 8 шаттай шагналын зам. Хэвтээ гүйлгэнэ.">
         <ol className="battle-rail">
           {SEASON_REWARDS.map((tier,index)=>{
             const got=profile.claimed.includes(tier.tier);
