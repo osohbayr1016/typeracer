@@ -94,16 +94,16 @@ test('solo opponents are labelled practice pace ghosts, garage progression is no
   await page.goto('/garage');
   await expect(page.getByRole('button', { name: /Ногоон оч/ })).toBeDisabled();
   await expect(page.getByRole('button', { name: /Сүүдэр/ })).toBeDisabled();
-  await expect(page.locator('.garage-page-grid .garage-car-tile')).toHaveCount(11);
+  await expect(page.locator('.garage-page-grid .garage-car-tile')).toHaveCount(29);
 });
 
 test('Монгол дэлгүүр: зоосоор мөр авч, гаражид зүүж, шинэчлэхэд хадгална', async ({ page }) => {
   await page.goto('/shop');
-  await expect(page.getByRole('heading', { name: /ТОГЛООМЫН ДЭЛГҮҮР/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /ХҮЛГИЙН ЦУГЛУУЛГА/ })).toBeVisible();
   await expect(page.locator('.coin-counter strong')).toContainText('200');
   await page.getByRole('button', { name: 'Мөр', exact: true }).click();
   const ember = page.locator('.item-card').filter({ has: page.getByRole('heading', { name: 'Галын мөр' }) });
-  await ember.getByRole('button', { name: 'Худалдан авах' }).click();
+  await ember.getByRole('button', { name: /ХУДАЛДАН АВАХ/i }).click();
   await expect(page.locator('.coin-counter strong')).toContainText('80');
   await ember.getByRole('button', { name: 'Зүүх' }).click();
   await page.goto('/garage');
@@ -138,7 +138,7 @@ test('Зургаан анхны тусгай машины зураг ажилл�
     expect(response.ok()).toBeTruthy();
     expect(await response.text()).toContain('<svg');
   }
-  await expect(page.locator('.garage-page-grid .garage-car-tile')).toHaveCount(11);
+  await expect(page.locator('.garage-page-grid .garage-car-tile')).toHaveCount(29);
 });
 
 test('Ө Ү typography uses Cyrillic-safe display, body and typing fonts without clipping', async ({ page }) => {
@@ -336,7 +336,7 @@ test('rarity shop has six distinct tiers, 18 original vehicle assets and respons
     await expect(page.locator('.shop-daily-item')).toHaveCount(3);
     const dimensions = await page.evaluate(() => ({document:document.documentElement.scrollWidth, window:innerWidth}));
     expect(dimensions.document).toBeLessThanOrEqual(dimensions.window+1);
-    await page.getByRole('button',{name:/Домогт 3 машин/}).click();
+    await page.locator('.shop-rarity-tabs .rarity-legendary').click();
     await expect(page.locator('.shop-item-grid .shop-collectible')).toHaveCount(3);
     await expect(page.locator('.shop-item-grid [data-item-id="royal"]')).toBeVisible();
     await expect(page.locator('.shop-item-grid [data-item-id="royal"] .item-action button')).toBeDisabled();
