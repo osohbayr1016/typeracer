@@ -92,8 +92,10 @@ export function TeamsPage({onPlay}: {onPlay:()=>void}) {
   const [error,setError]=useState('');
   const [message,setMessage]=useState('');
   const refresh=async()=>{
-    const [a,b,m]=await Promise.all([
-      fetchJSON<Account>('/api/account'), fetchJSON<TeamBoard>('/api/teams'),
+    // Session issuance must finish before any cookie-authenticated Team request.
+    const a=await fetchJSON<Account>('/api/account');
+    const [b,m]=await Promise.all([
+      fetchJSON<TeamBoard>('/api/teams'),
       fetchJSON<{team:MyTeam|null}>('/api/teams/me')
     ]);
     setAccount(a);setBoard(b);setMine(m.team);
