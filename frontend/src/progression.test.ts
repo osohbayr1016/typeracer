@@ -28,13 +28,13 @@ describe('Mongolian device-local cosmetic economy', () => {
   it('claims season rewards only once, on time, and after reaching XP threshold', () => {
     const initial = starterProfile();
     expect(claimReward(initial, 1, SEASON.from + 1000)).toBe(initial);
-    const enough = { ...initial, seasonXp: 300 };
+    const enough = { ...initial, seasonXp: 350 };
     expect(claimReward(enough, 1, SEASON.from - 1)).toBe(enough);
     const claimed = claimReward(enough, 1, SEASON.from + 1000);
     expect(claimed.coins).toBe(initial.coins + 120);
     expect(claimed.claimed).toContain(1);
     expect(claimReward(claimed, 1, SEASON.from + 1000)).toBe(claimed);
-    const sticker = claimReward(claimed, 2, SEASON.from + 1000);
+    const sticker = claimReward({ ...claimed, seasonXp: 850 }, 2, SEASON.from + 1000);
     expect(isOwned(sticker, 'sticker', 'star')).toBe(true);
     expect(claimReward(sticker, 3, SEASON.from + 1000)).toBe(sticker);
   });
@@ -90,24 +90,24 @@ describe('free season battle pass progress and bulk claiming', () => {
     const start = seasonProgress(initial, SEASON.from + 1000);
     expect(start.active).toBe(true);
     expect(start.next?.tier).toBe(1);
-    expect(start.xpToNext).toBe(100);
+    expect(start.xpToNext).toBe(350);
     expect(start.claimable).toHaveLength(0);
     expect(start.totalPercent).toBe(0);
 
-    const profile = { ...initial, seasonXp: 250 };
+    const profile = { ...initial, seasonXp: 920 };
     const halfway = seasonProgress(profile, SEASON.from + 1000);
     expect(halfway.claimable.map(r => r.tier)).toEqual([1, 2]);
     expect(halfway.next?.tier).toBe(3);
-    expect(halfway.previousXp).toBe(240);
-    expect(halfway.targetXp).toBe(420);
-    expect(halfway.xpToNext).toBe(170);
-    expect(halfway.segmentPercent).toBe(6);
-    expect(halfway.totalPercent).toBeGreaterThan(10);
+    expect(halfway.previousXp).toBe(850);
+    expect(halfway.targetXp).toBe(1650);
+    expect(halfway.xpToNext).toBe(730);
+    expect(halfway.segmentPercent).toBe(9);
+    expect(halfway.totalPercent).toBeGreaterThan(8);
     expect(halfway.focused.tier).toBe(1);
   });
 
   it('claims all earned rewards exactly once in a single profile update', () => {
-    const profile = { ...starterProfile(), seasonXp: 1800 };
+    const profile = { ...starterProfile(), seasonXp: 9000 };
     const when = SEASON.from + 1000;
     const claimed = claimAvailableRewards(profile, when);
     expect(claimed.claimed).toEqual([1, 2, 3, 4, 5, 6, 7]);
@@ -123,7 +123,7 @@ describe('free season battle pass progress and bulk claiming', () => {
   });
 
   it('supports full completion with eight nonrandom rewards', () => {
-    const profile = { ...starterProfile(), seasonXp: 5000 };
+    const profile = { ...starterProfile(), seasonXp: 10500 };
     const all = claimAvailableRewards(profile, SEASON.until - 1);
     expect(all.claimed).toHaveLength(SEASON_REWARDS.length);
     expect(isOwned(all, 'car', 'cosmic')).toBe(true);
@@ -134,6 +134,31 @@ describe('free season battle pass progress and bulk claiming', () => {
     expect(state.claimable).toHaveLength(0);
     expect(seasonProgress(all, SEASON.until).active).toBe(false);
     expect(seasonProgress(all, SEASON.until).remainingDays).toBe(0);
+  });
+});
+
+
+describe('higher-difficulty free battle pass preserves prior purchases and reward claims', () => {
+  it('sets monotonically increasing goals, requiring sustained play for top rewards', () => {
+    expect(SEASON_REWARDS.map(x => x.xp)).toEqual([350,850,1650,2800,4200,5900,8000,10500]);
+    expect(SEASON_REWARDS[7].xp).toBeGreaterThan(9000);
+    expect(SEASON_REWARDS.every((reward,i) => i === 0 || reward.xp > SEASON_REWARDS[i-1].xp)).toBe(true);
+    const firstRace = raceReward(starterProfile(), {
+      wpm: 90, accuracy: 99, elapsedMs: 26_000, at: SEASON.from + 3600_000
+    });
+    expect(firstRace.seasonXp).toBeLessThan(SEASON_REWARDS[0].xp);
+    expect(seasonProgress(firstRace, SEASON.from + 3600_000).claimable).toHaveLength(0);
+  });
+  it('grandfathers previously claimed rewards without revoking inventory or allowing double claim', () => {
+    const existing = { ...starterProfile(), seasonXp: 1800, claimed: [1,2,3,4,5,6,7],
+      coins: 670, owned: ['car:dawn','car:khan','trail:aurora','sticker:star','title:khan'] };
+    const info = seasonProgress(existing, SEASON.from + 1000);
+    expect(info.unlocked.map(x=>x.tier)).toEqual([1,2,3,4,5,6,7]);
+    expect(info.claimable).toHaveLength(0);
+    expect(info.focused.tier).toBe(8);
+    expect(claimAvailableRewards(existing,SEASON.from + 1000)).toBe(existing);
+    expect(claimReward(existing, 7, SEASON.from + 1000)).toBe(existing);
+    expect(existing.owned).toContain('car:khan');
   });
 });
 
