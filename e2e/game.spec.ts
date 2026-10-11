@@ -34,6 +34,60 @@ test('server-synced car reaches the checkered finish marker instead of stopping 
 
 import { test, expect } from '@playwright/test';
 
+test('minimal home and premium desktop navigation keep actions obvious without text walls', async ({page})=>{
+  await page.setViewportSize({width:1440,height:900});
+  await page.goto('/');
+  await expect(page.locator('.home-hero h1')).toContainText('ХУРДАН БИЧ.');
+  await expect(page.locator('.home-lower')).toHaveCount(0);
+  for(const phrase of [
+    'Тоглох → горимоо сонго', 'Монгол хэлний бичгийн хурдны уралдаан',
+    'ЯАЖ ТОГЛОХ ВЭ', 'МИНИЙ АХИЦ', 'МИНИЙ ГАРАЖ'
+  ])await expect(page.getByText(phrase,{exact:false})).toHaveCount(0);
+  const nav=page.getByRole('navigation',{name:'Үндсэн цэс'});
+  await expect(nav).toBeVisible();
+  await expect(nav.locator('button')).toHaveCount(5);
+  await expect(page.locator('.premium-primary-nav .premium-more-trigger')).toHaveAttribute('aria-expanded','false');
+  await nav.getByRole('button',{name:'Бусад хуудас'}).click();
+  await expect(page.locator('#premium-more-panel')).toBeVisible();
+  await page.locator('#premium-more-panel').getByRole('button',{name:/Battle Pass/}).click();
+  await expect(page).toHaveURL(/\/season$/);
+  await expect(page.getByRole('heading',{name:/BATTLE PASS/})).toBeVisible();
+  await nav.getByRole('button',{name:'Чансаа'}).click();
+  await expect(page).toHaveURL(/\/leaderboard$/);
+  await page.locator('.premium-profile').click();
+  await expect(page).toHaveURL(/\/profile$/);
+  await expect(page.getByTestId('profile-page')).toBeVisible();
+  await page.locator('.premium-brand').click();
+  await expect(page).toHaveURL(/\/$/);
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test('mobile dock exposes all routes without duplicate desktop navigation or horizontal scrolling', async ({page})=>{
+  for(const width of [320,360,390,600,760]){
+    await page.setViewportSize({width,height:812});
+    await page.goto('/');
+    const dock=page.getByRole('navigation',{name:'Гар утасны үндсэн цэс'});
+    await expect(dock).toBeVisible();
+    await expect(page.locator('.premium-primary-nav')).toBeHidden();
+    await expect(dock.locator('button')).toHaveCount(5);
+    const play=dock.getByRole('button',{name:'Тоглох'});
+    await expect(play).toBeVisible();
+    await play.click();
+    await expect(page).toHaveURL(/\/play$/);
+    const other=dock.getByRole('button',{name:'Бусад'});
+    await other.click();
+    await expect(page.locator('#premium-more-panel')).toBeVisible();
+    await other.click();
+    await expect(page.locator('#premium-more-panel')).toHaveCount(0);
+    await other.click();
+    await page.locator('#premium-more-panel').getByRole('button',{name:/Дэлгүүр/}).click();
+    await expect(page).toHaveURL(/\/shop$/);
+    await expect(dock.getByRole('button',{name:'Бусад'})).toHaveAttribute('aria-expanded','false');
+    const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+    expect(overflow,'mobile width '+width).toBeLessThanOrEqual(1);
+  }
+});
 test('main Play starts live matchmaking, adds bots and awards a finished match', async ({ page }) => {
   await page.goto('/');
   await page.locator('.home-hero').getByRole('button', { name: /ТОГЛОХ/ }).click();
@@ -51,7 +105,7 @@ test('main Play starts live matchmaking, adds bots and awards a finished match',
   expect(prompt).toMatch(/[ӨөҮү]/);
   await input.pressSequentially(prompt, { delay: 44 });
   await expect(page.locator('.qr-results')).toBeVisible({ timeout: 15000 });
-  await expect(page.locator('.qr-earned')).toContainText('120');
+  await expect(page.locator('.qr-earned')).toContainText('30');
   await expect(page).toHaveURL(/\/quick-results$/);
   await expect(page.getByRole('heading',{name:/УРАЛДАГЧДЫН БАЙРЛАЛ/})).toBeVisible();
   await page.getByRole('button', { name: /ДАХИН УРАЛДАХ/ }).click();
@@ -730,7 +784,7 @@ test('completed quickplay opens post-race standings and claims daily goals only 
   await expect(page.getByTestId('quick-results')).toBeVisible();
   await expect(page.locator('.qr-standings li')).toHaveCount(5);
   await expect(page.locator('.qr-standing.own')).toContainText('ТА');
-  await expect(page.locator('.qr-earned')).toContainText('120');
+  await expect(page.locator('.qr-earned')).toContainText('30');
   await expect(page.locator('.qr-pass-panel')).toBeVisible();
   await expect(page.locator('.qr-stats-panel')).toBeVisible();
   const claim = page.locator('[data-quest-id="first-finish"] button');
