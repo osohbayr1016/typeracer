@@ -148,3 +148,26 @@ test('Зургаан анхны тусгай машины зураг ажилл�
   }
   await expect(page.locator('.garage-page-grid .garage-car-tile')).toHaveCount(11);
 });
+
+test('Ө Ү typography uses Cyrillic-safe display, body and typing fonts without clipping', async ({ page }) => {
+  for (const width of [390, 768, 1440]) {
+    await page.setViewportSize({ width, height: 850 });
+    for (const route of ['/shop', '/play', '/season', '/garage']) {
+      await page.goto(route);
+      const heading = page.locator('h1').first();
+      await expect(heading).toBeVisible();
+      const displayFamily = await heading.evaluate(el => getComputedStyle(el).fontFamily);
+      expect(displayFamily).toContain('Roboto Condensed');
+      const { documentWidth, windowWidth } = await page.evaluate(() => ({
+        documentWidth: document.documentElement.scrollWidth,
+        windowWidth: innerWidth
+      }));
+      expect(documentWidth, route + ' at ' + width + 'px should not overflow').toBeLessThanOrEqual(windowWidth + 1);
+    }
+  }
+  await page.goto('/race');
+  const typingFamily = await page.locator('.phrase').first().evaluate(el => getComputedStyle(el).fontFamily);
+  expect(typingFamily).toContain('Roboto Mono');
+  await page.goto('/shop');
+  await expect(page.locator('h1').first()).toContainText('Ү');
+});
