@@ -1,3 +1,11 @@
+## 2026-10-11 — Quick Play disconnected optimistic typing guard (PR pending)
+
+**Confirmed code risk:** QuickTypingPanel advanced local progress before QuickRacePage checked WebSocket readiness. A closed socket or throwing send could show phantom typed characters.
+
+**Branch:** `fix/quickplay-no-phantom-typing`. QuickRacePage sendKey now returns false when socket is not OPEN or send throws; QuickTypingPanel only advances its optimistic caret after send returns true. A successful send does not guarantee server receipt; server finish/results remain authoritative. Added focused source regression tests. **Tests/CI and staging not yet verified; do not merge before required checks pass.** No new shop content added because gameplay reliability has priority. Follow up with actual browser disconnect E2E and reconciliation on reconnect.
+
+---
+
 ## 2026-10-11 — Critical cosmetic silhouette UX correction (Shop)
 
 **Confirmed user-visible issue:** Screenshot from the live staging Shop shows the six Mythic/Legendary vehicles as the same copied spiked wedge body with color changes; neighboring lower-rarity cars are similarly repeated. Earlier generated photorealistic concept renders are also predominantly a single hypercar archetype, so blindly uploading that existing ZIP would not fix the underlying vehicle diversity. The original PR #21 made artwork detailed but failed this visual distinctiveness requirement.
