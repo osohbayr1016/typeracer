@@ -7,6 +7,13 @@ import { acceptKeystroke, safePlayerName } from './logic';
 type Message = { type: 'ready' } | { type: 'key'; key: string };
 type Player = Racer & { socket: WebSocket; windowStart: number; windowCount: number };
 type Phase = RoomSnapshot['phase'];
+const CAR_IDS = ['mint','sunset','purple','lime','phantom','steppe','thunder','midnight','khan','dawn','cosmic'] as const;
+const TRAIL_IDS = ['none','ember','steppe','ice','aurora'] as const;
+const STICKER_IDS = ['none','horse','bolt','star'] as const;
+const TITLE_IDS = ['rookie','swift','khan','legend'] as const;
+function safeCosmetic(value: string | null, allowed: readonly string[], fallback: string) {
+  return value && allowed.includes(value) ? value : fallback;
+}
 
 export class RaceRoom {
   private sockets = new Map<WebSocket, Player>();
@@ -40,7 +47,12 @@ export class RaceRoom {
     const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
     const player: Player = {
       id: crypto.randomUUID(), name, progress: 0, mistakes: 0, strokes: 0,
-      ready: false, completedAt: null, socket: server,
+      ready: false, completedAt: null,
+      car: safeCosmetic(url.searchParams.get('car'), CAR_IDS, 'sunset'),
+      trail: safeCosmetic(url.searchParams.get('trail'), TRAIL_IDS, 'none'),
+      sticker: safeCosmetic(url.searchParams.get('sticker'), STICKER_IDS, 'none'),
+      title: safeCosmetic(url.searchParams.get('title'), TITLE_IDS, 'rookie'),
+      socket: server,
       windowStart: 0, windowCount: 0
     };
     server.accept();
@@ -56,8 +68,8 @@ export class RaceRoom {
   private snapshot(): RoomSnapshot {
     return {
       type: 'state', phase: this.phase, prompt: this.prompt,
-      players: [...this.sockets.values()].map(({ id, name, progress, mistakes, strokes, ready, completedAt }) =>
-        ({ id, name, progress, mistakes, strokes, ready, completedAt })),
+      players: [...this.sockets.values()].map(({ id, name, progress, mistakes, strokes, ready, completedAt, car, trail, sticker, title }) =>
+        ({ id, name, progress, mistakes, strokes, ready, completedAt, car, trail, sticker, title })),
       startAt: this.startAt, durationMs: RACE_DURATION_MS
     };
   }
