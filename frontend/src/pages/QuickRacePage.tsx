@@ -55,12 +55,26 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
       if (resume) params.set('resume', resume);
     } catch { /* private browsing may disable session storage */ }
     const url = base.replace(/^http/, 'ws') + '/api/quickplay/ws?' + params;
-    let socket: WebSocket;
-    try { socket = new WebSocket(url); }
-    catch { setConnection('error'); setError('Уралдааны сервертэй холбогдож чадсангүй.'); return; }
-    socketRef.current = socket;
-    socket.onopen = () => { if (!disposed) { setConnection('connected'); setError(''); } };
-    socket.onmessage = event => {
+    let socket: WebSocket | null = null;
+    // Issue an HttpOnly same-origin guest cookie BEFORE WebSocket upgrade.
+    // The browser cannot claim points itself; the DO writes finished scores.
+    void (async () => {
+      try {
+        await fetch(base + '/api/account', { credentials:'include' });
+        if (disposed) return;
+        await fetch(base + '/api/account/name', {
+          method:'POST', credentials:'include', headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({name:nickname})
+        });
+      } catch { /* Race still works if leaderboard session creation fails. */ }
+      if (disposed) return;
+      let ws: WebSocket;
+      try { ws = new WebSocket(url); }
+      catch { setConnection('error'); setError('Уралдааны сервертэй холбогдож чадсангүй.'); return; }
+      socket = ws;
+      socketRef.current = ws;
+      ws.onopen = () => { if (!disposed) { setConnection('connected'); setError(''); } };
+    ws.onmessage = event => {
       if (disposed) return;
       try {
         const data = JSON.parse(event.data) as RoomSnapshot |
@@ -91,8 +105,8 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
         }
       } catch { setError('Серверийн хариу ойлгомжгүй байна.'); }
     };
-    socket.onerror = () => { if (!disposed) setError('Холболт тасарлаа. Дахин оролдоно уу.'); };
-    socket.onclose = () => {
+    ws.onerror = () => { if (!disposed) setError('Холболт тасарлаа. Дахин оролдоно уу.'); };
+    ws.onclose = () => {
       if (disposed || receivedResult) return;
       // The server holds this human's race slot for 15 seconds. Try a bounded,
       // short reconnect; later attempts remain a manual choice.
@@ -106,11 +120,12 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
         setError('Уралдааны холболт тасарлаа. Дахин нэгдэж болно.');
       }
     };
+    })();
     return () => {
       disposed = true;
       if (retryTimer) window.clearTimeout(retryTimer);
       socketRef.current = null;
-      socket.close();
+      socket?.close();
     };
   // A new attempt is the only way to re-enter the queue. Prop changes during a race
   // never silently disconnect players.
