@@ -1,3 +1,11 @@
+## 2026-10-11 — PR #23 Chromium regression: ghost waiting racers
+
+**Observed CI failure:** GitHub Actions run [38132361548](https://github.com/osohbayr1016/typeracer/actions/runs/38132361548) passed typecheck/unit/build but failed Chromium: three legacy bot-count checks observed 3 bots instead of 4 (or 1 instead of 3); the new reconnect browser test could not reach an editable input. Failure output: 24 passed, 4 failed. Root cause consistent with immediate React StrictMode WebSocket cleanup leaving a disconnected **waiting** participant reserved for 15 seconds, hence phantom occupied lanes and early countdown. This was introduced with reconnect grace, not pre-existing matchmaker behavior.
+
+**Fix:** `backend/src/quick.ts` immediately evicts a disconnected **waiting**/finished racer (no typed progress to preserve), while retaining the 15-second reconnect grace only during countdown/racing. `backend/src/quick.reconnect.test.ts` verifies abandoned waiting sockets do not take bot slots, and moves token-expiry test to an in-progress match. Existing Chromium bot-count and live DO resume E2E remain required. **New CI run must be inspected before merge; this note is not a pass claim.** No staging/production change or new shop inventory.
+
+---
+
 ## 2026-10-11 — Durable Object public-race realtime resume and sync (PR #23)
 
 **Prior blocker fixed in code:** PR #23 typecheck failed because a source-text test imported `node:fs` and `node:url` without frontend Node types. Replace it with deterministic behavior tests of guarded WebSocket sends and Mongolian Cyrillic optimistic typing.
