@@ -314,7 +314,7 @@ export function App() {
           <button className={'nav-item ' + (page === 'shop' ? 'selected' : '')}
             aria-current={page === 'shop' ? 'page' : undefined} onClick={() => navigate('shop')}>Дэлгүүр</button>
           <button className={'nav-item ' + (page === 'season' ? 'selected' : '')}
-            aria-current={page === 'season' ? 'page' : undefined} onClick={() => navigate('season')}>Шагналын зам</button>
+            aria-current={page === 'season' ? 'page' : undefined} onClick={() => navigate('season')}>Battle Pass</button>
           <button className={'nav-item ' + (page === 'garage' ? 'selected' : '')}
             aria-current={page === 'garage' ? 'page' : undefined}
             onClick={() => navigate('garage')}>Гараж</button>
