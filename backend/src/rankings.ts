@@ -36,6 +36,15 @@ export class RaceRankingStore {
       id TEXT PRIMARY KEY, name TEXT NOT NULL, tag TEXT NOT NULL UNIQUE,
       join_code TEXT NOT NULL UNIQUE, captain_id TEXT NOT NULL, created_at INTEGER NOT NULL
     )`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS leaderboard_identities (
+      provider TEXT NOT NULL, provider_id TEXT NOT NULL, player_id TEXT NOT NULL,
+      PRIMARY KEY(provider,provider_id)
+    )`);
+    this.sql.exec('CREATE INDEX IF NOT EXISTS leaderboard_identities_player ON leaderboard_identities(player_id)');
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS leaderboard_oauth_states (
+      state TEXT PRIMARY KEY, player_id TEXT NOT NULL, provider TEXT NOT NULL,
+      expires_at INTEGER NOT NULL
+    )`);
   }
   fromCookie(cookie: string | null): Row | null {
     const token = /(?:^|;\s*)tr_guest=([a-f0-9]{64})(?:;|$)/.exec(cookie ?? '')?.[1];
@@ -55,7 +64,7 @@ export class RaceRankingStore {
       id:p.id, name:p.name, points:p.points, races:p.races, bestWpm:p.best_wpm,
       avgWpm: Number(p.races) ? Math.round(Number(p.total_wpm)/Number(p.races)) : 0,
       avgAccuracy: Number(p.races) ? Math.round(Number(p.total_accuracy)/Number(p.races)) : 0,
-      teamId:p.team_id, guest:true
+      teamId:p.team_id, guest:!first(this.sql.exec('SELECT provider FROM leaderboard_identities WHERE player_id=? LIMIT 1',p.id))
     };
   }
   rename(player: Row, name: string): Row {
@@ -92,6 +101,7 @@ export class RaceRankingStore {
     const total = Number(first(this.sql.exec('SELECT COUNT(DISTINCT player_id) AS total FROM leaderboard_races WHERE finished_at>=?',since))?.total ?? 0);
     const rows=this.sql.exec(`SELECT p.id,p.name,p.races,p.best_wpm,p.total_wpm,p.total_accuracy,
        t.tag AS team_tag, SUM(e.points) AS points, COUNT(*) AS week_races,
+       EXISTS(SELECT 1 FROM leaderboard_identities i WHERE i.player_id=p.id) AS verified,
        AVG(e.wpm) AS week_wpm, AVG(e.accuracy) AS week_accuracy
        FROM leaderboard_races e JOIN leaderboard_players p ON p.id=e.player_id
        LEFT JOIN leaderboard_teams t ON t.id=p.team_id
@@ -100,7 +110,7 @@ export class RaceRankingStore {
     return {period:'week',weekStart:since,total,offset:boundedOffset,limit:boundedLimit,players:rows.map((r,i)=>({
       rank:boundedOffset+i+1,id:r.id,name:r.name,points:r.points,races:r.week_races,
       wpm:Math.round(Number(r.week_wpm)),accuracy:Math.round(Number(r.week_accuracy)),
-      bestWpm:r.best_wpm,teamTag:r.team_tag,guest:true
+      bestWpm:r.best_wpm,teamTag:r.team_tag,guest:Number(r.verified)===0
     }))};
   }
   teams(now=Date.now()): object {
@@ -142,6 +152,44 @@ export class RaceRankingStore {
     if (team?.captain_id===player.id) return false;
     this.sql.exec('UPDATE leaderboard_players SET team_id=NULL,team_points=0 WHERE id=?',player.id);
     return true;
+  }
+  /** CSRF state is bound to the initiating HttpOnly browser session and expires in 5min. */
+  startOAuth(cookie: string|null, provider:'google'|'facebook', state:string):boolean {
+    const player=this.fromCookie(cookie);
+    if (!player || !/^[0-9a-f-]{36}$/.test(state)) return false;
+    this.sql.exec('DELETE FROM leaderboard_oauth_states WHERE expires_at<?',Date.now());
+    this.sql.exec('INSERT INTO leaderboard_oauth_states(state,player_id,provider,expires_at) VALUES(?,?,?,?)',
+      state,player.id,provider,Date.now()+5*60_000);
+    return true;
+  }
+  /** The providerSubject must ONLY come from a successful server-side OAuth token
+   * exchange + authenticated userinfo call. Never expose this as a public route.
+   */
+  completeOAuth(cookie:string|null, provider:'google'|'facebook', state:string,
+    providerSubject:string,displayName:string):{player:Row;newToken:string}|null {
+    const player=this.fromCookie(cookie);
+    if (!player || !/^[0-9a-f-]{36}$/.test(state) || !/^[\w.:-]{1,128}$/.test(providerSubject)) return null;
+    const pending=first(this.sql.exec('SELECT * FROM leaderboard_oauth_states WHERE state=?',state));
+    if (!pending || pending.player_id!==player.id || pending.provider!==provider ||
+        Number(pending.expires_at)<Date.now()) return null;
+    this.sql.exec('DELETE FROM leaderboard_oauth_states WHERE state=?',state);
+    const identity=first(this.sql.exec('SELECT player_id FROM leaderboard_identities WHERE provider=? AND provider_id=?',
+      provider,providerSubject));
+    const resolvedId=identity?.player_id ?? player.id;
+    if (!identity) {
+      this.sql.exec('INSERT INTO leaderboard_identities(provider,provider_id,player_id) VALUES(?,?,?)',
+        provider,providerSubject,resolvedId);
+    }
+    const target=first(this.sql.exec('SELECT * FROM leaderboard_players WHERE id=?',resolvedId));
+    if (!target) return null;
+    const sanitized=safePlayerName(displayName);
+    if (String(target.name).startsWith('Зочин')) {
+      this.sql.exec('UPDATE leaderboard_players SET name=? WHERE id=?',sanitized,resolvedId);
+    }
+    // Rotate session after linking or signing into an existing provider account.
+    const token=crypto.randomUUID().replace(/-/g,'')+crypto.randomUUID().replace(/-/g,'');
+    this.sql.exec('UPDATE leaderboard_players SET guest_token=? WHERE id=?',token,resolvedId);
+    return {player:first(this.sql.exec('SELECT * FROM leaderboard_players WHERE id=?',resolvedId))!,newToken:token};
   }
   myTeam(player: Row): object|null {
     if (!player.team_id) return null;
