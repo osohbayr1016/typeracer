@@ -33,8 +33,8 @@ app.use('*', async (c, next) => {
 });
 app.get('/api/health', c => c.json({ ok: true, service: 'mongolian-typeracer', version: 1 }));
 app.get('/api/prompts', c => {
-  const lang = c.req.query('lang') === 'en' ? 'en' : 'mn';
-  return c.json({ prompts: PROMPTS[lang] });
+  // Public typing competition is Mongolian-only even if clients request another language.
+  return c.json({ prompts: PROMPTS.mn });
 });
 
 // Best-effort per-isolate abuse reduction. Deploy Cloudflare WAF rate limiting for global protection.
