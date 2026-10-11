@@ -1,3 +1,15 @@
+## 2026-10-11 — Battle Pass visual and difficulty redesign (PR pending)
+
+**User-provided reference:** Nitro Type Season screenshot, intended as *layout inspiration*, not artwork or proprietary mechanics. Existing `/season` showed a verbose two-column page with many tiny reward cards; users couldn't quickly identify their next target. Existing 8 free tiers required only [100,240,420,660,960,1300,1750,2300] XP. With typical `raceReward()` around 90–110 XP per finished race, the final reward unlocked after roughly 21–26 finishes (confirmed by source calculations, not usage analytics).
+
+**Implementation:** Completely reworked `SeasonPage.tsx` and scoped CSS into a clean self-contained BATTLE PASS: oversized selected reward render (real existing SVG cars), tier and required XP, one progress bar and next-goal number, left/right controls and keyboard-scrollable horizontal 8-stage reward rail, individual claim or claim-all actions, simple play/shop buttons. Mobile 360px+ layout, keyboard/ARIA, reduced-motion support. Retained all eight original free rewards, reward keys and unique cars; did not clone Nitro art or add a paid track.
+
+**Balancing:** Raised XP milestones to **[350, 850, 1650, 2800, 4200, 5900, 8000, 10500]**; target top completion roughly 95–117 normally rewarded finishes, instead of ~23. The reward award formula, WPM/accuracy leaderboard points, coin economy, season dates and races themselves were intentionally NOT modified. **Critical non-destructive transition:** already claimed milestones are grandfathered as earned, inventory/coins remain unchanged, and no retroactive claim duplicates. Unclaimed milestones use new thresholds. The UI explicitly notes that earlier claims stay owned. Mid-season change is intentionally documented and may affect players expecting original goals.
+
+**Regression tests revised:** Vitest for graduated milestone thresholds, real race not granting an instant reward, grandfathering prior tier 1–7 claims, claim-all at 9000 XP and final at 10500 XP; Chromium E2E for earned-XP lock after one real quick race, claim-once/persistence, selected large art, arrow/scroll rail, old localStorage claims and no mobile horizontal overflow. **CI and staging not verified yet at authoring time.** Only merge with all required actual green checks and allow the existing main-branch staging-only workflow. No production migration/deployment, no paid dependency, no fake usage analytics.
+
+---
+
 ## 2026-10-11 — P1 OAuth multi-device session integrity (PR pending)
 
 **Verified staging baseline:** [main push CI #38140033524](https://github.com/osohbayr1016/typeracer/actions/runs/38140033524) successfully deployed `fe5d1af` to Cloudflare staging. Both private real WebSocket sync and two-client public matchmaking smoke succeeded; live Google/Meta OAuth remains blocked by provider app credentials and external manual login QA.
