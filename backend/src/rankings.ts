@@ -28,7 +28,7 @@ export class RaceRankingStore {
     )`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS leaderboard_races (
       race_id TEXT NOT NULL, player_id TEXT NOT NULL, points INTEGER NOT NULL,
-      wpm INTEGER NOT NULL, accuracy INTEGER NOT NULL, finished_at INTEGER NOT NULL,
+      wpm INTEGER NOT NULL, accuracy INTEGER NOT NULL, finished_at INTEGER NOT NULL, team_id TEXT,
       PRIMARY KEY (race_id, player_id)
     )`);
     this.sql.exec('CREATE INDEX IF NOT EXISTS leaderboard_races_time ON leaderboard_races(finished_at)');
@@ -70,8 +70,8 @@ export class RaceRankingStore {
     const points = racingPoints(wpm,accuracy,true);
     if (!points) return 0;
     const safeWpm = Math.round(wpm), safeAccuracy = Math.round(accuracy);
-    this.sql.exec('INSERT INTO leaderboard_races(race_id,player_id,points,wpm,accuracy,finished_at) VALUES(?,?,?,?,?,?)',
-      raceId,playerId,points,safeWpm,safeAccuracy,finishedAt);
+    this.sql.exec('INSERT INTO leaderboard_races(race_id,player_id,points,wpm,accuracy,finished_at,team_id) VALUES(?,?,?,?,?,?,?)',
+      raceId,playerId,points,safeWpm,safeAccuracy,finishedAt,p.team_id);
     this.sql.exec(`UPDATE leaderboard_players SET points=points+?, races=races+1,
       best_wpm=MAX(best_wpm,?), total_wpm=total_wpm+?,
       total_accuracy=total_accuracy+?, team_points=team_points+? WHERE id=?`,
@@ -86,17 +86,19 @@ export class RaceRankingStore {
     d.setUTCHours(0,0,0,0);
     return d.getTime();
   }
-  leaderboard(now=Date.now(),limit=50): object {
+  leaderboard(now=Date.now(),limit=50,offset=0): object {
     const since=RaceRankingStore.weekStart(now);
+    const boundedLimit=Math.max(1,Math.min(100,limit)), boundedOffset=Math.max(0,Math.min(100_000,offset));
+    const total = Number(first(this.sql.exec('SELECT COUNT(DISTINCT player_id) AS total FROM leaderboard_races WHERE finished_at>=?',since))?.total ?? 0);
     const rows=this.sql.exec(`SELECT p.id,p.name,p.races,p.best_wpm,p.total_wpm,p.total_accuracy,
        t.tag AS team_tag, SUM(e.points) AS points, COUNT(*) AS week_races,
        AVG(e.wpm) AS week_wpm, AVG(e.accuracy) AS week_accuracy
        FROM leaderboard_races e JOIN leaderboard_players p ON p.id=e.player_id
        LEFT JOIN leaderboard_teams t ON t.id=p.team_id
        WHERE e.finished_at>=? GROUP BY p.id
-       ORDER BY points DESC,week_accuracy DESC,p.id ASC LIMIT ?`,since,Math.max(1,Math.min(100,limit))).toArray();
-    return {period:'week',weekStart:since,players:rows.map((r,i)=>({
-      rank:i+1,id:r.id,name:r.name,points:r.points,races:r.week_races,
+       ORDER BY points DESC,week_accuracy DESC,p.id ASC LIMIT ? OFFSET ?`,since,boundedLimit,boundedOffset).toArray();
+    return {period:'week',weekStart:since,total,offset:boundedOffset,limit:boundedLimit,players:rows.map((r,i)=>({
+      rank:boundedOffset+i+1,id:r.id,name:r.name,points:r.points,races:r.week_races,
       wpm:Math.round(Number(r.week_wpm)),accuracy:Math.round(Number(r.week_accuracy)),
       bestWpm:r.best_wpm,teamTag:r.team_tag,guest:true
     }))};
@@ -106,7 +108,7 @@ export class RaceRankingStore {
     const rows=this.sql.exec(`SELECT t.id,t.name,t.tag,COUNT(DISTINCT p.id) AS members,
        COALESCE(SUM(e.points),0) AS points,COUNT(e.race_id) AS races
        FROM leaderboard_teams t LEFT JOIN leaderboard_players p ON p.team_id=t.id
-       LEFT JOIN leaderboard_races e ON e.player_id=p.id AND e.finished_at>=?
+       LEFT JOIN leaderboard_races e ON e.team_id=t.id AND e.player_id=p.id AND e.finished_at>=?
        GROUP BY t.id ORDER BY points DESC,t.id ASC LIMIT 100`,since).toArray();
     return {period:'week',weekStart:since,teams:rows.map((r,i)=>({...r,rank:i+1}))};
   }
