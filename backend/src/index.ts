@@ -48,6 +48,7 @@ app.get('/api/account',c=>publicRanking(c,'/account?secure='+(new URL(c.req.url)
 app.get('/api/auth/providers',c=>c.json({
   google:providerReady(c.env,'google'),facebook:providerReady(c.env,'facebook')
 }));
+app.post('/api/auth/logout',c=>publicRanking(c,'/account/logout?secure='+(new URL(c.req.url).protocol==='https:'?'1':'0')));
 function oauthOrigin(c:{env:Env;req:{url:string}}):string {
   const requested=new URL(c.req.url).origin;
   // Configured origin prevents callback URL manipulation via Host headers.
