@@ -95,11 +95,21 @@ export function ShopPage({ profile, onBuy, onEquip, onRace }: Props) {
     </nav>
     {(tab === 'all' || tab === 'car') && <nav className="shop-rarity-tabs" aria-label="Машины ховорын зэрэглэл">
       <button type="button" aria-pressed={rarity === 'all'} className={rarity === 'all' ? 'current' : ''} onClick={() => setRarity('all')}>Бүгд</button>
-      {RARITIES.map(r => <button type="button" key={r.id} className={'rarity-filter rarity-'+r.code+(rarity===r.id?' current':'')}
-        aria-pressed={rarity===r.id} onClick={() => setRarity(r.id)}>
-        <span className="rarity-gem" aria-hidden="true"/> {r.id} <small>{NEW_CAR_COLLECTION.filter(item => item.rarity === r.id).length} машин · ТҮВШИН {r.level}+</small>
-      </button>)}
+      {RARITIES.map(r => {
+        const tierCars = NEW_CAR_COLLECTION.filter(item => item.rarity === r.id);
+        const low = Math.min(...tierCars.map(item => item.price));
+        const high = Math.max(...tierCars.map(item => item.price));
+        return <button type="button" key={r.id} className={'rarity-filter rarity-'+r.code+(rarity===r.id?' current':'')}
+          aria-pressed={rarity===r.id} onClick={() => setRarity(r.id)}>
+          <span className="rarity-gem" aria-hidden="true"/> {r.id}
+          <small>{tierCars.length} машин · LV {r.level}+ · ◈ {low}–{high}</small>
+        </button>;
+      })}
     </nav>}
+    {(tab === 'all' || tab === 'car') && <div className="shop-tier-explanation" data-testid="shop-tier-explanation">
+      <span><strong>МИНИЙ ТҮВШИН: {level}</strong> · Машины зэрэглэл өндөр байх тусам үнэ болон нээх түвшин өснө.</span>
+      <span><strong>◈ {profile.coins.toLocaleString('mn-MN')} ЗООС</strong> · Түвшин хүрсэн машиныг худалдаж аваад гараждаа сонгоорой.</span>
+    </div>}
     <div className="item-grid shop-item-grid">
       {items.map(item => {
         const acquired = isOwned(profile,item.kind,item.id);
