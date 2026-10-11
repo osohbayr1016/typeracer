@@ -525,3 +525,63 @@ test('shop car viewer makes each shape easy to inspect, closes with Escape, and 
   await legendary.getByRole('button', { name: /УРАЛДАЖ XP, ЗООС ОЛОХ/ }).click();
   await expect(page).toHaveURL(/\/play$/);
 });
+
+
+test('Durable Object resumes the same public race and confirmed typing after socket loss', async ({ page }) => {
+  await page.addInitScript(() => {
+    type RaceDebug = {
+      sockets: WebSocket[];
+      welcomes: Array<{ id: string; resumeToken: string; resumed: boolean }>;
+    };
+    const target = window as typeof window & { __quickRaceDebug?: RaceDebug };
+    const NativeWebSocket = window.WebSocket;
+    target.__quickRaceDebug = { sockets: [], welcomes: [] };
+    class ObservedSocket extends NativeWebSocket {
+      constructor(url: string | URL) {
+        super(url);
+        if (!String(url).includes('/api/quickplay/ws')) return;
+        target.__quickRaceDebug!.sockets.push(this);
+        this.addEventListener('message', event => {
+          try {
+            const message = JSON.parse(String(event.data));
+            if (message.type === 'welcome') target.__quickRaceDebug!.welcomes.push(message);
+          } catch { /* the real app owns protocol validation */ }
+        });
+      }
+    }
+    window.WebSocket = ObservedSocket as typeof WebSocket;
+  });
+  await page.goto('/quick-race');
+  const input = page.getByRole('textbox', { name: 'Шууд уралдааны бичих талбар' });
+  await expect(input).toBeEditable({ timeout: 13_000 });
+  const letter = (await page.locator('.quick-phrase').innerText()).replace(/\u00a0/g, ' ')[0];
+  await input.fill(letter);
+  await expect(page.locator('.quick-type-head span')).toContainText(/^1\s*\//);
+  // Wait for a SERVER-confirmed road position, not just the optimistic caret.
+  await expect.poll(async () => Number((await page.locator('.quick-lane.me .quick-lane-meta b')
+    .innerText()).replace('%', '')), { timeout: 5_000 }).toBeGreaterThan(0);
+  const first = await page.evaluate(() =>
+    (window as typeof window & { __quickRaceDebug: {
+      welcomes: Array<{id:string;resumeToken:string;resumed:boolean}>
+    }}).__quickRaceDebug.welcomes[0]);
+  expect(first.resumeToken).toMatch(/^[0-9a-f-]{36}$/);
+  await page.evaluate(() => {
+    const sockets = (window as typeof window & { __quickRaceDebug: {
+      sockets: WebSocket[]
+    }}).__quickRaceDebug.sockets;
+    sockets[0].close(4001, 'Simulated dropped connection');
+  });
+  await expect.poll(() => page.evaluate(() =>
+    (window as typeof window & { __quickRaceDebug: { welcomes: unknown[] } })
+      .__quickRaceDebug.welcomes.length), { timeout: 10_000 }).toBe(2);
+  const second = await page.evaluate(() =>
+    (window as typeof window & { __quickRaceDebug: {
+      welcomes: Array<{id:string;resumeToken:string;resumed:boolean}>
+    }}).__quickRaceDebug.welcomes[1]);
+  expect(second.id).toBe(first.id);
+  expect(second.resumeToken).toBe(first.resumeToken);
+  expect(second.resumed).toBe(true);
+  await expect(page.locator('.quick-connection')).toContainText('ОНЛАЙН');
+  await expect(page.locator('.quick-type-head span')).toContainText(/^1\s*\//);
+  await expect(page.locator('.quick-lane.me')).toHaveCount(1);
+});
