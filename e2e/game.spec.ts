@@ -608,9 +608,19 @@ test('Durable Object resumes the same public race and confirmed typing after soc
     if (!active) throw new Error('No active socket');
     active.close(4001, 'Simulated dropped connection');
   });
-  await expect.poll(() => page.evaluate(() =>
-    (window as typeof window & { __quickRaceDebug: { welcomes: unknown[] } })
-      .__quickRaceDebug.welcomes.length), { timeout: 10_000 }).toBe(welcomeCountBeforeDrop + 1);
+  await expect.poll(() => page.evaluate(() => {
+    const debug = (window as typeof window & { __quickRaceDebug: {
+      sockets: WebSocket[]; welcomes: unknown[]
+    }}).__quickRaceDebug;
+    return {
+      welcomes: debug.welcomes.length,
+      sockets: debug.sockets.length,
+      states: debug.sockets.map(socket => socket.readyState),
+      connection: document.querySelector('.quick-connection')?.textContent?.trim() || '',
+      banner: document.querySelector('.quick-state-panel')?.textContent?.trim() || '',
+      resumeStored: !!window.sessionStorage.getItem('typeracer.quick.resume.v1')
+    };
+  }), { timeout: 10_000 }).toMatchObject({ welcomes: welcomeCountBeforeDrop + 1 });
   const second = await page.evaluate(() =>
     (window as typeof window & { __quickRaceDebug: {
       welcomes: Array<{id:string;resumeToken:string;resumed:boolean}>
