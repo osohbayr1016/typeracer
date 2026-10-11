@@ -1,3 +1,24 @@
+test('server-synced car reaches the checkered finish marker instead of stopping at 71 percent', async ({ page }) => {
+  await page.goto('/quick-race');
+  const input = page.getByRole('textbox',{name:'Шууд уралдааны бичих талбар'});
+  await expect(input).toBeEditable({timeout:14000});
+  const prompt = (await page.locator('.quick-phrase').innerText()).replace(/\u00a0/g,' ').trim();
+  // Stay one character short so the live track remains mounted for geometry QA.
+  await input.pressSequentially(prompt.slice(0,-1),{delay:44});
+  await expect.poll(async () => Number((await page.locator('.quick-lane.me .quick-lane-meta b')
+    .innerText()).replace('%','')),{timeout:5000}).toBeGreaterThan(90);
+  // Let the short easing finish, then inspect actual browser layout rather than only CSS strings.
+  await page.waitForTimeout(260);
+  const geometry = await page.evaluate(() => {
+    const road = document.querySelector('.quick-lane.me .quick-road')!;
+    const car = road.querySelector('img')!.getBoundingClientRect();
+    const flag = road.querySelector('.quick-flag')!.getBoundingClientRect();
+    return {bumper:car.right,marker:flag.left,finish:flag.right};
+  });
+  expect(geometry.bumper,'Car front must reach checkerboard').toBeGreaterThan(geometry.marker-22);
+  expect(geometry.bumper,'Car must not overshoot beyond checkerboard').toBeLessThan(geometry.finish+8);
+});
+
 import { test, expect } from '@playwright/test';
 
 test('main Play starts live matchmaking, adds bots and awards a finished match', async ({ page }) => {
