@@ -445,3 +445,43 @@ test('claiming one season reward preserves other available rewards and accessibl
   expect(profile.coins).toBe(320);
   expect(profile.claimed).toEqual([1, 2]);
 });
+
+
+test('all 18 rarity collectible cars serve their own detailed self-contained art', async ({ page, request }) => {
+  const tiers = [
+    ['falcon', 'nomad', 'rover'],
+    ['sunflare', 'dune', 'cobalt'],
+    ['glacier', 'fox', 'streak'],
+    ['ghost', 'onyx', 'meteor'],
+    ['temple', 'nebula', 'eagle'],
+    ['royal', 'aurora-x', 'dragon']
+  ];
+  const uniqueBodies = new Set<string>();
+  for (const id of tiers.flat()) {
+    const response = await request.get('/cars/' + id + '.svg');
+    expect(response.status(), id).toBe(200);
+    expect(response.headers()['content-type'], id).toMatch(/image\/svg\+xml/);
+    const art = await response.text();
+    expect(art, id).toContain('viewBox="0 0 690 236"');
+    expect(art, id).toContain('<title>');
+    expect(art, id).toContain('url(#body)');
+    expect(art, id).toContain('url(#metal)');
+    expect(art.length, id).toBeGreaterThan(5500);
+    expect(art, id).not.toMatch(/https?:\/\/|foreignObject|<script/i);
+    const body = art.match(/<path d="([^"]+)" fill="url\(#body\)"/);
+    expect(body, id).not.toBeNull();
+    uniqueBodies.add(body![1]);
+  }
+  expect(uniqueBodies.size).toBe(18);
+  await page.goto('/shop');
+  await expect(page.getByTestId('shop-tier-explanation')).toContainText('МИНИЙ ТҮВШИН');
+  await expect(page.getByTestId('shop-tier-explanation')).toContainText('ЗООС');
+  await expect(page.locator('.shop-rarity-tabs .rarity-filter')).toHaveCount(6);
+  await page.locator('.shop-rarity-tabs .rarity-legendary').click();
+  await expect(page.locator('.shop-item-grid .shop-collectible')).toHaveCount(3);
+  await expect.poll(async () =>
+    page.locator('.shop-item-grid img').evaluateAll(images =>
+      images.every(image => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0)
+    ), { timeout: 7000 }
+  ).toBe(true);
+});
