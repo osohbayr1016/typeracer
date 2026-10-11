@@ -8,7 +8,8 @@ export function racingPoints(wpm: number, accuracy: number, finished: boolean): 
   if (!finished || !Number.isFinite(wpm) || !Number.isFinite(accuracy) ||
       wpm < 0 || wpm > 210 || accuracy < 70 || accuracy > 100) return 0;
   const a = accuracy / 100;
-  return Math.max(0, Math.round((90 + wpm * .75) * a * a));
+  // Human pace: 60 WPM / 95% ~19 pts, 80 / 95% ~23, 100 / 99% ~28.
+  return Math.max(0, Math.round((10 + wpm * .19) * a * a));
 }
 
 /** Cloudflare SQLite Durable Object: no new migration or external paid dependency. */
@@ -62,6 +63,24 @@ export class RaceRankingStore {
     )`);
     this.sql.exec('CREATE INDEX IF NOT EXISTS leaderboard_sessions_player ON leaderboard_sessions(player_id)');
     this.sql.exec('CREATE INDEX IF NOT EXISTS leaderboard_sessions_expiry ON leaderboard_sessions(expires_at)');
+    // One-time, non-destructive reweighting. Historical 90+ point races must
+    // not outrank fresh 20–30-point races merely because the formula changed.
+    // Recompute from authoritative stored WPM/accuracy, retain every event.
+    this.sql.exec('CREATE TABLE IF NOT EXISTS leaderboard_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+    const version=first(this.sql.exec('SELECT value FROM leaderboard_meta WHERE key=?','scoring'));
+    if(version?.value!=='v2'){
+      this.sql.exec(`UPDATE leaderboard_races SET points=CASE
+        WHEN wpm>=0 AND wpm<=210 AND accuracy>=70 AND accuracy<=100
+        THEN CAST(ROUND((10.0 + wpm * 0.19) * (accuracy/100.0) * (accuracy/100.0)) AS INTEGER)
+        ELSE 0 END`);
+      this.sql.exec(`UPDATE leaderboard_players SET
+        points=COALESCE((SELECT SUM(e.points) FROM leaderboard_races e
+          WHERE e.player_id=leaderboard_players.id),0),
+        team_points=COALESCE((SELECT SUM(e.points) FROM leaderboard_races e
+          WHERE e.player_id=leaderboard_players.id
+            AND e.team_id=leaderboard_players.team_id),0)`);
+      this.sql.exec('INSERT OR REPLACE INTO leaderboard_meta(key,value) VALUES(?,?)','scoring','v2');
+    }
   }
   /** Keep pre-migration cookies alive, but never store future bearer secrets in plain text. */
   async fromCookie(cookie: string | null): Promise<Row | null> {
@@ -130,9 +149,11 @@ export class RaceRankingStore {
     const p = first(this.sql.exec('SELECT * FROM leaderboard_players WHERE id=?', playerId));
     if (!p) return 0;
     if (first(this.sql.exec('SELECT race_id FROM leaderboard_races WHERE race_id=? AND player_id=?',raceId,playerId))) return 0;
-    const points = racingPoints(wpm,accuracy,true);
-    if (!points) return 0;
+    // Persist and calculate from the same normalized measurements so future
+    // migration/reconciliation cannot disagree with live scoring.
     const safeWpm = Math.round(wpm), safeAccuracy = Math.round(accuracy);
+    const points = racingPoints(safeWpm,safeAccuracy,true);
+    if (!points) return 0;
     this.sql.exec('INSERT INTO leaderboard_races(race_id,player_id,points,wpm,accuracy,finished_at,team_id) VALUES(?,?,?,?,?,?,?)',
       raceId,playerId,points,safeWpm,safeAccuracy,finishedAt,p.team_id);
     this.sql.exec(`UPDATE leaderboard_players SET points=points+?, races=races+1,

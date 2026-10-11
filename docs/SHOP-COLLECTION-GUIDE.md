@@ -31,6 +31,16 @@ Use the **existing hourly TypeRacer Improvement Cycle**, rather than a new indep
 
 The weekly Featured and daily spotlight are deterministic views computed in `shopRotation()` using Mongolia time and **do not remove any purchases from the full shop catalog**.
 
+### 2026-10-11 economy rebalance (no new cosmetics)
+
+Player earnings are intentionally slowed down without changing any car prices or level access:
+- Quick live public race **placement coins:** 1st 30, 2nd 27, 3rd 24, 4th 21, 5th 18; unfinished 0. Server result controls this prize; frontend records it once.
+- Solo practice coins: roughly 20–30 at normal human typing speeds, capped at 30. These are browser-local and do not enter ranked multiplayer.
+- Daily quick race tasks: first finish 8 coins; finish **three** precision races (95%+) for 12; finish **five** speed races (70 WPM+) for 15. A single first race no longer instantly unlocks all three mission prizes.
+- Competitive weekly Leaderboard **points** are separate from coins: formula uses speed × accuracy and yields about 19–33 points for typical 60–120 WPM finishes. Existing event scores are reweighted once in SQLite with a version marker so historic races do not unfairly dominate newer lower-score finishes.
+- Historical wallet, owned car skins, claimed pass tiers, shop prices and user XP are retained. A 300-coin beginner car is now a meaningful multi-race goal (roughly 10 first-place races rather than three).
+- No paid loot boxes, unfair gameplay bonuses, destructive migration or fake account economy. Future pricing/content audits should use these changed earning rates, not outdated 120-coins-per-race assumptions.
+
 ### Important economy limitation
 
 All progress, rewards and coins currently live in localStorage. This is suitable for cosmetic beta progression but **not a cheat-proof, authenticated, transferable account economy**. Do not promise this until a server ledger is designed, secured and tested.

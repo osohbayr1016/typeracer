@@ -37,7 +37,9 @@ export const QUICK_QUEUE_MS = 5_000;
 export const QUICK_COUNTDOWN_MS = 3_000;
 export const QUICK_LANES = 5;
 export const QUICK_MAX_HUMANS = 5;
-export const QUICK_PRIZES = [120, 95, 75, 55, 40] as const;
+/** Transparent non-pay-to-win place coins: 18–30 per finished quick race.
+ * Competitive leaderboard points are a separate server-calculated metric. */
+export const QUICK_PRIZES = [30, 27, 24, 21, 18] as const;
 export const QUICK_BOT_JOIN_MS = 650;
 /** Grace period for a disconnected public-race player in the current Durable Object instance. */
 export const QUICK_RECONNECT_GRACE_MS = 15_000;

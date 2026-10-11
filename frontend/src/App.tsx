@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties } from 'react';
 import { HomePage } from './pages/HomePage';
+import { SiteNavigation } from './SiteNavigation';
 import { QuickRacePage, type QuickResult } from './pages/QuickRacePage';
 import { QuickRaceResultsPage } from './pages/QuickRaceResultsPage';
 import { type QuickRaceOutcome } from './pages/quickResultsModel';
@@ -290,49 +291,11 @@ export function App() {
   }
 
   return <div className="app-shell" style={{ '--accent': CARS[skin].color } as CSSProperties}>
-    <header className="topbar">
-      <div className="shell header-layout">
-        <a className="brand" href="/" onClick={e => { e.preventDefault(); navigate('home'); }} aria-label="TypeRacer Mongolia нүүр">
-          <span className="brand-mark">TR</span>
-          <span className="brand-name">TYPE<span>RACER</span><small>MONGOLIA</small></span>
-        </a>
-        <nav className="main-nav" aria-label="Үндсэн цэс">
-          <button className={'nav-item ' + (page === 'home' ? 'selected' : '')} aria-current={page === 'home' ? 'page' : undefined}
-            onClick={() => navigate('home')}>Нүүр</button>
-          <button className={'nav-item ' + (['play','race','results','quickRace','quickResults'].includes(page) ? 'selected' : '')}
-            aria-current={['play','race','results','quickRace','quickResults'].includes(page) ? 'page' : undefined}
-            onClick={() => navigate('play')}>Тоглох</button>
-          <button className={'nav-item ' + (['multiplayer','multiplayerRace','friends'].includes(page) ? 'selected' : '')}
-            aria-current={['multiplayer','multiplayerRace','friends'].includes(page) ? 'page' : undefined}
-            onClick={() => navigate('friends')}>Найзууд</button>
-          <button className={'nav-item ' + (page === 'leaderboard' ? 'selected' : '')}
-            onClick={() => navigate('leaderboard')}>Чансаа</button>
-          <button className={'nav-item ' + (page === 'teams' ? 'selected' : '')}
-            onClick={() => navigate('teams')}>Багууд</button>
-          <button className={'nav-item ' + (page === 'stats' ? 'selected' : '')}
-            onClick={() => navigate('stats')}>Стат</button>
-          <button className={'nav-item ' + (page === 'shop' ? 'selected' : '')}
-            aria-current={page === 'shop' ? 'page' : undefined} onClick={() => navigate('shop')}>Дэлгүүр</button>
-          <button className={'nav-item ' + (page === 'season' ? 'selected' : '')}
-            aria-current={page === 'season' ? 'page' : undefined} onClick={() => navigate('season')}>Battle Pass</button>
-          <button className={'nav-item ' + (page === 'garage' ? 'selected' : '')}
-            aria-current={page === 'garage' ? 'page' : undefined}
-            onClick={() => navigate('garage')}>Гараж</button>
-        </nav>
-        <div className="header-right">
-          <span className="beta-label">BETA</span>
-          <button type="button" className="profile-chip profile-chip-link" onClick={() => navigate('profile')}
-            aria-label="Миний профайл" aria-current={page === 'profile' ? 'page' : undefined}>
-            <span className="profile-avatar" aria-hidden="true">●</span>
-            <span className="profile-name">{nickname}<small>ТҮВШИН {level} · ◈ {profile.coins}</small></span>
-          </button>
-          <button className="primary-button nav-play" onClick={() => navigate('play')}>▶ ТОГЛОХ</button>
-        </div>
-      </div>
-    </header>
+    <SiteNavigation page={page} nickname={nickname} level={level} coins={profile.coins}
+      onNavigate={destination => navigate(destination)}/>
     <main className="shell main">
-      {page === 'home' && <HomePage best={best} xp={xp} onPlay={() => navigate('play')}
-        onMultiplayer={() => navigate('multiplayer')} onGarage={() => navigate('garage')}/>}
+      {page === 'home' && <HomePage onPlay={() => navigate('play')}
+        onMultiplayer={() => navigate('friends')}/>}
       {page === 'play' && <PlayPage best={best} carIcon={CARS[skin].icon} carName={CARS[skin].label}
         onPlay={() => navigate('quickRace')} onMultiplayer={() => navigate('multiplayer')}
         onCreateRoom={() => { navigate('multiplayer'); void createRoom(); }}

@@ -1,0 +1,205 @@
+/* TypeRacer / refined navigation system.
+ * Import AFTER the legacy CSS layers. Desktop: compact primary + overflow.
+ * Mobile: one-line brand/account header + persistent bottom navigation. */
+.app-shell .premium-header {
+  position: relative;
+  z-index: 30;
+  background: rgba(9,14,16,.98);
+  border-bottom: 1px solid #2b373a;
+  box-shadow: 0 12px 30px #00000012;
+}
+.app-shell .premium-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(18px,2vw,32px);
+  min-height: 68px;
+  width: min(100% - 52px, 1340px);
+  position: relative;
+}
+.premium-brand { flex: 0 0 auto; gap: 11px; }
+.premium-brand .brand-mark {
+  font: italic 900 28px/1 var(--font-display);
+  letter-spacing: -3px;
+  min-width: 42px;
+  color: #ff6c53;
+}
+.premium-brand .brand-name { font-size: 13px; letter-spacing: 1.9px; }
+.premium-brand .brand-name small { font-size: 7px; letter-spacing: 3.5px; margin-top: 5px; color: #7d9290; }
+.premium-primary-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  gap: 3px;
+  margin-left: auto;
+}
+.premium-nav-link {
+  min-height: 43px;
+  position: relative;
+  padding: 9px clamp(10px,1.05vw,18px);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: #9daead;
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.premium-nav-link:hover { background: #202a2d; color: #fff; }
+.premium-nav-link.is-active { background: #293134; color: #fff6ee; }
+.premium-nav-link.is-active::after {
+  content:'';
+  position: absolute;
+  bottom: -13px; left: 23%; right: 23%;
+  height: 2px; background: #f9795c;
+  border-radius: 2px;
+}
+.premium-more-trigger { display: flex; align-items: center; gap: 7px; }
+.premium-down { font-size: 14px; color: #88999a; }
+.premium-user-tools { display: flex; align-items: center; gap: 14px; flex: 0 0 auto; }
+.premium-wallet {
+  display: flex; align-items: center; gap: 8px;
+  border: 1px solid #384547;
+  background: #172124;
+  color: #e9eee9;
+  border-radius: 7px; padding: 9px 10px;
+  font-size: 12px; font-variant-numeric: tabular-nums;
+}
+.premium-wallet > span { color: #f7c784; font-size: 18px; }
+.app-shell .premium-profile {
+  display: flex;
+  align-items: center; gap: 9px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  height: 42px;
+  min-width: 0;
+}
+.app-shell .premium-profile:hover .profile-name { color: #ffbc9c; }
+.app-shell .premium-profile[aria-current='page'] .premium-avatar {
+  outline: 2px solid #ff947b; outline-offset: 3px;
+}
+.premium-avatar {
+  width: 34px; height: 34px; flex-basis: 34px;
+  font-size: 20px; line-height: 34px;
+  background: linear-gradient(140deg,#e9eeea,#839898);
+  color: #273436;
+}
+.app-shell .premium-profile .profile-name { display: block; max-width: 110px; text-align: left; overflow: hidden; text-overflow: ellipsis; font-size: 11px; white-space: nowrap; }
+.app-shell .premium-profile .profile-name small { font-size: 9px; color: #94aaa7; }
+.premium-more-panel {
+  position: absolute; top: calc(100% - 1px); right: max(26px,calc((100% - 1340px)/2));
+  width: 283px;
+  padding: 10px;
+  background: #152023;
+  border: 1px solid #405356;
+  border-top: 2px solid #fc7657;
+  border-radius: 0 0 9px 9px;
+  box-shadow: 0 24px 44px #000c;
+  z-index: 100;
+}
+.premium-more-heading { color: #859c9a; font-size: 9px; font-weight: 900; letter-spacing: 1.6px; padding: 10px 12px 13px; }
+.premium-more-item {
+  color: #f4f3ee; display: grid; grid-template-columns: 1fr auto; grid-template-rows: 1fr 1fr;
+  text-align: left; align-items: center; gap: 3px 12px;
+  width: 100%; padding: 11px 13px;
+  border: 0; border-radius: 5px; background: transparent;
+}
+.premium-more-item strong { font-size: 12px; font-weight: 850; grid-column: 1; }
+.premium-more-item small { color: #97aaa6; font-size: 10px; grid-column: 1; }
+.premium-more-item > span { color: #9fb2ab; grid-column: 2; grid-row: 1 / 3; }
+.premium-more-item:hover,.premium-more-item.is-active { background: #253438; }
+.premium-more-item:hover strong,.premium-more-item.is-active strong { color: #ffb49a; }
+.premium-mobile-nav { display: none; }
+@media(max-width:1100px) {
+  .app-shell .premium-header-content { width: min(100% - 36px,1340px); gap: 14px; }
+  .premium-primary-nav { gap: 0; }
+  .premium-nav-link { padding-inline: 9px; }
+  .premium-user-tools { gap: 9px; }
+  .app-shell .premium-profile .profile-name { display:none; }
+}
+@media(max-width:760px) {
+  .app-shell .premium-header-content { min-height: 58px; width: min(100% - 28px,1340px); }
+  .app-shell .premium-primary-nav { display:none; }
+  .premium-brand .brand-mark { min-width: 35px; font-size: 25px; }
+  .premium-brand .brand-name { font-size: 12px; }
+  .premium-brand .brand-name small { font-size: 7px; letter-spacing: 2.5px; }
+  .premium-wallet { padding: 6px 9px; font-size: 11px; }
+  .premium-wallet > span { font-size: 16px; }
+  .app-shell .premium-profile { display:flex; min-height:38px; }
+  .app-shell .premium-profile .profile-name { display:none; }
+  .premium-avatar { width: 30px; height:30px; flex-basis:30px; line-height:30px; }
+  .premium-mobile-nav {
+    display: grid;
+    grid-template-columns: repeat(5,minmax(0,1fr));
+    position: fixed; bottom: 0; left:0; right:0;
+    z-index: 95;
+    min-height: calc(64px + env(safe-area-inset-bottom));
+    padding: 5px max(7px,env(safe-area-inset-left)) calc(5px + env(safe-area-inset-bottom)) max(7px,env(safe-area-inset-right));
+    background: #10191bed;
+    backdrop-filter: blur(16px);
+    border-top: 1px solid #3a5053;
+    box-shadow: 0 -14px 30px #0008;
+  }
+  .premium-mobile-link {
+    display: flex; flex-direction:column; align-items:center; justify-content:center;
+    min-width:0; min-height: 49px; gap:5px; padding:4px 2px;
+    background:transparent; color:#97aeab; border:0; border-radius:7px;
+    font-size: 10px; font-weight:800; white-space:nowrap;
+  }
+  .premium-link-icon { font:900 19px/1 var(--font-display); height:19px; display:block; }
+  .premium-mobile-link.is-active { background:#2e3636; color:#fff1e8; }
+  .premium-mobile-link.is-active .premium-link-icon { color:#ff926f; }
+  .premium-more-panel {
+    position:fixed;
+    left:12px;right:12px;
+    width:auto;
+    bottom:calc(70px + env(safe-area-inset-bottom));
+    top:auto;
+    max-height: min(65vh, 440px);
+    overflow-y: auto;
+    border: 1px solid #4d6163;
+    border-top: 2px solid #ff785a;
+    border-radius: 12px;
+  }
+  .app-shell .main { padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
+}
+@media(max-width:360px) {
+  .premium-brand .brand-name { font-size:10px; letter-spacing:1px; }
+  .premium-brand .brand-mark { font-size:23px; min-width:30px; }
+  .premium-wallet { gap:4px; padding:5px 6px; }
+  .premium-mobile-link { font-size:9px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .premium-nav-link,.premium-more-item,.premium-mobile-link { transition:none; }
+  .premium-mobile-nav { backdrop-filter:none; }
+}
+
+/* Home is a landing decision, not a tutorial/dashboard. */
+.home-page .home-hero { min-height: min(590px,75vh); border-bottom: 0; }
+.home-page .home-hero-copy { padding: 36px clamp(16px,3vw,48px); }
+.home-page .home-hero-copy .eyebrow { font-size: 10px; letter-spacing: 2px; color:#a9c0bb; }
+.home-page .home-hero h1 { font-size: clamp(49px,6.8vw,95px); line-height: 1.04; margin: 26px 0 39px; }
+.home-page .home-visual { border-color: #303c3e; }
+.home-page .hero-buttons { gap: 12px; }
+.home-page .hero-play,.home-page .hero-secondary { min-height: 55px; }
+.home-page .hero-play { font-size: 14px; padding-inline: 21px; }
+.home-page .hero-secondary { padding-inline: 20px; font-size: 11px; }
+.home-page .home-car-image { filter: drop-shadow(-25px 24px 15px #000c); }
+.app-shell::before { opacity: .28; }
+@media(max-width:760px) {
+  .home-page .home-hero { min-height:0; }
+  .home-page .home-hero-copy { padding: 34px 17px 24px; }
+  .home-page .home-hero h1 { font-size: clamp(45px,9.8vw,67px); margin:16px 0 25px; }
+  .home-page .home-visual { min-height:240px; }
+  .home-page .hero-buttons { display:flex; gap:8px; }
+  .home-page .hero-play,.home-page .hero-secondary { min-height:52px; width:auto; flex:1; padding:10px 13px; }
+  .home-page .hero-play { font-size:12px; }
+  .home-page .hero-secondary { font-size:10px; }
+}
+@media(max-width:410px) {
+  .home-page .hero-buttons { flex-direction:column; align-items:stretch; }
+  .home-page .hero-play,.home-page .hero-secondary { width:100%; }
+}
