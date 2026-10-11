@@ -69,6 +69,6 @@ export async function exchangeProviderIdentity(provider:OAuthProvider,env:OAuthE
     headers:{Authorization:'Bearer '+token.access_token}
   }));
   const id=provider==='google'?who.sub:who.id;
-  if(typeof id!=='string'||!id||id.length>128||!/[\w.:-]+/.test(id))throw Error('Provider identity absent');
+  if(typeof id!=='string'||!id||id.length>128||!/^[\w.:-]+$/.test(id))throw Error('Provider identity absent');
   return {providerSubject:id,displayName:typeof who.name==='string'?who.name.slice(0,80):'Тоглогч'};
 }
