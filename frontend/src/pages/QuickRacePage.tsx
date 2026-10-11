@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  accuracyPercent, characters, progressPercent, wordsPerMinute,
-  type RoomSnapshot, type Racer
+  progressPercent, type RoomSnapshot, type Racer
 } from '@typeracer/shared';
 import { CARS, type Skin } from './cars';
-import { STICKER_SYMBOLS, type Profile } from '../progression';
+import { type Profile } from '../progression';
+import { QuickTypingPanel } from './QuickTypingPanel';
 import './QuickRacePage.css';
 
 export type QuickResult = {
@@ -30,7 +30,6 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
   const [result, setResult] = useState<QuickResult | null>(null);
   const [now, setNow] = useState(Date.now());
   const socketRef = useRef<WebSocket | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
   const rewardRef = useRef(onReward);
   const awardedMatches = useRef(new Set<string>());
   rewardRef.current = onReward;
@@ -76,41 +75,26 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
   }, [attempt]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 125);
+    const timer = window.setInterval(() => setNow(Date.now()), 200);
     return () => window.clearInterval(timer);
   }, []);
-  useEffect(() => {
-    if (snapshot?.phase !== 'racing' || result) return;
-    const id = window.setTimeout(() => inputRef.current?.focus(), 40);
-    return () => window.clearTimeout(id);
-  }, [snapshot?.phase, result]);
-
   const self = snapshot?.players.find(p => p.id === myId);
-  const elapsed = snapshot?.startAt ? Math.max(0, now - snapshot.startAt) : 0;
   const queueSeconds = snapshot?.phase === 'waiting' && snapshot.queueEndsAt
     ? Math.max(0, Math.ceil((snapshot.queueEndsAt - now) / 1000)) : 0;
   const count = snapshot?.phase === 'countdown' && snapshot.startAt
     ? Math.max(1, Math.ceil((snapshot.startAt - now) / 1000)) : 0;
-  const isRacing = snapshot?.phase === 'racing' && !result;
-  const typedCount = self?.progress || 0;
-  const accuracy = self ? accuracyPercent(Math.max(0, self.strokes - self.mistakes), self.strokes) : 100;
-  const wpm = self && snapshot?.startAt ? wordsPerMinute(self.progress, Math.max(1, elapsed)) : 0;
-
-  function onType(event: ChangeEvent<HTMLInputElement>) {
-    const input = event.currentTarget;
-    if ((event.nativeEvent as InputEvent).isComposing) return;
-    const keys = characters(input.value).slice(0, 8);
-    input.value = '';
+  const isRacing = snapshot?.phase === 'racing' && !result && connection === 'connected';
+  const sendKey = useCallback((key: string) => {
     const socket = socketRef.current;
-    if (!isRacing || socket?.readyState !== WebSocket.OPEN) return;
-    for (const key of keys) socket.send(JSON.stringify({ type: 'key', key }));
-  }
+    if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'key', key }));
+  }, []);
 
   return <div className="quick-page" data-testid="quick-race">
     <div className="quick-topline">
       <button className="back-link" onClick={onBack}>← ТОГЛОХ ХЭСЭГ</button>
       <span className="section-kicker">ОЛОН ТОГЛОГЧ · ШУУД УРАЛДААН</span>
-      <span className="quick-connection">{connection === 'connected' ? '● ОНЛАЙН' : '○ ХОЛБОГДОЖ БАЙНА'}</span>
+      <span className="quick-connection">{connection === 'connected' ? '● ОНЛАЙН' :
+        connection === 'error' ? '● ХОЛБОЛТ ТАСАРСАН' : '○ ХОЛБОГДОЖ БАЙНА'}</span>
     </div>
     <div className="quick-heading">
       <div><span className="section-kicker">МОНГОЛ ХЭЛНИЙ УРАЛДААН</span>
@@ -126,18 +110,29 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
     {connection === 'connecting' && !snapshot && <section className="quick-state-panel">
       <h2>СЕРВЕРТЭЙ ХОЛБОГДОЖ БАЙНА</h2><p>Бодит тоглогчидтой уралдах өрөөг хайж байна...</p>
     </section>}
+    {snapshot && snapshot.phase !== 'finished' && <QuickTypingPanel
+      key={snapshot.matchId || snapshot.prompt.id}
+      text={snapshot.prompt.text}
+      enabled={isRacing}
+      serverProgress={self?.progress || 0}
+      serverStrokes={self?.strokes || 0}
+      serverMistakes={self?.mistakes || 0}
+      startedAt={snapshot.startAt}
+      sendKey={sendKey}
+    />}
+
     {snapshot && <section className="quick-track" aria-label="Шууд уралдааны зам">
       <div className="quick-track-head">
         <span>{snapshot.phase === 'waiting' ? 'ТОГЛОГЧ ХАЙЖ БАЙНА' :
           snapshot.phase === 'countdown' ? 'ГАРААНД БЭЛЭН' :
           snapshot.phase === 'racing' ? 'УРАЛДААН ҮРГЭЛЖИЛЖ БАЙНА' : 'УРАЛДААН ДУУССАН'}</span>
-        <strong>{snapshot.players.filter(p => !p.bot).length} ХҮН · {snapshot.players.filter(p => p.bot).length} БОТ</strong>
+        <strong>{snapshot.players.length} / 10 · {snapshot.players.filter(p => !p.bot).length} ХҮН · {snapshot.players.filter(p => p.bot).length} БОТ</strong>
       </div>
       {(snapshot.phase === 'waiting' || snapshot.phase === 'countdown') && <div className="quick-lobby-status" role="status">
         <strong>{snapshot.phase === 'waiting' ? queueSeconds : count}</strong>
-        <span>{snapshot.phase === 'waiting' ? 'секундын дараа ботуудаар нөхөж эхэлнэ' : 'Гарааны тоолол'}</span>
+        <span>{snapshot.phase === 'waiting' ? 'секундын дараа бүрэлдэхүүн бэлэн болно · ботууд нэг нэгээр нэгдэж байна' : 'Бүх 10 уралдагч бэлэн · Гарааны тоолол'}</span>
       </div>}
-      <div className="quick-lanes">
+      <div className={'quick-lanes'+(snapshot.phase === 'waiting' ? ' assembling' : '')}>
         {snapshot.players.map((player,index) => {
           const which = carOf(player,index);
           const done = progressPercent(player.progress,snapshot.prompt.text);
@@ -156,23 +151,8 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
             </div>
           </div>;
         })}
-        {snapshot.phase === 'waiting' && Array.from({length: Math.max(0,4 - snapshot.players.length)},(_,i) =>
+        {snapshot.phase === 'waiting' && Array.from({length: Math.max(0,10 - snapshot.players.length)},(_,i) =>
           <div className="quick-empty" key={'empty'+i}>+ ТОГЛОГЧ ХҮЛЭЭЖ БАЙНА</div>)}
-      </div>
-    </section>}
-
-    {snapshot?.phase === 'racing' && !result && <section className="quick-type-panel">
-      <div className="quick-type-head"><strong>ДООРХ ӨГҮҮЛБЭРИЙГ БИЧНЭ ҮҮ</strong><span>{typedCount} / {characters(snapshot.prompt.text).length} тэмдэгт</span></div>
-      <div className="quick-phrase" role="group" aria-label="Бичих текст">
-        {characters(snapshot.prompt.text).map((letter,i)=>
-          <span key={i} className={i < typedCount ? 'typed' : i === typedCount ? 'cursor' : undefined}>{letter === ' ' ? '\u00a0' : letter}</span>)}
-      </div>
-      <input ref={inputRef} className="quick-type-input" aria-label="Шууд уралдааны бичих талбар"
-        autoCapitalize="off" autoComplete="off" autoCorrect="off" spellCheck={false}
-        onChange={onType} placeholder="Энд бичиж эхлээрэй..." />
-      <div className="quick-metrics">
-        <div><b>{wpm}</b><small>ҮГ/МИН</small></div><div><b>{accuracy}%</b><small>НАРИЙВЧЛАЛ</small></div>
-        <div><b>{(elapsed/1000).toFixed(1)}s</b><small>ХУГАЦАА</small></div>
       </div>
     </section>}
 
