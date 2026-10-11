@@ -33,7 +33,7 @@ export class RaceRoom {
   async fetch(request: Request): Promise<Response> {
     const path = new URL(request.url).pathname;
     if (path === '/quickplay') return this.quickService().fetch(request);
-    if (path.startsWith('/ranking/') || path.startsWith('/oauth/') || path === '/account') {
+    if (path.startsWith('/ranking/') || path.startsWith('/oauth/') || path.startsWith('/account')) {
       const rank = this.quickService().rankings!;
       const cookie = request.headers.get('Cookie');
       if (path === '/account' && request.method === 'GET') {
@@ -44,6 +44,13 @@ export class RaceRoom {
           headers.append('Set-Cookie', 'tr_guest='+newToken+'; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000'+(secure?'; Secure':''));
         }
         return new Response(JSON.stringify({player:rank.publicPlayer(player)}), {headers});
+      }
+      if (path === '/account/logout' && request.method === 'POST') {
+        const out=rank.logout(cookie);
+        const secure=new URL(request.url).searchParams.get('secure')==='1';
+        const headers=new Headers({'Content-Type':'application/json','Cache-Control':'no-store'});
+        headers.append('Set-Cookie','tr_guest='+out.newToken+'; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000'+(secure?'; Secure':''));
+        return new Response(JSON.stringify({player:rank.publicPlayer(out.player)}),{headers});
       }
       if (path.startsWith('/oauth/') && request.method==='POST') {
         let input:Record<string,unknown>;
