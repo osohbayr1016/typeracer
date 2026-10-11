@@ -30,9 +30,11 @@ jobs:
         run: npm run build
       - name: Validate Worker bundle
         run: npm run build:worker -w backend
+      - name: Check staging smoke-test script syntax
+        run: node --check scripts/smoke.mjs
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
-      - name: Browser E2E (solo and two-player WebSocket)
+      - name: Browser E2E (public matchmaking and private WebSocket)
         run: npm run test:e2e
 
   deploy-staging:
@@ -77,7 +79,7 @@ jobs:
           workingDirectory: backend
           command: deploy
           packageManager: npm
-      - name: Verify live website and real-time two-player race
+      - name: Verify live site, private rooms and public matchmaking
         if: steps.deploy.outcome == 'success'
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
