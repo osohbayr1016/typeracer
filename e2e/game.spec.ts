@@ -467,7 +467,7 @@ test('all 18 rarity collectible cars serve their own detailed self-contained art
     expect(art, id).toContain('url(#body)');
     expect(art, id).toContain('url(#metal)');
     expect(art.length, id).toBeGreaterThan(5500);
-    expect(art, id).not.toMatch(/https?:\/\/|foreignObject|<script/i);
+    expect(art, id).not.toMatch(/<(?:image|script|foreignObject)\b|(?:href|xlink:href)=["']https?:\/\//i);
     const body = art.match(/<path d="([^"]+)" fill="url\(#body\)"/);
     expect(body, id).not.toBeNull();
     uniqueBodies.add(body![1]);
