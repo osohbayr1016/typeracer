@@ -81,9 +81,24 @@ describe('Durable Object live quick race reconnect', () => {
     expect((recovered.snapshot.players as Array<{id: string;progress:number;connected:boolean}>)
       .find(p => p.id === first.welcome.id)).toMatchObject({progress:1, connected:true});
   });
+  it('evicts abandoned waiting connections so strict-mode remounts do not steal bot slots', () => {
+    const doMatch = new QuickMatchmaker();
+    const ephemeral = connect(doMatch);
+    ephemeral.socket.close();
+    const real = connect(doMatch);
+    vi.advanceTimersByTime(6_000);
+    const state = real.socket.sent.filter(message => message.type === 'state').at(-1)!;
+    expect(state.phase).toBe('racing');
+    const players = state.players as Array<{id:string;bot:boolean}>;
+    expect(players).toHaveLength(5);
+    expect(players.filter(p => p.bot)).toHaveLength(4);
+    expect(players.find(p => p.id === ephemeral.welcome.id)).toBeUndefined();
+    expect(players.find(p => p.id === real.welcome.id)).toBeDefined();
+  });
   it('refuses a guessed token and expires disconnected sessions after grace', () => {
     const doMatch = new QuickMatchmaker();
     const first = connect(doMatch);
+    vi.advanceTimersByTime(6_000); // Resume grace applies to an actual racing match.
     first.socket.close();
     const stranger = connect(doMatch, 'ffffffff-ffff-4fff-8fff-ffffffffffff');
     expect(stranger.welcome.id).not.toBe(first.welcome.id);
