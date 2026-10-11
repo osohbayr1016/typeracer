@@ -131,3 +131,29 @@
  .rarity-shop .shop-car-art img,.rarity-shop .car-aura,.rarity-shop .shop-car-art::after { animation:none!important; transition:none!important; }
  .shop-collectible:hover { transform:none; }
 }
+
+/* Premium car art and transparent level-based pricing, scoped to Shop. */
+.rarity-shop .shop-tier-explanation {
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+  gap:7px 23px; padding:12px 14px; margin:11px 12px 0;
+  background:#222d2e; border:1px solid #435655;
+  font-size:11px; line-height:1.55; color:#c4d0cd;
+}
+.rarity-shop .shop-tier-explanation strong { color:#f6daa0; }
+.rarity-shop .shop-collectible .item-art { height:155px; }
+.rarity-shop .shop-collectible .item-art img { height:151px; max-height:151px; width:98%; object-fit:contain; }
+.rarity-shop .shop-featured-car img { height:185px; }
+.rarity-shop .shop-collectible.rarity-legendary .item-art {
+  background:radial-gradient(ellipse at 50% 72%,#ae9c5c50,transparent 69%);
+}
+.rarity-shop .shop-collectible.rarity-mythic .item-art {
+  background:radial-gradient(ellipse at 50% 72%,#b87d5540,transparent 69%);
+}
+.rarity-shop .shop-collectible .shop-item-meta span { font-size:10px; }
+.rarity-shop .shop-collectible .item-action strong { font-variant-numeric:tabular-nums; font-size:15px; }
+@media(max-width:650px) {
+  .rarity-shop .shop-tier-explanation { margin-inline:0; padding:11px; font-size:10px; }
+  .rarity-shop .shop-collectible .item-art { height:120px; }
+  .rarity-shop .shop-collectible .item-art img { height:115px; max-height:115px; }
+  .rarity-shop .shop-featured-car img { height:126px; }
+}
