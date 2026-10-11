@@ -24,6 +24,7 @@ export function ShopPage({ profile, onBuy, onEquip, onRace }: Props) {
   const level = playerLevel(profile.xp);
   const rotation = shopRotation();
   const carsOwned = NEW_CAR_COLLECTION.filter(item => isOwned(profile, 'car', item.id)).length;
+  const totalCars = NEW_CAR_COLLECTION.length;
   const items = SHOP.filter(item => (tab === 'all' || item.kind === tab) &&
     (rarity === 'all' || item.kind === 'car' && item.rarity === rarity));
 
@@ -47,14 +48,14 @@ export function ShopPage({ profile, onBuy, onEquip, onRace }: Props) {
     <header className="collection-heading">
       <div><span className="section-kicker">МОНГОЛ УРАЛДААН · 6 ЗЭРЭГЛЭЛ</span>
         <h1>ХҮЛГИЙН <span>ЦУГЛУУЛГА.</span></h1>
-        <p>6 ховорын зэрэглэл · тус бүр 3 шинэ машин · өөрийн гэрлийн эффект. Уралдаж XP, зоос цуглуулаад нээгээрэй.</p>
+        <p>6 зэрэглэл · {totalCars} анхны машин · хүлэг бүр өөрийн гэрлийн эффекттэй. Уралдаж XP, зоос цуглуулаад нээгээрэй.</p>
       </div>
       <div className="shop-wallet">
         <div className="coin-counter"><span>МИНИЙ ЗООС</span><strong>◈ {profile.coins.toLocaleString('mn-MN')}</strong></div>
         <div className="shop-collection-progress">
-          <span>ТҮВШИН {level} · ЦУГЛУУЛГА {carsOwned}/18</span>
-          <div className="shop-meter" role="progressbar" aria-valuemin={0} aria-valuemax={18} aria-valuenow={carsOwned} aria-label="Шинэ машин цуглуулсан тоо">
-            <span style={{ width: carsOwned / 18 * 100 + '%' }}/></div>
+          <span>ТҮВШИН {level} · ЦУГЛУУЛГА {carsOwned}/{totalCars}</span>
+          <div className="shop-meter" role="progressbar" aria-valuemin={0} aria-valuemax={totalCars} aria-valuenow={carsOwned} aria-label="Шинэ машин цуглуулсан тоо">
+            <span style={{ width: carsOwned / totalCars * 100 + '%' }}/></div>
         </div>
       </div>
     </header>
@@ -96,7 +97,7 @@ export function ShopPage({ profile, onBuy, onEquip, onRace }: Props) {
       <button type="button" aria-pressed={rarity === 'all'} className={rarity === 'all' ? 'current' : ''} onClick={() => setRarity('all')}>Бүгд</button>
       {RARITIES.map(r => <button type="button" key={r.id} className={'rarity-filter rarity-'+r.code+(rarity===r.id?' current':'')}
         aria-pressed={rarity===r.id} onClick={() => setRarity(r.id)}>
-        <span className="rarity-gem" aria-hidden="true"/> {r.id} <small>3 машин · ТҮВШИН {r.level}+</small>
+        <span className="rarity-gem" aria-hidden="true"/> {r.id} <small>{NEW_CAR_COLLECTION.filter(item => item.rarity === r.id).length} машин · ТҮВШИН {r.level}+</small>
       </button>)}
     </nav>}
     <div className="item-grid shop-item-grid">
