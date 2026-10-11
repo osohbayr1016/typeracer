@@ -1,3 +1,17 @@
+## 2026-10-11 — Durable Object public-race realtime resume and sync (PR #23)
+
+**Prior blocker fixed in code:** PR #23 typecheck failed because a source-text test imported `node:fs` and `node:url` without frontend Node types. Replace it with deterministic behavior tests of guarded WebSocket sends and Mongolian Cyrillic optimistic typing.
+
+**Confirmed gap:** Existing Cloudflare SQLite-backed `RaceRoom` Durable Object routes public matches to a singleton `QuickMatchmaker`. A closed WebSocket deleted its human immediately and a reconnect created a NEW race with zero progress. This lost server-confirmed typing and race position.
+
+**Changes on `fix/quickplay-no-phantom-typing`:** (1) Keep a disconnected public racer in its DO match for up to 15 seconds; (2) bind a cryptographically random short-lived per-tab resume token to the previous racer; (3) on reconnect reattach the socket to the same racer ID/match ID and send the authoritative DO snapshot immediately, including existing progress and later result if available; (4) mark temporarily disconnected racers in snapshots; (5) bounded browser auto-retry and manual fallback; (6) guard local optimistic typing against closed/throwing WebSocket sends. The token is NEVER broadcast in opponent snapshots. No ranked rewards or real-money economy changes.
+
+**Test coverage added:** Backend simulated WebSocketPair/DO reconnect tests for session identity/progress/token isolation/expiry; frontend behavioral Vitest for Cyrillic typed/wrong characters, disabled/paste/closed/throwing sends; Chromium E2E for actual local Worker public race disconnect/rejoin preserving server progress and racer identity. **CI, live staging, browser behavior and PR merge are not confirmed until actual workflow logs are checked.** Existing workflows only; never production.
+
+**Important limits:** QuickMatchmaker keeps active races in DO process memory, not SQLite: recovery works only while the DO instance remains alive, NOT after Durable Object eviction/restart. Per-tab resume token is an unverified guest bearer credential; browser WebSocket URL can appear in infrastructure logs and should not carry real account claims. No guaranteed message delivery or per-keystroke acknowledgement yet; transient optimistic vs authoritative progress may still diverge on rate-limited/rejected messages. Plan server sequenced ACK, reconnect hibernation/durable recovery, abuse bounds for queued disconnected players, and real-mobile Mongolian IME QA before production-scale claims.
+
+---
+
 ## 2026-10-11 — Quick Play disconnected optimistic typing guard (PR pending)
 
 **Confirmed code risk:** QuickTypingPanel advanced local progress before QuickRacePage checked WebSocket readiness. A closed socket or throwing send could show phantom typed characters.
