@@ -11,7 +11,7 @@ type Props = {
   serverStrokes: number;
   serverMistakes: number;
   startedAt: number | null;
-  sendKey: (key: string) => void;
+  sendKey: (key: string) => boolean;
 };
 
 /**
@@ -67,9 +67,11 @@ export const QuickTypingPanel = memo(function QuickTypingPanel({
       mistakes: previous.mistakes + Number(!correct),
       wrong: !correct
     };
+    // Never advance the local caret if the socket cannot accept this key.
+    // A successful send is not a server acknowledgement; race results remain authoritative.
+    if (!sendKey(key)) return;
     localRef.current = next;
-    setLocal(next); // instant UI update, not tied to the network broadcast
-    sendKey(key);    // one event per actual key; server validates and scores
+    setLocal(next); // instant UI update after successful WebSocket send
   }
 
   function onInput(event: ChangeEvent<HTMLInputElement>) {
