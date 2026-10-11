@@ -235,9 +235,11 @@ export type DailyQuestId = (typeof DAILY_QUESTS)[number]['id'];
 
 /** Mongolia local calendar date. Explicit TZ avoids server/visitor TZ drift. */
 export function mongoliaDayKey(at: number): string {
-  return new Intl.DateTimeFormat('en-CA', {
+  const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Ulaanbaatar', year: 'numeric', month: '2-digit', day: '2-digit'
-  }).format(new Date(at));
+  }).formatToParts(new Date(at));
+  const value = (part: string) => parts.find(p => p.type === part)?.value ?? '';
+  return value('year') + '-' + value('month') + '-' + value('day');
 }
 export function dailyQuests(profile: Pick<Profile, 'history' | 'questClaims'>, at = Date.now()) {
   const day = mongoliaDayKey(at);
