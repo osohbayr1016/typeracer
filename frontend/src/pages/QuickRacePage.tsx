@@ -5,6 +5,7 @@ import {
 import { CARS, type Skin } from './cars';
 import { type Profile } from '../progression';
 import { QuickTypingPanel } from './QuickTypingPanel';
+import { sendRaceKey } from './typingSync';
 import './QuickRacePage.css';
 
 export type QuickResult = {
@@ -16,6 +17,7 @@ type Props = {
   onBack: () => void; onGarage: () => void; onReward: (result: QuickResult) => void;
 };
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+const RESUME_KEY = 'typeracer.quick.resume.v1';
 const BOT_CARS: Skin[] = ['mint','steppe','thunder'];
 
 function carOf(player: Racer, index: number): Skin {
@@ -36,10 +38,18 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
 
   useEffect(() => {
     let disposed = false;
+    let receivedResult = false;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
     setConnection('connecting'); setError(''); setResult(null); setSnapshot(null); setMyId('');
     const base = API_BASE || window.location.origin;
     const params = new URLSearchParams({ name: nickname, car, trail: profile.trail,
       sticker: profile.sticker, title: profile.title });
+    // Per-tab bearer token: reconnect to the SAME match inside the Durable Object.
+    // Never persist the token in the player profile or send it to opponents.
+    try {
+      const resume = window.sessionStorage.getItem(RESUME_KEY);
+      if (resume) params.set('resume', resume);
+    } catch { /* private browsing may disable session storage */ }
     const url = base.replace(/^http/, 'ws') + '/api/quickplay/ws?' + params;
     let socket: WebSocket;
     try { socket = new WebSocket(url); }
@@ -49,10 +59,18 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
     socket.onmessage = event => {
       if (disposed) return;
       try {
-        const data = JSON.parse(event.data) as RoomSnapshot | { type: 'welcome'; id: string } | QuickResult;
-        if (data.type === 'welcome') setMyId(data.id);
+        const data = JSON.parse(event.data) as RoomSnapshot |
+          { type: 'welcome'; id: string; resumeToken?: string; resumed?: boolean } | QuickResult;
+        if (data.type === 'welcome') {
+          setMyId(data.id);
+          if (data.resumeToken) {
+            try { window.sessionStorage.setItem(RESUME_KEY, data.resumeToken); } catch { /* optional */ }
+          }
+        }
         else if (data.type === 'state' && data.mode === 'quick') setSnapshot(data);
         else if (data.type === 'quick-result') {
+          receivedResult = true;
+          try { window.sessionStorage.removeItem(RESUME_KEY); } catch { /* optional */ }
           if (!awardedMatches.current.has(data.raceId)) {
             awardedMatches.current.add(data.raceId);
             rewardRef.current(data);
@@ -63,12 +81,25 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
     };
     socket.onerror = () => { if (!disposed) setError('Холболт тасарлаа. Дахин оролдоно уу.'); };
     socket.onclose = () => {
-      if (!disposed) {
+      if (disposed || receivedResult) return;
+      // The server holds this human's race slot for 15 seconds. Try a bounded,
+      // short reconnect; later attempts remain a manual choice.
+      let canResume = false;
+      try { canResume = !!window.sessionStorage.getItem(RESUME_KEY); } catch { /* optional */ }
+      if (canResume && attempt < 3) {
+        setConnection('connecting');
+        retryTimer = window.setTimeout(() => setAttempt(n => n + 1), 700 + attempt * 400);
+      } else {
         setConnection('error');
         setError('Уралдааны холболт тасарлаа. Дахин нэгдэж болно.');
       }
     };
-    return () => { disposed = true; socketRef.current = null; socket.close(); };
+    return () => {
+      disposed = true;
+      if (retryTimer) window.clearTimeout(retryTimer);
+      socketRef.current = null;
+      socket.close();
+    };
   // A new attempt is the only way to re-enter the queue. Prop changes during a race
   // never silently disconnect players.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -86,12 +117,7 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
     (p.progress > self.progress || (p.progress === self.progress &&
     p.completedAt !== null && (self.completedAt === null || p.completedAt < self.completedAt)))).length : null;
   const isRacing = snapshot?.phase === 'racing' && !result && connection === 'connected';
-  const sendKey = useCallback((key: string) => {
-    const socket = socketRef.current;
-    if (!socket || socket.readyState !== WebSocket.OPEN) return false;
-    try { socket.send(JSON.stringify({ type: 'key', key })); return true; }
-    catch { return false; }
-  }, []);
+  const sendKey = useCallback((key: string) => sendRaceKey(socketRef.current, key), []);
 
   return <div className="quick-page" data-testid="quick-race">
     <header className="quick-topline">
@@ -109,7 +135,7 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
       <button className="primary-button" onClick={() => setAttempt(n => n + 1)}>↻ ДАХИН НЭГДЭХ</button>
     </section>}
     {connection === 'connecting' && !snapshot && <section className="quick-state-panel" role="status">
-      <h2>ТОГЛОГЧИДТОЙ ХОЛБОГДОЖ БАЙНА</h2><p>Уралдааны өрөөг нээж байна…</p>
+      <h2>{attempt ? 'УРАЛДААНД ДАХИН ХОЛБОГДОЖ БАЙНА' : 'ТОГЛОГЧИДТОЙ ХОЛБОГДОЖ БАЙНА'}</h2><p>{attempt ? 'Durable Object-оос өмнөх байрлал, явцыг сэргээж байна…' : 'Уралдааны өрөөг нээж байна…'}</p>
     </section>}
 
     {snapshot && <div className={'quick-phase phase-'+snapshot.phase}
@@ -153,7 +179,7 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
             <div className="quick-lane-meta">
               <span className="quick-lane-order">{snapshot.phase === 'racing' || snapshot.phase === 'finished' ? rank : index + 1}</span>
               <div><strong>{player.name}{player.id===myId ? ' · ТА' : ''}</strong>
-                <small>{player.bot ? 'БОТ' : 'ТОГЛОГЧ'}</small></div>
+                <small>{player.bot ? 'БОТ' : player.connected === false ? 'ХОЛБОЛТ ТАСАРСАН' : 'ТОГЛОГЧ'}</small></div>
               <b>{done}%</b>
             </div>
             <div className="quick-road">
