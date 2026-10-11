@@ -92,7 +92,7 @@ export class QuickMatchmaker {
   private active = new Set<QuickRace>();
   private sockets = new Map<WebSocket, { race: QuickRace; human: Human }>();
 
-  fetch(request: Request): Response {
+  async fetch(request: Request): Promise<Response> {
     if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket')
       return new Response('WebSocket upgrade required', { status: 426 });
     const url = new URL(request.url);
@@ -127,7 +127,7 @@ export class QuickMatchmaker {
       return new Response(null, { status: 101, webSocket: client });
     }
 
-    const account = this.rankings?.fromCookie(request.headers.get('Cookie')) ?? null;
+    const account = await this.rankings?.fromCookie(request.headers.get('Cookie')) ?? null;
     const human: Human = {
       id: crypto.randomUUID(), name: safePlayerName(url.searchParams.get('name') || ''),
       car: allowed(url.searchParams.get('car'), carIds, 'sunset'),

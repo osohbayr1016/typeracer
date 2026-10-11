@@ -1,3 +1,17 @@
+## 2026-10-11 — P1 OAuth multi-device session integrity (PR pending)
+
+**Verified staging baseline:** [main push CI #38140033524](https://github.com/osohbayr1016/typeracer/actions/runs/38140033524) successfully deployed `fe5d1af` to Cloudflare staging. Both private real WebSocket sync and two-client public matchmaking smoke succeeded; live Google/Meta OAuth remains blocked by provider app credentials and external manual login QA.
+
+**Confirmed source defect:** `RaceRankingStore.completeOAuth()` rotated the one `leaderboard_players.guest_token` per *account*, invalidating an existing browser when the same Google/Facebook identity signed in on another device. `logout()` similarly invalidated other devices, contrary to expected independent sessions. Furthermore, raw 64-character bearer secrets were stored in the leaderboard_players SQLite table.
+
+**Fix:** additive `leaderboard_sessions` SQL table with individual SHA-256 token digests, player ID, creation and 30-day expiry. New guest and OAuth sessions use this table; OAuth re-login revokes only the initiating guest browser, never another provider device. Logout revokes only the browser's token and issues a fresh guest. On first use, legacy staging cookies migrate automatically to hashed sessions while preserving player ID, scores, team and old browser login; no table recreation, truncation or destructive schema changes. Crypto hashing and database integration happen server-side only. The WebSocket upgrade and all account/team/auth routes now await async cryptographic session lookup.
+
+**Behavioral verification added:** Node 22 built-in SQLite runs the actual SQL schema and DAO logic (not source-text assertions): two device logins for one Google provider ID, isolated logout, old cookie migration with retained race ledger, expiry, tampered/expired OAuth state, and hashed-only new bearer storage. Existing Chromium smoke/real matchmaking checks remain required. No paid dependencies, no production changes. **Do not merge until TypeScript/unit/Chromium CI is green; staging smoke after main merge remains to be checked.**
+
+**Outstanding:** External Google/Meta credentials and provider login QA, abuse controls, authenticated server-side coins/inventory reconciliation, logged-in ranking anti-cheat, sign-out-all-devices UX, large numbers of sessions cleanup/housekeeping. Login doesn't yet guarantee account portability of browser-local XP/coins. Current guest identity is not proof of a unique person.
+
+---
+
 ## 2026-10-11 — Google/Facebook confidential OAuth foundation (PR pending)
 
 **Scope:** previously implemented point and Team scores were tied to mutable beta guest cookies. Added real server-side OAuth authorization-code flow for Google/Meta Facebook, confidential token exchange, provider-verified userinfo, CSRF state stored in Durable Object SQLite for 5 minutes and bound to same browser guest session, unique provider identity mapping, session rotation and logout token revocation. Profile page fetches real `/api/auth/providers` configuration; buttons are disabled when secrets are absent instead of faking login. Existing guest racing remains available. Added provider helper unit tests, Chromium provider-configuration and logout-cookie checks, and `docs/AUTH-SETUP.md` exact setup instructions.

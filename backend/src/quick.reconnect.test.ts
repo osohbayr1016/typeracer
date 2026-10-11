@@ -34,9 +34,9 @@ class FakeResponse {
   status: number;
   constructor(_body: unknown, options: {status: number}) { this.status = options.status; }
 }
-function connect(matchmaker: QuickMatchmaker, token?: string) {
+async function connect(matchmaker: QuickMatchmaker, token?: string) {
   const suffix = token ? '?resume=' + encodeURIComponent(token) : '';
-  const response = matchmaker.fetch(new Request('https://room.internal/quickplay' + suffix, {
+  const response = await matchmaker.fetch(new Request('https://room.internal/quickplay' + suffix, {
     headers: { Upgrade: 'websocket' }
   }));
   expect(response.status).toBe(101);
@@ -58,9 +58,9 @@ beforeEach(() => {
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('Durable Object live quick race reconnect', () => {
-  it('preserves racer ID, match ID, Mongolian progress and cosmetics across a reconnect', () => {
+  it('preserves racer ID, match ID, Mongolian progress and cosmetics across a reconnect', async () => {
     const doMatch = new QuickMatchmaker();
-    const first = connect(doMatch);
+    const first = await connect(doMatch);
     expect(first.welcome.resumed).toBe(false);
     expect(typeof first.welcome.resumeToken).toBe('string');
     expect(JSON.stringify(first.snapshot)).not.toContain(String(first.welcome.resumeToken));
@@ -74,18 +74,18 @@ describe('Durable Object live quick race reconnect', () => {
     expect((typed.players as Array<{id: string;progress:number}>)
       .find(p => p.id === first.welcome.id)?.progress).toBe(1);
     first.socket.close();
-    const recovered = connect(doMatch, String(first.welcome.resumeToken));
+    const recovered = await connect(doMatch, String(first.welcome.resumeToken));
     expect(recovered.welcome.resumed).toBe(true);
     expect(recovered.welcome.id).toBe(first.welcome.id);
     expect(recovered.snapshot.matchId).toBe(first.snapshot.matchId);
     expect((recovered.snapshot.players as Array<{id: string;progress:number;connected:boolean}>)
       .find(p => p.id === first.welcome.id)).toMatchObject({progress:1, connected:true});
   });
-  it('evicts abandoned waiting connections so strict-mode remounts do not steal bot slots', () => {
+  it('evicts abandoned waiting connections so strict-mode remounts do not steal bot slots', async () => {
     const doMatch = new QuickMatchmaker();
-    const ephemeral = connect(doMatch);
+    const ephemeral = await connect(doMatch);
     ephemeral.socket.close();
-    const real = connect(doMatch);
+    const real = await connect(doMatch);
     vi.advanceTimersByTime(6_000);
     const state = real.socket.sent.filter(message => message.type === 'state').at(-1)!;
     expect(state.phase).toBe('racing');
@@ -95,16 +95,16 @@ describe('Durable Object live quick race reconnect', () => {
     expect(players.find(p => p.id === ephemeral.welcome.id)).toBeUndefined();
     expect(players.find(p => p.id === real.welcome.id)).toBeDefined();
   });
-  it('refuses a guessed token and expires disconnected sessions after grace', () => {
+  it('refuses a guessed token and expires disconnected sessions after grace', async () => {
     const doMatch = new QuickMatchmaker();
-    const first = connect(doMatch);
+    const first = await connect(doMatch);
     vi.advanceTimersByTime(6_000); // Resume grace applies to an actual racing match.
     first.socket.close();
-    const stranger = connect(doMatch, 'ffffffff-ffff-4fff-8fff-ffffffffffff');
+    const stranger = await connect(doMatch, 'ffffffff-ffff-4fff-8fff-ffffffffffff');
     expect(stranger.welcome.id).not.toBe(first.welcome.id);
     expect(stranger.welcome.resumed).toBe(false);
     vi.advanceTimersByTime(QUICK_RECONNECT_GRACE_MS + 1);
-    const expired = connect(doMatch, String(first.welcome.resumeToken));
+    const expired = await connect(doMatch, String(first.welcome.resumeToken));
     expect(expired.welcome.id).not.toBe(first.welcome.id);
   });
 });
