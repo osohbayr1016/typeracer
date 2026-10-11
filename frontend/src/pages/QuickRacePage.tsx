@@ -6,15 +6,14 @@ import { CARS, type Skin } from './cars';
 import { type Profile } from '../progression';
 import { QuickTypingPanel } from './QuickTypingPanel';
 import { sendRaceKey } from './typingSync';
+import { type QuickRaceOutcome, type QuickResult } from './quickResultsModel';
 import './QuickRacePage.css';
 
-export type QuickResult = {
-  type: 'quick-result'; raceId: string; place: number | null; coins: number;
-  wpm: number; accuracy: number; elapsedMs: number; verified: false;
-};
+export type { QuickResult } from './quickResultsModel';
 type Props = {
   car: Skin; profile: Profile; nickname: string;
   onBack: () => void; onGarage: () => void; onReward: (result: QuickResult) => void;
+  onFinish: (outcome: QuickRaceOutcome) => void;
 };
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 const RESUME_KEY = 'typeracer.quick.resume.v1';
@@ -23,7 +22,7 @@ const BOT_CARS: Skin[] = ['mint','steppe','thunder'];
 function carOf(player: Racer, index: number): Skin {
   return player.car && player.car in CARS ? player.car as Skin : BOT_CARS[index % BOT_CARS.length];
 }
-export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onReward }: Props) {
+export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onReward, onFinish }: Props) {
   const [attempt, setAttempt] = useState(0);
   const [connection, setConnection] = useState<'connecting' | 'connected' | 'error'>('connecting');
   const [error, setError] = useState('');
@@ -33,8 +32,12 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
   const [now, setNow] = useState(Date.now());
   const socketRef = useRef<WebSocket | null>(null);
   const rewardRef = useRef(onReward);
+  const finishRef = useRef(onFinish);
+  const latestSnapshot = useRef<RoomSnapshot | null>(null);
+  const latestMyId = useRef('');
   const awardedMatches = useRef(new Set<string>());
   rewardRef.current = onReward;
+  finishRef.current = onFinish;
 
   useEffect(() => {
     let disposed = false;
@@ -62,12 +65,16 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
         const data = JSON.parse(event.data) as RoomSnapshot |
           { type: 'welcome'; id: string; resumeToken?: string; resumed?: boolean } | QuickResult;
         if (data.type === 'welcome') {
+          latestMyId.current = data.id;
           setMyId(data.id);
           if (data.resumeToken) {
             try { window.sessionStorage.setItem(RESUME_KEY, data.resumeToken); } catch { /* optional */ }
           }
         }
-        else if (data.type === 'state' && data.mode === 'quick') setSnapshot(data);
+        else if (data.type === 'state' && data.mode === 'quick') {
+          latestSnapshot.current = data;
+          setSnapshot(data);
+        }
         else if (data.type === 'quick-result') {
           receivedResult = true;
           try { window.sessionStorage.removeItem(RESUME_KEY); } catch { /* optional */ }
@@ -76,6 +83,10 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
             rewardRef.current(data);
           }
           setResult(data);
+          if (latestSnapshot.current && latestMyId.current) {
+            finishRef.current({ result: data, snapshot: latestSnapshot.current,
+              playerId: latestMyId.current, at: Date.now() });
+          }
         }
       } catch { setError('Серверийн хариу ойлгомжгүй байна.'); }
     };
@@ -185,7 +196,7 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
             <div className="quick-road">
               <span className="quick-road-progress" style={{ width: done+'%' }}/>
               <img src={CARS[which].icon} alt="" draggable={false}
-                style={{ left: (done * .71)+'%' }}/>
+                style={{ left: `calc(${done}% - ${done * .14}px)`, transform: `translateX(-${done}%)` }}/>
               <span className="quick-flag" aria-hidden="true"/>
             </div>
           </div>;
