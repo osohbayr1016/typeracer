@@ -9,6 +9,8 @@ export type Racer = {
   strokes: number;
   ready: boolean;
   completedAt: number | null;
+  // Guest-room appearance only; not proof of ownership or a verified leaderboard identity.
+  car?: string; trail?: string; sticker?: string; title?: string;
 };
 export type RoomSnapshot = {
   type: 'state';
