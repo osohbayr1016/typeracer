@@ -2,18 +2,19 @@
 
 A Mongolian Cyrillic typing-race game, built with the same main stack as the author's `standoff-` project: **TypeScript, npm workspaces, React + Vite, Hono, Cloudflare Workers, Durable Objects and WebSockets**.
 
-**Status:** Solo and guest races work in development. This is a **staging/unranked beta**, not yet a ranked, payment-ready, or production-secure competition platform. All game code is on **main**; no pull request or merge step is needed.
+**Status:** Solo, friend-room races and device-local cosmetic progression work in development. This is a **staging/unranked beta**, not yet a ranked, payment-ready, or production-secure competition platform. All game code is on **main**; no pull request or merge step is needed.
 
 ## Features available now
 
-- MN/EN typing practice with Cyrillic Ө/Ү, WPM, accuracy and personal best.
-- Browser-local practice XP and three free car appearances.
+- Mongolian-only typing practice with 48 original Cyrillic prompts including Ө/Ү, WPM, accuracy and personal best.
+- Browser-local practice XP, earned coins, fixed-price cosmetics store, original six-car collection expansion (eleven total), equipped trails/titles/stickers and an eight-tier free seasonal reward pass.
 - Friend-only guest rooms, 2–6 players, 8-character invite code, Ready, countdown and real-time race progress.
 - Server-computed race progress, per-socket abuse limits and same-origin browser API protection.
 - Unit tests, TypeScript checks, Vite/Worker build, two Chromium E2E scenarios.
+- Shop and season routes are **not yet server-authoritative**; local browser progression can be manipulated and has no real-money value.
 - One Cloudflare Worker hosts **both the game website and /api endpoints**, so no separate Cloudflare Pages deployment or CORS environment variables are needed.
 
-**Not included:** account login, official leaderboards, ranked matches, tournament management, monetary systems, purchase/battle pass, persisting trusted results, reconnect/resume, serious bot prevention, load testing, Cloudflare WAF rules, and production-grade monitoring.
+**Not included:** account login, official leaderboards, ranked matches, tournament management, paid battle pass or verified purchase ledger, persisting trusted results, reconnect/resume, serious bot prevention, load testing, Cloudflare WAF rules, and production-grade monitoring.
 
 ## Try it locally
 
@@ -90,12 +91,16 @@ npm run test:e2e
 
 Manual acceptance checklist:
 
-- Solo typing: Mongolian Ө/Ү, English mode, corrections, restart, WPM and accuracy.
+- Solo typing: Mongolian Ө/Ү only, corrections, restart, WPM and accuracy. Verify shop purchases, one-time season claims and equipped cosmetics across reload.
 - Two devices: create room, join with code, Ready/countdown, correct/wrong keys, completion.
 - Mobile browser and desktop keyboards; verify input methods, focus and orientation.
 - Close one player's tab while waiting/racing and observe room behavior.
 - Verify random invented room codes are rejected, room caps and origin policy.
 - Run `node scripts/smoke.mjs <published-https-url>` after each release.
+
+## Game progression / collection
+
+The currently active free season is **Эхний гараа** (2026-10-01 to 2026-11-30, Mongolia time). Race-earned XP unlocks fixed tiers; players explicitly claim rewards. Each completed solo race earns device-local XP and coins, with deterministic item purchases. This is playable guest mode—not secure for ranked, paid, or transferable assets. See [game design / competitive roadmap](docs/MONGOLIAN-GAME-DESIGN.md).
 
 ## Security, reliability and limits
 

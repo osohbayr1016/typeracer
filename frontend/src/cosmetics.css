@@ -1,0 +1,138 @@
+/* Original TypeRacer Mongolia collectables — device-local beta economy. */
+.language-note { font-size:11px; font-weight:900; color:#c7cdc7; letter-spacing:1.2px; }
+.collection-page { padding:30px 9px 35px; min-height:70vh; }
+.collection-heading { display:flex; align-items:end; justify-content:space-between; gap:28px; padding:20px 16px 31px; border-bottom:1px solid #373e40; }
+.collection-heading h1,.season-hero h1 { font:italic 900 clamp(48px,6.3vw,87px)/1.02 Impact,"Arial Narrow",sans-serif; margin:14px 0; letter-spacing:-.8px; color:#f2f2ea; }
+.collection-heading h1 span,.season-hero h1 span { color:#ff604c; }
+.collection-heading p { max-width:575px; color:#aab2b3; font-size:13px; line-height:1.65; }
+.coin-counter { min-width:160px; padding:16px 22px; background:#242b2d; border:1px solid #53595b; }
+.coin-counter span { display:block; color:#aeb7b7; font-size:10px; font-weight:800; letter-spacing:1.7px; }
+.coin-counter strong { display:block; font:900 29px/1.35 Impact,sans-serif; margin-top:5px; color:#ffd784; }
+.collection-tabs { display:flex; align-items:center; gap:4px; border-bottom:1px solid #414749; padding:12px 13px 0; overflow-x:auto; scrollbar-width:thin; }
+.collection-tabs button { background:none; color:#aeb6b5; border:none; border-bottom:3px solid transparent; padding:13px 23px; font-size:12px; font-weight:850; white-space:nowrap; }
+.collection-tabs button.current { color:#fff; border-bottom-color:#fc5b45; }
+.collection-tabs button:hover { background:#262d2f; color:#fff; }
+.item-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:15px; margin:23px 12px; }
+.item-card { display:flex; flex-direction:column; min-width:0; padding:14px 17px 18px; background:#21282a; border:1px solid #464f51; border-radius:5px; transition:border-color .15s; }
+.item-card:hover { border-color:#9e685c; }
+.item-card-header { display:flex; justify-content:space-between; gap:8px; color:#989f9f; font-size:9px; font-weight:800; letter-spacing:1px; }
+.item-rarity { color:#ffd495; }
+.item-art { height:164px; display:grid; place-items:center; background:radial-gradient(ellipse at 50% 80%,#3a4344,transparent 65%);
+  border-bottom:1px solid #364042; margin:8px -3px 14px; }
+.item-art img { width:95%; height:160px; object-fit:contain; filter:drop-shadow(-20px 16px 8px #000a); }
+.item-art.item-symbol span { font:900 75px/1.2 Impact,sans-serif; color:#e9b760; filter:drop-shadow(0 7px 15px #c856326c); }
+.item-card h2 { color:#fff; font-size:18px; margin:2px 0 6px; }
+.item-card p { font-size:11px; color:#aab4b5; line-height:1.6; min-height:37px; margin:0 0 18px; }
+.item-action { margin-top:auto; display:flex; align-items:center; justify-content:space-between; gap:8px; border-top:1px solid #455052; padding-top:16px; }
+.item-action strong { font-size:13px; font-weight:900; color:#ffdb94; white-space:nowrap; }
+.item-action button { min-height:39px; border-radius:4px; border:1px solid #dc634e; background:#e8583e; color:white; font-size:11px; font-weight:850; padding:9px 13px; }
+.item-action button:hover:not(:disabled) { background:#ff7357; }
+.item-action button:disabled { opacity:.46; background:#465051; border-color:#596264; cursor:not-allowed; }
+.reward-disclaimer { padding:17px 23px; margin:20px 12px; border-left:2px solid #e5a65b; background:#24292a;
+  color:#aeb8b8; font-size:12px; line-height:1.7; }
+.reward-disclaimer button { display:block; padding:12px 0 1px; background:none; border:0; color:#ff8367; font-weight:850; }
+.season-page { padding-top:0; }
+.season-hero { display:flex; justify-content:space-between; align-items:center; min-height:360px; gap:15px; padding:27px 32px;
+  background:radial-gradient(ellipse at 80% 80%,#8650323c,transparent 50%),linear-gradient(115deg,#342a27,#1c2325);
+  border:1px solid #654c42; overflow:hidden; }
+.season-hero-copy { width:min(100%,670px); position:relative; z-index:2; }
+.season-hero h1 { margin-top:12px; margin-bottom:13px; }
+.season-hero p { font-size:13px; color:#bec5c3; line-height:1.7; max-width:590px; margin:0 0 20px; }
+.season-hero img { width:38%; height:240px; object-fit:contain; filter:drop-shadow(-20px 22px 12px #000b); }
+.season-stats { display:flex; flex-wrap:wrap; gap:25px; margin:13px 0 18px; }
+.season-stats div { padding-right:25px; border-right:1px solid #646264; }
+.season-stats div:last-child { border:0; }
+.season-stats b { display:block; font:900 26px/1 Impact,sans-serif; }
+.season-stats small { color:#aeb6b5; font-size:9px; display:block; margin-top:7px; letter-spacing:1px; }
+.season-meter { background:#53595b; height:9px; width:min(100%,540px); border-radius:5px; overflow:hidden; }
+.season-meter span { height:100%; display:block; background:#f66147; transition:width .2s; }
+.season-hero-copy > small { display:block; font-size:10px; color:#acb8b9; margin:8px 0 19px; }
+.season-track-head { margin:31px 12px 17px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.season-track-head h2 { margin:0; font:900 24px/1 Impact,sans-serif; }
+.season-track-head span { color:#a6adac; font-weight:850; font-size:10px; letter-spacing:1px; }
+.season-rewards { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; padding:0 12px; }
+.season-tier { display:flex; flex-direction:column; min-width:0; background:#242b2d; border:1px solid #474f50; padding:13px 13px 16px; }
+.season-tier.available { border-color:#f37b5e; box-shadow:inset 0 2px #f77a5b; }
+.season-tier.received { border-color:#58695e; background:#212b26; }
+.season-tier.locked { opacity:.78; }
+.season-tier-head { display:flex; justify-content:space-between; font-size:10px; color:#aeb6b5; }
+.season-tier-head b { color:#ff997f; font:900 22px/1 Impact,sans-serif; }
+.season-tier-art { height:130px; display:grid; place-items:center; }
+.season-tier-art img { height:115px; width:100%; object-fit:contain; filter:drop-shadow(0 12px 6px #0007); }
+.season-tier-art span { font:900 65px/1 Impact,sans-serif; color:#e9b85b; }
+.season-tier h3 { font-size:14px; margin:3px 0 6px; }
+.season-free { font-size:9px; letter-spacing:1px; color:#9fdcb1; font-weight:900; }
+.season-tier button { margin-top:13px; border:1px solid #e86752; background:#ec644b; color:white; min-height:37px;
+  padding:7px 8px; font-size:11px; font-weight:900; }
+.season-tier button:disabled { opacity:.5; border-color:#60686a; background:#3a4244; }
+.garage-custom-feature { min-height:255px; }
+.garage-custom-feature .equipped-tags { display:flex; flex-wrap:wrap; gap:7px; margin:5px 0 17px; }
+.equipped-tags span { font-size:10px; color:#d2dbd5; border:1px solid #6a7170; padding:5px 8px; }
+.garage-preview-car { width:min(54%,540px); position:relative; display:grid; align-items:center; min-height:195px; }
+.garage-preview-car img { width:100%; height:215px; z-index:2; position:relative; object-fit:contain; filter:drop-shadow(-20px 17px 10px #000c); }
+.garage-preview-trail { width:190px; height:15px; position:absolute; top:53%; left:-25px; opacity:0; transform:translate(-50%,-50%); border-radius:90%; }
+.garage-preview-car.trail-ember .garage-preview-trail { opacity:1; background:linear-gradient(90deg,transparent,#fa5439,#ffb95b); box-shadow:0 0 20px #e96a39; }
+.garage-preview-car.trail-steppe .garage-preview-trail { opacity:1; background:linear-gradient(90deg,transparent,#3edff2,#a3e6cc); box-shadow:0 0 15px #65eacf; }
+.garage-preview-car.trail-ice .garage-preview-trail { opacity:1; background:linear-gradient(90deg,transparent,#498efe,#ecf8ff); box-shadow:0 0 20px #6c9fff; }
+.garage-preview-car.trail-aurora .garage-preview-trail { opacity:1; background:linear-gradient(90deg,#8b44f1,#57cba3,#c2ffba); box-shadow:0 0 21px #ab7ff1; }
+.garage-preview-sticker { position:absolute; z-index:3; right:13%; top:20%; color:#fff1b6; text-shadow:0 0 9px #ffd57a; font-size:27px; }
+.garage-tabs { margin-top:25px; }
+.garage-tile-preview { height:100px; display:grid; place-items:center; }
+.garage-tile-preview img { max-height:100px; }
+.garage-tile-preview > span { color:#f0dbac; font:900 37px/1.3 Impact,sans-serif; text-align:center; overflow-wrap:anywhere; }
+.garage-tile-preview.trail-ember > span { color:#ff8056; text-shadow:0 0 10px #e6472a; }
+.garage-tile-preview.trail-steppe > span { color:#7af3db; }
+.garage-tile-preview.trail-ice > span { color:#8dcaff; }
+.garage-tile-preview.trail-aurora > span { color:#bd91ff; }
+.garage-page-grid.expanded-garage { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.garage-car-tile.locked { cursor:not-allowed; opacity:.55; }
+.garage-path-actions { display:flex; flex-wrap:wrap; gap:12px; margin:22px 20px; }
+.results-page .result-rewards { display:flex; align-items:center; flex-wrap:wrap; gap:22px; border:1px solid #556044; padding:18px 26px; margin:18px 0; background:#222f25; }
+.result-rewards span { color:#b6c8ba; font-size:10px; letter-spacing:1px; font-weight:850; }
+.result-rewards strong { font:900 21px/1 Impact,sans-serif; color:#e8cf7a; }
+.race-trail { position:absolute; top:49%; display:block; width:130px; height:14px; opacity:0; transform:translate(-110px,-50%);
+  border-radius:25px; pointer-events:none; z-index:0; transition:left .16s linear; }
+.trail-ember .race-trail { opacity:.85; background:linear-gradient(90deg,transparent,#d63423,#ffac46); box-shadow:0 0 13px #fd642e; }
+.trail-steppe .race-trail { opacity:.85; background:linear-gradient(90deg,transparent,#53e2d8,#b9fff8); box-shadow:0 0 15px #59eddf; }
+.trail-ice .race-trail { opacity:.85; background:linear-gradient(90deg,transparent,#367ee1,#e8feff); box-shadow:0 0 13px #548ef0; }
+.trail-aurora .race-trail { opacity:.85; background:linear-gradient(90deg,#553be7,#76d9c1,#e0c7fa); box-shadow:0 0 14px #b88de8; }
+.race-sticker { position:absolute; top:4px; z-index:3; font-size:21px; color:#ffdf86; text-shadow:0 0 7px #000; pointer-events:none;
+  transform:translateX(94px); transition:left .16s linear; }
+@media(max-width:1000px) {
+  .header-layout { gap:10px; }
+  .header-layout .main-nav { gap:0; }
+  .header-layout .nav-item { padding-inline:7px; }
+  .item-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .season-rewards { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .garage-page-grid.expanded-garage { grid-template-columns:repeat(3,minmax(0,1fr)); }
+}
+@media(max-width:700px) {
+  .header-layout .main-nav { width:100%; overflow-x:auto; scrollbar-width:thin; justify-content:flex-start; }
+  .header-layout .nav-item { flex:0 0 auto; min-height:42px; padding-inline:13px; }
+  .collection-heading { align-items:flex-start; flex-direction:column; gap:10px; padding:25px 12px; }
+  .collection-heading h1 { font-size:51px; }
+  .coin-counter { padding:11px 16px; }
+  .collection-tabs { padding-inline:1px; }
+  .collection-tabs button { padding:12px 14px; }
+  .season-hero { flex-direction:column; align-items:stretch; padding:23px 15px; }
+  .season-hero img { width:100%; height:150px; }
+  .season-hero h1 { font-size:52px; }
+  .season-stats { gap:12px; }
+  .season-stats div { padding-right:12px; }
+  .season-rewards { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; padding-inline:0; }
+  .item-grid { margin-inline:0; gap:8px; }
+  .item-card { padding:10px; }
+  .item-art { height:113px; }
+  .item-art img { height:110px; }
+  .item-action { flex-wrap:wrap; }
+  .item-action button { width:100%; }
+  .garage-custom-feature { flex-direction:column-reverse; align-items:stretch; }
+  .garage-preview-car { width:100%; }
+  .garage-preview-car img { height:160px; }
+  .garage-page-grid.expanded-garage { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .garage-path-actions { margin-inline:5px; }
+  .garage-path-actions .secondary-button { white-space:normal; }
+}
+@media(prefers-reduced-motion: reduce) {
+  .race-trail,.race-sticker { transition:none !important; }
+}
