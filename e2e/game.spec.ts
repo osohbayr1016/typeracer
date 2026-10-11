@@ -375,3 +375,73 @@ test('level 35 veteran may buy and equip a legendary car, accessible on shop and
   await expect(page.locator('.garage-feature h2')).toContainText('Лууны дөл');
   await expect(page.locator('.garage-preview-car')).toHaveClass(/garage-rarity-Домогт/);
 });
+
+
+test('battle pass presents next milestone, 8 readable rewards and original shop collection on all screens', async ({ page }) => {
+  for (const width of [360, 390, 768, 1366]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto('/season');
+    await expect(page.getByTestId('season-pass')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /ЭХНИЙ ГАРАА/ })).toBeVisible();
+    await expect(page.getByTestId('season-spotlight')).toContainText('120 зоос');
+    await expect(page.locator('.season-tier')).toHaveCount(8);
+    await expect(page.getByRole('progressbar', { name: 'Улирлын нийт ахиц' })).toHaveAttribute('aria-valuenow', '0');
+    await expect(page.getByTestId('season-claim-all')).toHaveCount(0);
+    const bounds = await page.evaluate(() => ({
+      document: document.documentElement.scrollWidth,
+      viewport: innerWidth,
+      buttonsTooSmall: [...document.querySelectorAll('.pass-tier button')].some(
+        button => button.getBoundingClientRect().height < 40)
+    }));
+    expect(bounds.document, String(width)).toBeLessThanOrEqual(bounds.viewport + 1);
+    expect(bounds.buttonsTooSmall).toBe(false);
+  }
+  await page.getByRole('button', { name: /ДЭЛГҮҮР ҮЗЭХ/ }).click();
+  await expect(page).toHaveURL(/\/shop$/);
+  await expect(page.locator('.shop-item-grid .shop-collectible')).toHaveCount(27);
+  await expect(page.locator('[data-item-id="dragon"]')).toBeVisible();
+});
+
+test('battle pass claims all earned tiers once and keeps cars, coins and progress after reload', async ({ page }) => {
+  await page.goto('/season');
+  await page.evaluate(() => localStorage.setItem('racer.profile.v1',
+    JSON.stringify({ xp: 1800, seasonXp: 1800, coins: 200, races: 17, claimed: [], owned: [] })));
+  await page.reload();
+  const claimAll = page.getByTestId('season-claim-all');
+  await expect(claimAll).toContainText('7 ШАГНАЛ');
+  await expect(page.locator('.season-tier.available')).toHaveCount(7);
+  await expect(page.getByTestId('season-spotlight')).toContainText('120 зоос');
+  await claimAll.click();
+  await expect(page.locator('.season-tier.received')).toHaveCount(7);
+  await expect(page.getByTestId('season-claim-all')).toHaveCount(0);
+  await expect(page.locator('.season-tier.locked')).toHaveCount(1);
+  const profile = await page.evaluate(() => JSON.parse(localStorage.getItem('racer.profile.v1') || '{}'));
+  expect(profile.coins).toBe(670);
+  expect(profile.claimed).toEqual([1, 2, 3, 4, 5, 6, 7]);
+  expect(profile.owned).toContain('car:dawn');
+  expect(profile.owned).toContain('car:khan');
+  expect(profile.owned).not.toContain('car:cosmic');
+  await page.reload();
+  await expect(page.locator('.season-tier.received')).toHaveCount(7);
+  await expect(page.getByTestId('season-spotlight')).toContainText('Оддын зам');
+  await expect(page.locator('.pass-progress-card')).toContainText('500 XP');
+  await page.getByRole('button', { name: /УРАЛДАЖ XP ОЛОХ/ }).click();
+  await expect(page).toHaveURL(/\/play$/);
+});
+
+test('claiming one season reward preserves other available rewards and accessible claim-all action', async ({page}) => {
+  await page.goto('/season');
+  await page.evaluate(() => localStorage.setItem('racer.profile.v1',
+    JSON.stringify({ xp: 400, seasonXp: 400, coins: 200, claimed: [], owned: [] })));
+  await page.reload();
+  await expect(page.locator('.season-tier.available')).toHaveCount(2);
+  const first = page.locator('.season-tier').first();
+  await first.getByRole('button', { name: 'Шагнал авах' }).click();
+  await expect(first.getByRole('button', { name: /Авсан/ })).toBeDisabled();
+  await expect(page.getByTestId('season-claim-all')).toContainText('1 ШАГНАЛ');
+  await page.getByTestId('season-claim-all').click();
+  await expect(page.locator('.season-tier.received')).toHaveCount(2);
+  const profile = await page.evaluate(() => JSON.parse(localStorage.getItem('racer.profile.v1') || '{}'));
+  expect(profile.coins).toBe(320);
+  expect(profile.claimed).toEqual([1, 2]);
+});
