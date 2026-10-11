@@ -340,16 +340,16 @@ export function App() {
           </div>
           <div className="track-wrap">
             {countdown !== null && <div className="start-countdown" role="status" aria-live="assertive">
-              <span>GET READY</span><strong>{countdown === 0 ? 'GO!' : countdown}</strong><small>Уралдаан эхлэх гэж байна</small>
+              <span>БЭЛДЭЭРЭЙ</span><strong>{countdown === 0 ? 'ЭХЭЛ!' : countdown}</strong><small>Уралдаан эхлэх гэж байна</small>
             </div>}
-            <div className="track-meta"><span>START YOUR ENGINES</span><span>FINISH →</span></div>
+            <div className="track-meta"><span>ГАРААНД БЭЛД</span><span>БАРИА →</span></div>
             <Lane name={nickname} position={1} progress={progress} color={CARS[skin].color} icon={CARS[skin].icon}
               subtitle={TITLE_NAMES[profile.title]} trail={profile.trail} sticker={STICKER_SYMBOLS[profile.sticker]} isYou />
             <Lane name={best > 0 ? 'Хувийн рекорд' : '60 WPM зорилт'} position={2} progress={ghostProgress(best > 0 ? best : 60)}
-              color="#d8dce0" icon="/cars/graphite-r.svg" subtitle={best > 0 ? 'PB GHOST · ӨМНӨХ ХУРД' : 'PACE GHOST · БОДИТ ТОГЛОГЧ БИШ'}/>
+              color="#d8dce0" icon="/cars/graphite-r.svg" subtitle={best > 0 ? 'ӨМНӨХ ХУРД · РЕКОРД' : 'ЗОРИЛТОТ ХУРД · БОДИТ ТОГЛОГЧ БИШ'}/>
             <Lane name="40 WPM зорилт" position={3} progress={ghostProgress(40)}
-              color="#4486ef" icon="/cars/blue-sprint.svg" subtitle="PACE GHOST · БОДИТ ТОГЛОГЧ БИШ"/>
-            <div className="track-note">PACE GHOSTS ARE TIME-BASED TARGETS, NOT LIVE PLAYERS</div>
+              color="#4486ef" icon="/cars/blue-sprint.svg" subtitle="ЗОРИЛТОТ ХУРД · БОДИТ ТОГЛОГЧ БИШ"/>
+            <div className="track-note">БУСАД МАШИНУУД БОЛ ЖИШИГ ХУРД, БОДИТ ТОГЛОГЧ БИШ</div>
           </div>
           <div className="typing-area" onClick={() => { if (countdown === null) inputRef.current?.focus(); }}>
             <div className="typing-label"><span><i aria-hidden="true">//</i> МОНГОЛ ӨГҮҮЛБЭР</span><span>{prompt.id.toUpperCase()} · {correct} / {target.length}</span></div>
@@ -360,15 +360,15 @@ export function App() {
                 onCompositionEnd={e => updateTypingValue(e.currentTarget.value)}
                 aria-label="Энд бичиж эхлээрэй" className="typing-input"
                 placeholder={finishedAt !== null ? 'Барианд орлоо!' : 'Энд бичиж эхлээрэй...'} disabled={finishedAt !== null}/>
-              <button className="restart-shortcut" onClick={e => { e.stopPropagation(); resetPractice(); }} aria-label="Шинэ уралдаан эхлүүлэх">↻ <span>Restart</span></button>
+              <button className="restart-shortcut" onClick={e => { e.stopPropagation(); resetPractice(); }} aria-label="Шинэ уралдаан эхлүүлэх">↻ <span >Шинээр</span></button>
             </div>
-            {finishedAt !== null && <div className="finish-banner" role="status"><strong>Баяр хүргэе! Барианд орлоо · {wpm} WPM · {accuracy}%</strong><button className="primary-button" onClick={e => { e.stopPropagation(); resetPractice(); }}>ДАХИН УРАЛДАХ →</button></div>}
+            {finishedAt !== null && <div className="finish-banner" role="status"><strong>Баяр хүргэе! Барианд орлоо · {wpm} WPM · {accuracy}%</strong><button className="primary-button" onClick={e => { e.stopPropagation(); resetPractice(); }} >ДАХИН УРАЛДАХ →</button></div>}
           </div>
           <div className="race-stats" aria-label="Уралдааны үзүүлэлт">
             <div className="stat-block"><strong>{wpm}</strong><span>WPM</span><small>Хурд</small></div>
             <div className="stat-block"><strong>{accuracy}<em>%</em></strong><small>Нарийвчлал</small></div>
             <div className="stat-block stat-progress"><strong>{correct} <em>/ {target.length}</em></strong><small>Тэмдэгт</small><span className="stat-progress-bar" aria-label={'Явц ' + progress + '%'}><span style={{ width: progress + '%' }}/></span></div>
-            <div className="stat-block stat-cta"><button className="primary-button race-again" onClick={startSolo}>ДАХИН УРАЛДАХ <span aria-hidden="true">→</span></button></div>
+            <div className="stat-block stat-cta"><button className="primary-button race-again" onClick={startSolo} >ДАХИН УРАЛДАХ <span aria-hidden="true">→</span></button></div>
           </div>
         </section>
         <p className="help-note">Ө, Ү үсгийг зөв бичээрэй. Алдааг Backspace дарж засна. Сүнс машинууд бол жишиг хурд бөгөөд бодит өрсөлдөгч биш.</p>
@@ -378,8 +378,8 @@ export function App() {
       {(page === 'multiplayer' || page === 'multiplayerRace') && <>
         <div className="flow-heading multiplayer-heading">
           <button className="back-link" onClick={() => navigate('play')}>← ГОРИМ СОНГОХ</button>
-          <span className="section-kicker">MULTIPLAYER / PRIVATE FRIEND LOBBY</span>
-          <h1>{page === 'multiplayerRace' ? <>THE <span>RACE.</span></> : <>RACE <span>LOBBY.</span></>}</h1>
+          <span className="section-kicker">MULTIPLAYER / НАЙЗУУДЫН ӨРӨӨ</span>
+          <h1>{page === 'multiplayerRace' ? < >ШУУД <span>УРАЛДААН.</span></> : <>ӨРӨӨ <span>ХҮЛЭЭЛТ.</span></>}</h1>
           <p>2–6 тоглогч · Урилгын код · Бүгд бэлэн болмогц уралдаан эхэлнэ.</p>
         </div>
         <section className="race-panel multiplayer-panel" aria-label="Найзуудтай уралдах">
@@ -390,25 +390,25 @@ export function App() {
 
           {status === 'disconnected' && <div className="lobby-start">
             <div className="lobby-intro">
-              <span className="section-kicker">PRIVATE FRIEND RACES</span>
-              <h3>CREATE A RACE LOBBY.</h3>
+              <span className="section-kicker">НАЙЗУУДЫН УРАЛДААН</span>
+              <h3>УРАЛДААНЫ ӨРӨӨ ҮҮСГЭХ.</h3>
               <p>Найзуудаа өрөөний код эсвэл урилгын холбоосоор уриарай. Дор хаяж хоёр тоглогч цуглаж Ready дармагц уралдаан эхэлнэ.</p>
             </div>
-            <label className="field-label" htmlFor="nickname">YOUR RACER NAME</label>
+            <label className="field-label" htmlFor="nickname">МИНИЙ ТОГЛОГЧИЙН НЭР</label>
             <input id="nickname" className="field" value={nickname} maxLength={20}
               onChange={e => updateNickname(e.target.value)} aria-label="Тоглогчийн нэр"/>
             <div className="lobby-entry-grid">
               <section className="lobby-entry-card">
-                <span className="section-kicker">01 / HOST</span>
+                <span className="section-kicker">01 / ӨРӨӨ НЭЭХ</span>
                 <h4>Шинэ өрөө нээх</h4>
                 <p>Өөрийн өрөөг үүсгээд бусдад урилга илгээнэ.</p>
                 <button className="primary-button full" onClick={() => void createRoom()}>+ ӨРӨӨ ҮҮСГЭХ →</button>
               </section>
               <section className="lobby-entry-card">
-                <span className="section-kicker">02 / JOIN</span>
+                <span className="section-kicker">02 / НЭГДЭХ</span>
                 <h4>Бэлэн өрөөнд нэгдэх</h4>
                 <p>Найзаасаа ирсэн найман тэмдэгттэй кодыг оруулна.</p>
-                <label className="field-label" htmlFor="join-code">ROOM CODE</label>
+                <label className="field-label" htmlFor="join-code">ӨРӨӨНИЙ КОД</label>
                 <input id="join-code" className="field" maxLength={8} value={joinCode}
                   onChange={e => setJoinCode(e.target.value.toUpperCase().replace(/[^A-F0-9]/g, ''))}
                   placeholder="A3BF29C1" aria-label="Өрөөний код"/>
@@ -418,18 +418,18 @@ export function App() {
           </div>}
           {status === 'connecting' && <p className="connection-note">Өрөөнд холбогдож байна…</p>}
           {status === 'connected' && snapshot && <div className="room-active">
-            <div className="room-info"><div><small>YOUR INVITE CODE</small><strong>{code}</strong></div>
+            <div className="room-info"><div><small>УРЬХ КОД</small><strong>{code}</strong></div>
               <button className="secondary-button" onClick={() => void copyCode()}>↗ Холбоос хуулах</button></div>
             <div className="room-meta" aria-live="polite">{snapshot.players.length} / 6 тоглогч · {snapshot.phase === 'waiting' ? 'Бэлэн болохыг хүлээж байна' : snapshot.phase === 'countdown' ? 'Уралдаан эхлэх гэж байна' : snapshot.phase === 'racing' ? 'Уралдаж байна' : 'Дууссан'}</div>
             {snapshot.phase === 'waiting' && <div className="lobby-waiting">
-              <h3>RACERS IN THE LOBBY <span>{snapshot.players.length} / 6</span></h3>
+              <h3>ӨРӨӨН ДЭХ ТОГЛОГЧИД <span>{snapshot.players.length} / 6</span></h3>
               <div className="lobby-player-grid">
                 {snapshot.players.map((player, index) => <div className="lobby-player" key={player.id}>
                   <span className="lobby-player-num">{String(index + 1).padStart(2,'0')}</span>
                   <span className="lobby-player-name">{player.name}{player.id === myId ? ' (YOU)' : ''}</span>
-                  <span className={player.ready ? 'lobby-ready ready' : 'lobby-ready'}>{player.ready ? '✓ READY' : 'WAITING'}</span>
+                  <span className={player.ready ? 'lobby-ready ready' : 'lobby-ready'}>{player.ready ? '✓ БЭЛЭН' : 'ХҮЛЭЭЖ БАЙНА'}</span>
                 </div>)}
-                {snapshot.players.length < 6 && <div className="lobby-player empty"><span>+</span><span>Invite a friend using the code above</span></div>}
+                {snapshot.players.length < 6 && <div className="lobby-player empty"><span>+</span><span>Дээрх кодоор найзаа урина</span></div>}
               </div>
             </div>}
             {snapshot.phase !== 'waiting' && <div className="multiplayer-track">
@@ -439,7 +439,7 @@ export function App() {
                 progress={progressPercent(player.progress, snapshot.prompt.text)}
                 color={player.id === myId ? CARS[skin].color : ['#ec6b55', '#66788f', '#3679e8'][index % 3]}
                 icon={player.id === myId ? CARS[skin].icon : ['/cars/coral-gt.svg', '/cars/graphite-r.svg', '/cars/blue-sprint.svg'][index % 3]}
-                subtitle={player.completedAt ? 'FINISHED' : player.ready ? 'READY' : 'WAITING'}/>)}
+                subtitle={player.completedAt ? 'ДУУССАН' : player.ready ? 'БЭЛЭН' : 'ХҮЛЭЭЖ БАЙНА'}/>)}
             </div>}
             {snapshot.phase === 'waiting' && <div className="ready-area">
               <p>Бүх тоглогч бэлэн болмогц 3 секундын дараа уралдаан эхэлнэ.</p>
