@@ -114,7 +114,78 @@ try {
   );
   assert.equal(seenByBob.players.find(player => player.name === 'SmokeAlice').progress, keys.length);
   console.log('✓ Server checked characters and broadcast progress to opponent');
-  console.log('LIVE STAGING SMOKE TEST PASSED:', origin);
+
+  // The public Play button no longer uses invite rooms. A green deployment must
+  // exercise its actual quick-match endpoint too, including human/bot identity,
+  // shared countdown, and progress relayed to another human.
+  const quickUrl = origin.replace(/^https:/, 'wss:') + '/api/quickplay/ws?name=';
+  const suffix = Date.now().toString(36);
+  const quickAliceName = 'QAlice_' + suffix;
+  const quickBobName = 'QBob_' + suffix;
+  const quickAlice = joinQuick(quickAliceName);
+  const quickBob = joinQuick(quickBobName);
+  function joinQuick(name) {
+    const socket = new WebSocket(quickUrl + encodeURIComponent(name));
+    sockets.push(socket);
+    socket.addEventListener('message', event => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === 'state' && message.mode === 'quick') latestStates.set(socket, message);
+      } catch { /* Ignore non-state events. */ }
+    });
+    return socket;
+  }
+
+  const [firstQueue, secondQueue] = await Promise.all([
+    waitFor(quickAlice, state => state.mode === 'quick' &&
+      state.players.some(player => player.name === quickBobName), 'Public queue sees both real players', 15000),
+    waitFor(quickBob, state => state.mode === 'quick' &&
+      state.players.some(player => player.name === quickAliceName), 'Second player sees shared public queue', 15000)
+  ]);
+  assert.equal(firstQueue.matchId, secondQueue.matchId, 'Public players must join the same match');
+  assert.equal(firstQueue.prompt.text, secondQueue.prompt.text, 'Public racers must share a prompt');
+  assert.equal(firstQueue.prompt.language, 'mn', 'Quick Play must use Mongolian');
+  console.log('✓ Public matchmaking pairs two real WebSocket clients');
+
+  const [firstQuickRace, secondQuickRace] = await Promise.all([
+    waitFor(quickAlice, state => state.mode === 'quick' && state.phase === 'racing',
+      'Public quick race countdown and start', 18000),
+    waitFor(quickBob, state => state.mode === 'quick' && state.phase === 'racing',
+      'Second public racer countdown and start', 18000)
+  ]);
+  assert.equal(firstQuickRace.matchId, secondQuickRace.matchId);
+  assert.equal(firstQuickRace.startAt, secondQuickRace.startAt);
+  assert(firstQuickRace.startAt > 0);
+  const humanRacers = firstQuickRace.players.filter(player => player.bot !== true);
+  const botRacers = firstQuickRace.players.filter(player => player.bot === true);
+  assert(humanRacers.some(player => player.name === quickAliceName));
+  assert(humanRacers.some(player => player.name === quickBobName));
+  assert(firstQuickRace.players.length >= 4, 'Public race must fill vacant lanes with bots');
+  assert(botRacers.every(player => player.id.startsWith('bot-')), 'Bots must be identified explicitly');
+  if (humanRacers.length < 4) {
+    assert.equal(botRacers.length, 4 - humanRacers.length, 'Missing racer slots must be bot-filled');
+  }
+  console.log('✓ Public race starts with human/bot labels and a synchronized clock');
+
+  const quickKeys = [...firstQuickRace.prompt.text].slice(0, 5);
+  for (const key of quickKeys) quickAlice.send(JSON.stringify({ type: 'key', key }));
+  const visibleToOpponent = await waitFor(
+    quickBob,
+    state => state.mode === 'quick' &&
+      (state.players.find(player => player.name === quickAliceName)?.progress ?? 0) >= quickKeys.length,
+    'Public opponent receiving verified keystrokes', 10000
+  );
+  assert.equal(visibleToOpponent.players.find(player => player.name === quickAliceName).progress, quickKeys.length);
+  console.log('✓ Public race broadcasts server-validated human progress');
+
+  if (botRacers.length) {
+    const advancedBots = await waitFor(quickBob, state => state.mode === 'quick' &&
+      state.players.some(player => player.bot === true && player.progress > 0),
+      'Server-controlled bot race progress', 10000);
+    assert(advancedBots.players.some(player => player.bot === true && player.progress > 0));
+    console.log('✓ Server-controlled bots advance without any client keystrokes');
+  }
+  console.log('LIVE STAGING SMOKE TEST PASSED (private + public):', origin);
 } finally {
   for (const socket of sockets) {
     try { socket.close(); } catch { /* Already closed. */ }
