@@ -1,8 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { accuracyPercent, characters, wordsPerMinute } from '@typeracer/shared';
+import { applyLocalKey, INITIAL_LOCAL_PROGRESS, type LocalProgress } from './typingSync';
 
-type LocalProgress = { progress: number; strokes: number; mistakes: number; wrong: boolean };
-const INITIAL: LocalProgress = { progress: 0, strokes: 0, mistakes: 0, wrong: false };
 
 type Props = {
   text: string;
@@ -24,8 +23,8 @@ export const QuickTypingPanel = memo(function QuickTypingPanel({
 }: Props) {
   const letters = useMemo(() => characters(text), [text]);
   const inputRef = useRef<HTMLInputElement>(null);
-  const localRef = useRef<LocalProgress>({ ...INITIAL });
-  const [local, setLocal] = useState<LocalProgress>(INITIAL);
+  const localRef = useRef<LocalProgress>({ ...INITIAL_LOCAL_PROGRESS });
+  const [local, setLocal] = useState<LocalProgress>(INITIAL_LOCAL_PROGRESS);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -55,23 +54,12 @@ export const QuickTypingPanel = memo(function QuickTypingPanel({
   }, [enabled]);
 
   function acceptInput(value: string) {
-    // Pasting or dropping blocks of text must not grant several race characters.
-    const pressed = characters(value);
-    if (pressed.length !== 1 || !enabled || localRef.current.progress >= letters.length) return;
-    const key = pressed[0];
+    // Pasting, dropping multi-character strings and disconnected sends cannot move the caret.
     const previous = localRef.current;
-    const correct = key === letters[previous.progress];
-    const next: LocalProgress = {
-      progress: previous.progress + Number(correct),
-      strokes: previous.strokes + 1,
-      mistakes: previous.mistakes + Number(!correct),
-      wrong: !correct
-    };
-    // Never advance the local caret if the socket cannot accept this key.
-    // A successful send is not a server acknowledgement; race results remain authoritative.
-    if (!sendKey(key)) return;
+    const next = applyLocalKey(previous, text, value, enabled, sendKey);
+    if (next === previous) return;
     localRef.current = next;
-    setLocal(next); // instant UI update after successful WebSocket send
+    setLocal(next);
   }
 
   function onInput(event: ChangeEvent<HTMLInputElement>) {
