@@ -26,7 +26,7 @@ export function ShopPage({ profile, onBuy, onEquip, onRace }: Props) {
   const carsOwned = NEW_CAR_COLLECTION.filter(item => isOwned(profile, 'car', item.id)).length;
   const totalCars = NEW_CAR_COLLECTION.length;
   const items = SHOP.filter(item => (tab === 'all' || item.kind === tab) &&
-    (rarity === 'all' || item.kind === 'car' && item.rarity === rarity));
+    (rarity === 'all' || item.kind === 'car' && item.rarity === rarity && NEW_CAR_COLLECTION.some(car => car.id === item.id)));
 
   function action(item: Cosmetic) {
     if (isOwned(profile, item.kind, item.id)) onEquip(item);
