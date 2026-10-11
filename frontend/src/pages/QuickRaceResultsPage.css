@@ -1,0 +1,95 @@
+/* Result-first racing dashboard. Intentional whitespace and clear hierarchy. */
+.qr-results { padding: 26px 0 36px; color: #f7f5ef; animation: qr-enter .3s ease-out both; }
+.qr-heading { display: flex; justify-content: space-between; align-items: end; gap: 22px; padding: 10px 0 27px; }
+.qr-eyebrow { display: inline-flex; align-items: center; gap: 8px; color: #ee8a72; font-size: 10px; font-weight: 850; letter-spacing: 1.3px; }
+.qr-live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #f66f4f; }
+.qr-heading h1 { font: 900 clamp(32px,5vw,64px)/1.05 var(--font-display); letter-spacing: -.035em; margin: 13px 0 8px; }
+.qr-heading p { color: #b2baba; line-height: 1.5; font-size: 13px; margin: 0; }
+.qr-event-mark { border-left: 2px solid #f25f45; padding: 10px 0 6px 17px; color: #858e90; font: 800 13px/1.1 var(--font-display); letter-spacing: 1.8px; white-space: nowrap; }
+.qr-event-mark strong { color: #f6f5ef; font-size: 25px; margin-left: 5px; }
+.qr-layout { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(288px, .9fr); gap: 16px; align-items: start; }
+.qr-main-column, .qr-side-column { min-width: 0; display: grid; gap: 16px; }
+.qr-panel, .qr-hero { min-width: 0; background: #1c2325; border: 1px solid #394347; }
+.qr-hero { display: grid; grid-template-columns: 46% 54%; min-height: 319px; overflow: hidden; border-top: 3px solid #ff7052; }
+.qr-hero-left { min-width: 0; position: relative; display: flex; flex-direction: column; padding: 24px 22px 0; background: linear-gradient(120deg,#362823 0%,#2c2926 48%,#1c2325 100%); border-right: 1px solid #474547; overflow: hidden; }
+.qr-caption { font-size: 10px; font-weight: 850; letter-spacing: 1.1px; color: #b9bab6; }
+.qr-place { font: italic 900 clamp(80px,11vw,157px)/.9 var(--font-display); letter-spacing: -7px; color: #fff7e8; margin-top: 12px; }
+.qr-place span { font-size: .52em; letter-spacing: -4px; color: #ff785a; }
+.qr-car-stage { position: relative; isolation: isolate; flex: 1; min-height: 110px; margin: 0 -22px; overflow: hidden; background: linear-gradient(180deg,transparent 20%,#252e30 20%,#171d1f 90%); }
+.qr-stage-label { position: absolute; z-index: 2; bottom: 13px; left: 18px; color: #bdbdb67d; font-size: 8px; letter-spacing: 1.4px; font-weight: 850; }
+.qr-stage-road { position: absolute; inset: 42% 0 auto; height: 2px; background: repeating-linear-gradient(90deg,#e5e6df70 0 25px,transparent 25px 47px); }
+.qr-stage-car { position: absolute; z-index: 2; width: min(73%,265px); max-height: 112px; object-fit: contain; right: 29px; bottom: 9px; filter: drop-shadow(-14px 13px 9px #0009); animation: qr-finish .65s cubic-bezier(.12,.8,.23,1) both; }
+.qr-stage-checker { position: absolute; right: 10px; inset-block: 0; width: 12px; background: conic-gradient(#f7f6eb 25%,#23282b 0 50%,#f7f6eb 0 75%,#23282b 0) 0 0/12px 12px; opacity: .5; }
+.qr-hero-right { display: flex; flex-direction: column; min-width: 0; padding: 26px 23px 22px; }
+.qr-wpm { display: flex; align-items: baseline; gap: 12px; margin: 17px 0 18px; }
+.qr-wpm strong { font: 900 clamp(65px,8vw,112px)/.92 var(--font-display); letter-spacing: -2px; }
+.qr-wpm span { font: 850 14px var(--font-display); color: #fa7c60; }
+.qr-hero-metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; border-top: 1px solid #3d484a; padding: 15px 0; }
+.qr-hero-metrics > div span, .qr-earned span { display: block; color: #9ca7a7; font-size: 9px; font-weight: 850; margin-bottom: 8px; letter-spacing: .5px; }
+.qr-hero-metrics strong { font: 900 clamp(19px,2.4vw,32px)/1.1 var(--font-display); }
+.qr-hero-metrics small { font-size: 10px; color: #abb4b4; }
+.qr-earned { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: auto; padding-top: 15px; border-top: 1px solid #3d484a; }
+.qr-earned strong { display: block; color: #8fdeab; font: 900 clamp(19px,2.2vw,27px) var(--font-display); }
+.qr-panel { padding: 19px 19px 18px; }
+.qr-panel-header { display: flex; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 15px; }
+.qr-panel-header h2 { font: 900 clamp(16px,1.9vw,22px)/1.12 var(--font-display); margin: 5px 0 0; letter-spacing: -.01em; }
+.qr-subtle, .qr-level-number, .qr-pass-tier, .qr-quest-counter { flex: 0 0 auto; font-size: 11px; font-weight: 850; color: #b4bec0; }
+.qr-standing-panel { padding: 19px 0 12px; }
+.qr-standing-panel .qr-panel-header { padding: 0 18px; }
+.qr-standings { margin: 0; padding: 0; list-style: none; }
+.qr-standing { display: grid; grid-template-columns: 35px 70px minmax(115px,1fr) minmax(50px,.6fr) 100px; align-items: center; min-height: 64px; border-top: 1px solid #384447; gap: 10px; padding: 4px 17px; }
+.qr-standing.own { background: #6f3a2b35; box-shadow: inset 3px 0 #f46b4f; }
+.qr-standing-position { font: 900 22px/1 var(--font-display); color: #e2e5e3; }
+.qr-standing.own .qr-standing-position { color: #ff9a80; }
+.qr-standing-car img { display: block; width: 68px; height: 40px; object-fit: contain; }
+.qr-standing-user { min-width: 0; }
+.qr-standing-user strong { display: block; font-size: 12px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.qr-standing-user span { display: block; font-size: 9px; font-weight: 750; color: #98a5a3; margin-top: 5px; }
+.qr-standing-user i { color: #f47055; font-style: normal; padding: 0 2px; }
+.qr-standing-progress, .qr-progress-track, .qr-mini-track { height: 7px; overflow: hidden; background: #384447; border-radius: 2px; }
+.qr-standing-progress span, .qr-progress-track span, .qr-mini-track span { display: block; height: 100%; background: #fa6f54; border-radius: 2px; transition: width .5s ease-out; }
+.qr-standing.own .qr-standing-progress span { background: #8adbb2; }
+.qr-standing-status { font-size: 10px; color: #c9d1cf; text-align: right; white-space: nowrap; }
+.qr-standing-note { font-size: 10px; color: #889795; line-height: 1.5; margin: 13px 18px 0; }
+.qr-actions { display: grid; grid-template-columns: 1.6fr 1fr .8fr; gap: 9px; }
+.qr-actions button { min-height: 53px; border: 1px solid #505a5c; background: #262e30; color: #f5f3ec; font: 850 11px var(--font-body); }
+.qr-actions button:hover { background: #364044; }
+.qr-actions .qr-play-again { background: #f35c43; border-color: #f35c43; color: #fff; text-align: left; padding: 0 17px; display: flex; align-items: center; justify-content: space-between; }
+.qr-actions .qr-play-again:hover { background: #ff7657; }
+.qr-actions .qr-play-again span { font-size: 22px; }
+.qr-level-number { color: #f6eee2; background: #414038; border: 1px solid #5a5545; padding: 5px 8px; }
+.qr-progress-label { display: flex; justify-content: space-between; align-items: center; gap: 7px; font-size: 10px; color: #a9b3b1; margin: 0 0 8px; font-weight: 800; }
+.qr-progress-label strong { color: #eee; white-space: nowrap; }
+.qr-progress-track { height: 9px; }
+.qr-level-panel p { font-size: 11px; color: #99a8a6; margin: 10px 0 0; }
+.qr-season-track span { background: #a4d9aa; }
+.qr-claim-pass { margin-top: 13px; padding: 10px; width: 100%; color: #14221c; font-weight: 850; font-size: 11px; background: #99e7ab; border: 0; }
+.qr-text-link { background: none; border: 0; color: #ecefec; padding: 11px 0 0; font-size: 10px; letter-spacing: .3px; font-weight: 850; }
+.qr-text-link:hover { color: #ff8567; }
+.qr-quest-list { list-style: none; margin: 0; padding: 0; }
+.qr-quest { padding: 12px 0; border-top: 1px solid #3b4547; }
+.qr-quest:first-child { border-top: none; padding-top: 0; }
+.qr-quest-row { display: flex; align-items: start; justify-content: space-between; gap: 11px; }
+.qr-quest-row strong { display: block; font-size: 12px; }
+.qr-quest-row span { display: block; font-size: 10px; color: #9facaa; line-height: 1.45; margin-top: 4px; }
+.qr-quest-row .qr-quest-value { margin: 0; flex: 0 0 auto; color: #d7eac0; font-weight: 850; font-size: 11px; }
+.qr-quest-bottom { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.qr-mini-track { flex: 1; }
+.qr-quest-bottom button { flex: 0 0 auto; background: #dceccf; color: #1b2c24; padding: 8px 10px; border: 0; font-size: 10px; font-weight: 850; }
+.qr-quest-bottom button:disabled { background: #323e40; color: #879896; }
+.qr-stats-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 11px; }
+.qr-stats-grid > div { border-right: 1px solid #40494a; }
+.qr-stats-grid > div:last-child { border: 0; }
+.qr-stats-grid span { display: block; color: #aab5b3; font-size: 9px; margin-bottom: 8px; }
+.qr-stats-grid strong { font: 900 29px/1 var(--font-display); }
+.qr-stats-grid small { font: 750 9px var(--font-body); color: #b8c4bf; }
+.qr-footer-note { font-size: 10px; color: #94a19e; line-height: 1.6; padding: 17px 0; }
+.qr-empty { padding: 55px 0; }
+.qr-empty h1 { font: 900 38px var(--font-display); }
+.qr-empty p { color: #a9b7b3; }
+@keyframes qr-enter { from { opacity: .65; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes qr-finish { from { transform: translateX(-40px); opacity: .6; } to { transform: translateX(0); opacity: 1; } }
+@media(max-width:1050px) { .qr-layout { grid-template-columns: minmax(0,1fr); } .qr-side-column { grid-template-columns: repeat(2,minmax(0,1fr)); align-items: start; } }
+@media(max-width:700px) { .qr-heading h1 { font-size: 35px; } .qr-event-mark { display: none; } .qr-hero { grid-template-columns: 1fr; } .qr-hero-left { min-height: 255px; border-right: 0; border-bottom: 1px solid #484547; } .qr-hero-right { min-height: 230px; padding: 22px; } .qr-wpm strong { font-size: 74px; } .qr-standing { grid-template-columns: 22px 45px minmax(80px,1fr) 86px; gap: 6px; padding: 4px 9px; } .qr-standing-car img { width: 45px; } .qr-standing-progress { display: none; } .qr-side-column { grid-template-columns: 1fr; } .qr-actions { grid-template-columns: 1fr 1fr; } .qr-actions .qr-play-again { grid-column: 1 / -1; } }
+@media(max-width:390px) { .qr-standing { grid-template-columns: 22px 40px minmax(65px,1fr) 76px; } .qr-standing-status { font-size: 9px; } .qr-hero-metrics strong { font-size: 19px; } }
+@media(prefers-reduced-motion:reduce) { .qr-results,.qr-stage-car { animation: none; } .qr-standing-progress span,.qr-progress-track span,.qr-mini-track span { transition: none; } }
