@@ -320,6 +320,15 @@ export class QuickMatchmaker {
     // Closing an old socket after a successful resume cannot evict its new owner.
     if (human.socket !== socket) return;
     human.socket = null;
+    // Waiting racers have no progress to recover. Evict immediately so a
+    // React StrictMode double-mount or closed tab cannot occupy a ghost lobby
+    // slot, reduce bot fill or start a countdown with departed players.
+    if (race.phase === 'waiting' || race.phase === 'finished') {
+      race.humans.delete(human);
+      if (race.humans.size === 0) this.dispose(race);
+      else this.broadcast(race);
+      return;
+    }
     if (human.disconnectTimer) clearTimeout(human.disconnectTimer);
     human.disconnectTimer = setTimeout(() => {
       human.disconnectTimer = null;
