@@ -88,7 +88,7 @@
 .season-pass .season-tier.pass-tier.selected { border-color:#ffb282; box-shadow:inset 0 3px #ff9373; }
 .season-pass .season-tier.pass-tier.available { background:#31332d; border-color:#cda96d; }
 .season-pass .season-tier.pass-tier.received { background:#233a32; border-color:#5f967c; }
-.battle-select-tier { display:flex; align-items:stretch; flex-direction:column; width:100%; padding:12px 12px 9px; color:inherit; border:0; background:transparent; text-align:left; }
+.battle-select-tier { display:flex; align-items:stretch; flex-direction:column; width:100%; min-height:218px; padding:12px 12px 9px; color:inherit; border:0; background:transparent; text-align:left; }
 .battle-tile-top { display:flex; justify-content:space-between; align-items:center; gap:10px; }
 .battle-tier-number { color:#fff0df; font:900 23px/1 var(--font-display); }
 .battle-tile-state { color:#c5d6cf; font-size:9px; font-weight:900; }
@@ -99,7 +99,7 @@
 .battle-tier-label span { color:#98aaa6; font-size:9px; font-weight:850; letter-spacing:.6px; margin-bottom:5px; }
 .battle-tier-label strong { color:#f4f1eb; font-size:13px; line-height:1.2; font-weight:900; min-height:31px; }
 .battle-tier-xp { margin-top:7px; color:#edc183; font-size:11px; font-weight:900; letter-spacing:.3px; }
-.battle-tier-action { display:block; border:0; border-top:1px solid #516061; background:#f17455; color:#fff; width:100%; min-height:40px; font-size:11px; font-weight:900; padding:9px; }
+.battle-tier-action { display:block; border:0; border-top:1px solid #516061; background:#f17455; color:#fff; width:100%; min-height:48px; font-size:11px; font-weight:900; padding:12px; }
 .battle-tier-action:hover:not(:disabled) { background:#ff8a67; }
 .battle-tier-action:disabled { color:#92a39f; background:#293638; }
 .battle-rail-step.received .battle-tier-action:disabled { color:#a7ecc1; background:#294b3c; }
