@@ -84,7 +84,7 @@
 .battle-rail { position:relative; display:flex; gap:11px; list-style:none; padding:0 0 30px; margin:0; min-width:max-content; }
 .battle-rail::after { content:""; position:absolute; bottom:13px; left:0; width:100%; height:4px; background:linear-gradient(90deg,#f47758,#b9845c 25%,#39494b 70%); border-radius:3px; z-index:-1; }
 .battle-rail-step { display:flex; flex-direction:column; flex:0 0 174px; min-width:174px; position:relative; scroll-snap-align:start; }
-.season-pass .season-tier.pass-tier { border:1px solid #496064; background:#202c30; border-radius:4px; overflow:hidden; transition:border-color .16s ease, background-color .16s ease; }
+.season-pass .season-tier.pass-tier { display:flex; flex-direction:column; padding:0; opacity:1; border:1px solid #496064; background:#202c30; border-radius:4px; overflow:hidden; transition:border-color .16s ease, background-color .16s ease; }
 .season-pass .season-tier.pass-tier.selected { border-color:#ffb282; box-shadow:inset 0 3px #ff9373; }
 .season-pass .season-tier.pass-tier.available { background:#31332d; border-color:#cda96d; }
 .season-pass .season-tier.pass-tier.received { background:#233a32; border-color:#5f967c; }
@@ -103,6 +103,28 @@
 .battle-tier-action:hover:not(:disabled) { background:#ff8a67; }
 .battle-tier-action:disabled { color:#92a39f; background:#293638; }
 .battle-rail-step.received .battle-tier-action:disabled { color:#a7ecc1; background:#294b3c; }
+/* The legacy cosmetics.css defines .season-tier button with margin, orange
+ * fill, min-height:37px and disabled opacity. Explicitly outrank it for this
+ * new Battle Pass so the selection surface is transparent and all claim
+ * actions remain fully readable 48px mobile touch targets. */
+.season-pass .season-tier.pass-tier .battle-select-tier {
+  margin:0; min-height:218px; border:0; background:transparent; color:inherit;
+}
+.season-pass .season-tier.pass-tier .battle-select-tier:hover,
+.season-pass .season-tier.pass-tier .battle-select-tier:focus-visible {
+  background:#ffffff09;
+}
+.season-pass .season-tier.pass-tier .battle-tier-action {
+  margin:0; min-height:48px; border:0; border-top:1px solid #516061;
+  background:#f17455; color:#fff; opacity:1;
+}
+.season-pass .season-tier.pass-tier .battle-tier-action:hover:not(:disabled) { background:#ff8a67; }
+.season-pass .season-tier.pass-tier .battle-tier-action:disabled {
+  opacity:1; background:#293638; border-color:#516061; color:#92a39f;
+}
+.season-pass .season-tier.pass-tier.received .battle-tier-action:disabled {
+  background:#294b3c; color:#a7ecc1;
+}
 .battle-rail-node { position:absolute; left:50%; bottom:-39px; transform:translateX(-50%); width:23px; height:23px; border-radius:5px; display:grid; place-items:center; background:#253436; color:#b8c7c2; border:1px solid #61716f; font:900 11px var(--font-body); z-index:1; }
 .battle-rail-step.received .battle-rail-node { background:#56a57c; color:#10241a; border-color:#acf0ba; }
 .battle-rail-step.available .battle-rail-node { background:#e5b778; color:#302212; border-color:#ffd79d; }
