@@ -85,6 +85,30 @@ export const SEASON_REWARDS: SeasonReward[] = [
   { tier: 7, xp: 1750, kind: 'car', itemId: 'khan' },
   { tier: 8, xp: 2300, kind: 'car', itemId: 'cosmic' }
 ];
+/** A consistent source of truth for the free season pass UI. The total XP is
+ * preserved across all eight tiers and all claims remain explicitly time-gated.
+ */
+export function seasonProgress(profile: Pick<Profile, 'seasonXp' | 'claimed'>, at = Date.now()) {
+  const active = at >= SEASON.from && at < SEASON.until;
+  const remainingDays = active ? Math.ceil((SEASON.until - at) / 86_400_000) : 0;
+  const last = SEASON_REWARDS[SEASON_REWARDS.length - 1];
+  const unlocked = SEASON_REWARDS.filter(reward => profile.seasonXp >= reward.xp);
+  const claimable = active ? unlocked.filter(reward => !profile.claimed.includes(reward.tier)) : [];
+  const next = SEASON_REWARDS.find(reward => profile.seasonXp < reward.xp) ?? null;
+  const previousXp = next ? (SEASON_REWARDS[next.tier - 2]?.xp ?? 0) : last.xp;
+  const targetXp = next?.xp ?? last.xp;
+  const segmentPercent = next
+    ? Math.round(Math.max(0, Math.min(100, ((profile.seasonXp - previousXp) / Math.max(1, targetXp - previousXp)) * 100)))
+    : 100;
+  return {
+    active, remainingDays, unlocked, claimable, next, previousXp, targetXp,
+    xpToNext: next ? Math.max(0, next.xp - profile.seasonXp) : 0,
+    segmentPercent, totalPercent: Math.min(100, Math.max(0, profile.seasonXp / last.xp * 100)),
+    completed: profile.claimed.length >= SEASON_REWARDS.length,
+    focused: claimable[0] ?? next ?? last,
+  };
+}
+
 export type RaceHistory = { id: string; wpm: number; accuracy: number; elapsedMs: number; at: number; earnedXp: number; earnedCoins: number };
 export type Profile = {
   xp: number; coins: number; races: number; seasonXp: number; claimed: number[];
@@ -178,6 +202,11 @@ export function claimReward(p: Profile, tier: number, at: number = Date.now()): 
   const addition = reward.kind && reward.itemId ? itemKey(reward.kind, reward.itemId) : null;
   return { ...p, claimed: [...p.claimed, tier], coins: p.coins + (reward.coins || 0),
     owned: addition && !p.owned.includes(addition) ? [...p.owned, addition] : p.owned };
+}
+/** Claim every currently earned free tier in one atomic profile update. */
+export function claimAvailableRewards(profile: Profile, at = Date.now()): Profile {
+  if (at < SEASON.from || at >= SEASON.until) return profile;
+  return SEASON_REWARDS.reduce((result, reward) => claimReward(result, reward.tier, at), profile);
 }
 export function equipItem(p: Profile, kind: CosmeticKind, id: string): Profile {
   if (!owned(p, kind, id)) return p;
