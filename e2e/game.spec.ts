@@ -527,6 +527,37 @@ test('shop car viewer makes each shape easy to inspect, closes with Escape, and 
 });
 
 
+test('closed and throwing public WebSockets cannot create phantom local typing', async ({ page }) => {
+  await page.addInitScript(() => {
+    const NativeSocket = window.WebSocket;
+    const target = window as typeof window & { __activeQuickSocket?: WebSocket };
+    window.WebSocket = class extends NativeSocket {
+      constructor(url: string | URL) {
+        super(url);
+        if (String(url).includes('/api/quickplay/ws')) target.__activeQuickSocket = this;
+      }
+    } as typeof WebSocket;
+  });
+  await page.goto('/quick-race');
+  const input = page.getByRole('textbox', { name: 'Шууд уралдааны бичих талбар' });
+  await expect(input).toBeEditable({ timeout: 13_000 });
+  const letter = (await page.locator('.quick-phrase').innerText()).replace(/\u00a0/g, ' ')[0];
+  await page.evaluate(() => {
+    const socket = (window as typeof window & { __activeQuickSocket?: WebSocket }).__activeQuickSocket;
+    if (!socket || socket.readyState !== WebSocket.OPEN) throw new Error('No active quick socket');
+    socket.send = () => { throw new Error('Simulated send failure'); };
+  });
+  await input.fill(letter);
+  await expect(page.locator('.quick-type-head span')).toContainText(/^0\s*\//);
+  await page.evaluate(() => {
+    const socket = (window as typeof window & { __activeQuickSocket?: WebSocket }).__activeQuickSocket;
+    if (!socket) throw new Error('No quick socket');
+    Object.defineProperty(socket, 'readyState', { configurable: true, value: WebSocket.CLOSED });
+  });
+  await input.fill(letter);
+  await expect(page.locator('.quick-type-head span')).toContainText(/^0\s*\//);
+});
+
 test('Durable Object resumes the same public race and confirmed typing after socket loss', async ({ page }) => {
   await page.addInitScript(() => {
     type RaceDebug = {
