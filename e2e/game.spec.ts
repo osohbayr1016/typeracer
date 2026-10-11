@@ -424,7 +424,8 @@ test('battle pass presents next milestone, 8 readable rewards and original shop 
     await page.goto('/season');
     await expect(page.getByTestId('season-pass')).toBeVisible();
     await expect(page.getByRole('heading', { name: /BATTLE PASS/ })).toBeVisible();
-    await expect(page.getByTestId('season-spotlight')).toContainText('350')
+    await expect(page.getByTestId('season-spotlight')).toContainText('120 зоос');
+    await expect(page.locator('.battle-featured-info')).toContainText('350 XP');
     await expect(page.locator('.season-tier')).toHaveCount(8);
     await expect(page.getByRole('progressbar', { name: 'Улирлын нийт ахиц' })).toHaveAttribute('aria-valuenow', '0');
     await expect(page.getByTestId('season-claim-all')).toHaveCount(0);
