@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CARS } from './cars';
-import { type Profile, TITLE_NAMES, quickDayStreak, playerLevel, seasonProgress } from '../progression';
+import { type Profile, TITLE_NAMES, quickDayStreak, playerLevel } from '../progression';
 import { type QuickRaceOutcome, raceStandings } from './quickResultsModel';
 import './SocialPages.css';
 
