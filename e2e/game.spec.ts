@@ -151,7 +151,7 @@ test('Монгол дэлгүүр: зоосоор мөр авч, гаражид 
   await expect(page.locator('.coin-counter strong')).toContainText('80');
 });
 
-test('public multiplayer finish credits season XP once and supports a one-time season claim', async ({ page }) => {
+test('finishing one public race earns XP but cannot instantly unlock the battle pass', async ({ page }) => {
   await page.goto('/play');
   await page.locator('.play-choice-primary').click();
   const input = page.getByRole('textbox', { name: 'Шууд уралдааны бичих талбар' });
@@ -161,11 +161,13 @@ test('public multiplayer finish credits season XP once and supports a one-time s
   await expect(page.locator('.qr-results')).toBeVisible({timeout:15000});
   await page.goto('/season');
   const firstTier = page.locator('.season-tier').first();
-  await expect(firstTier.getByRole('button', { name: 'Шагнал авах' })).toBeEnabled();
-  await firstTier.getByRole('button', { name: 'Шагнал авах' }).click();
-  await expect(firstTier.getByRole('button', { name: /Авсан/ })).toBeDisabled();
+  await expect(firstTier.locator('.battle-tier-action')).toBeDisabled();
+  await expect(page.getByTestId('season-claim-all')).toHaveCount(0);
+  const profile = await page.evaluate(() => JSON.parse(localStorage.getItem('racer.profile.v1') || '{}'));
+  expect(profile.seasonXp).toBeGreaterThan(0);
+  expect(profile.seasonXp).toBeLessThan(350);
   await page.reload();
-  await expect(firstTier.getByRole('button', { name: /Авсан/ })).toBeDisabled();
+  await expect(firstTier.locator('.battle-tier-action')).toBeDisabled();
 });
 test('Зургаан анхны тусгай машины зураг ажиллаж байна', async ({ request, page }) => {
   await page.goto('/garage');
@@ -421,19 +423,23 @@ test('battle pass presents next milestone, 8 readable rewards and original shop 
     await page.setViewportSize({ width, height: 844 });
     await page.goto('/season');
     await expect(page.getByTestId('season-pass')).toBeVisible();
-    await expect(page.getByRole('heading', { name: /ЭХНИЙ ГАРАА/ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /BATTLE PASS/ })).toBeVisible();
     await expect(page.getByTestId('season-spotlight')).toContainText('120 зоос');
+    await expect(page.locator('.battle-featured-info')).toContainText('350 XP');
     await expect(page.locator('.season-tier')).toHaveCount(8);
     await expect(page.getByRole('progressbar', { name: 'Улирлын нийт ахиц' })).toHaveAttribute('aria-valuenow', '0');
     await expect(page.getByTestId('season-claim-all')).toHaveCount(0);
     const bounds = await page.evaluate(() => ({
       document: document.documentElement.scrollWidth,
       viewport: innerWidth,
-      buttonsTooSmall: [...document.querySelectorAll('.pass-tier button')].some(
-        button => button.getBoundingClientRect().height < 40)
+      shortButtons: [...document.querySelectorAll('.pass-tier button')]
+        .map(button => ({className:button.className, height:Math.round(button.getBoundingClientRect().height*10)/10,
+          minHeight:getComputedStyle(button).minHeight, display:getComputedStyle(button).display,
+          text:button.textContent?.trim().slice(0,35)}))
+        .filter(button => button.height < 40)
     }));
     expect(bounds.document, String(width)).toBeLessThanOrEqual(bounds.viewport + 1);
-    expect(bounds.buttonsTooSmall).toBe(false);
+    expect(bounds.shortButtons, 'undersized pass touch targets at '+width+'px: '+JSON.stringify(bounds.shortButtons)).toEqual([]);
   }
   await page.getByRole('button', { name: /ДЭЛГҮҮР ҮЗЭХ/ }).click();
   await expect(page).toHaveURL(/\/shop$/);
@@ -444,7 +450,7 @@ test('battle pass presents next milestone, 8 readable rewards and original shop 
 test('battle pass claims all earned tiers once and keeps cars, coins and progress after reload', async ({ page }) => {
   await page.goto('/season');
   await page.evaluate(() => localStorage.setItem('racer.profile.v1',
-    JSON.stringify({ xp: 1800, seasonXp: 1800, coins: 200, races: 17, claimed: [], owned: [] })));
+    JSON.stringify({ xp: 9000, seasonXp: 9000, coins: 200, races: 90, claimed: [], owned: [] })));
   await page.reload();
   const claimAll = page.getByTestId('season-claim-all');
   await expect(claimAll).toContainText('7 ШАГНАЛ');
@@ -463,15 +469,15 @@ test('battle pass claims all earned tiers once and keeps cars, coins and progres
   await page.reload();
   await expect(page.locator('.season-tier.received')).toHaveCount(7);
   await expect(page.getByTestId('season-spotlight')).toContainText('Оддын зам');
-  await expect(page.locator('.pass-progress-card')).toContainText('500 XP');
-  await page.getByRole('button', { name: /УРАЛДАЖ XP ОЛОХ/ }).click();
+  await expect(page.locator('.battle-progress-panel')).toContainText('1,500 XP');
+  await page.getByRole('button', { name: /УРАЛДАХ/ }).last().click();
   await expect(page).toHaveURL(/\/play$/);
 });
 
 test('claiming one season reward preserves other available rewards and accessible claim-all action', async ({page}) => {
   await page.goto('/season');
   await page.evaluate(() => localStorage.setItem('racer.profile.v1',
-    JSON.stringify({ xp: 400, seasonXp: 400, coins: 200, claimed: [], owned: [] })));
+    JSON.stringify({ xp: 900, seasonXp: 900, coins: 200, claimed: [], owned: [] })));
   await page.reload();
   await expect(page.locator('.season-tier.available')).toHaveCount(2);
   const first = page.locator('.season-tier').first();
@@ -838,4 +844,34 @@ test('guest logout rotates and revokes the first-party server session cookie',as
   const second=await getSession();
   expect(second.player.id).not.toBe(first.player.id);
   expect(second.player.guest).toBe(true);
+});
+
+
+test('battle pass selected reward, horizontal scroll and legacy claims remain usable on phones', async ({ page }) => {
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/season');
+  await expect(page.getByRole('heading',{name:/BATTLE PASS/})).toBeVisible();
+  const scroll=page.locator('.battle-rail-wrap');
+  await expect(scroll).toBeVisible();
+  const railWidth=await scroll.evaluate(el=>el.scrollWidth);
+  const screenWidth=await scroll.evaluate(el=>el.clientWidth);
+  expect(railWidth).toBeGreaterThan(screenWidth);
+  const last=page.locator('.season-tier[data-tier="8"] .battle-select-tier');
+  await last.scrollIntoViewIfNeeded();
+  await last.click();
+  await expect(last).toHaveAttribute('aria-pressed','true');
+  await expect(page.getByTestId('season-spotlight')).toBeVisible();
+  await expect(page.locator('.battle-featured-info h2')).toHaveText('Оддын зам');
+  await expect(page.locator('.battle-featured-info')).toContainText('10,500 XP');
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+  await page.evaluate(()=>localStorage.setItem('racer.profile.v1',JSON.stringify({
+    xp:1800,seasonXp:1800,coins:670,races:17,
+    claimed:[1,2,3,4,5,6,7],
+    owned:['car:dawn','car:khan','trail:aurora','sticker:star','title:khan']
+  })));
+  await page.reload();
+  await expect(page.locator('.season-tier.received')).toHaveCount(7);
+  await expect(page.getByTestId('season-claim-all')).toHaveCount(0);
+  await expect(page.locator('.season-tier[data-tier="8"] .battle-tier-action')).toBeDisabled();
 });

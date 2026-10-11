@@ -75,15 +75,19 @@ export const SEASON = {
   until: Date.parse('2026-12-01T00:00:00+08:00')
 };
 export type SeasonReward = { tier: number; xp: number; coins?: number; kind?: CosmeticKind; itemId?: string };
+/** Eight earned, free milestones spread across ~100 normal race finishes,
+ * instead of all unlocking in ~23 finishes. Claims from the previous easier
+ * schedule are grandfathered; no existing rewards or inventory are revoked.
+ */
 export const SEASON_REWARDS: SeasonReward[] = [
-  { tier: 1, xp: 100, coins: 120 },
-  { tier: 2, xp: 240, kind: 'sticker', itemId: 'star' },
-  { tier: 3, xp: 420, kind: 'car', itemId: 'dawn' },
-  { tier: 4, xp: 660, coins: 350 },
-  { tier: 5, xp: 960, kind: 'trail', itemId: 'aurora' },
-  { tier: 6, xp: 1300, kind: 'title', itemId: 'khan' },
-  { tier: 7, xp: 1750, kind: 'car', itemId: 'khan' },
-  { tier: 8, xp: 2300, kind: 'car', itemId: 'cosmic' }
+  { tier: 1, xp: 350, coins: 120 },
+  { tier: 2, xp: 850, kind: 'sticker', itemId: 'star' },
+  { tier: 3, xp: 1650, kind: 'car', itemId: 'dawn' },
+  { tier: 4, xp: 2800, coins: 350 },
+  { tier: 5, xp: 4200, kind: 'trail', itemId: 'aurora' },
+  { tier: 6, xp: 5900, kind: 'title', itemId: 'khan' },
+  { tier: 7, xp: 8000, kind: 'car', itemId: 'khan' },
+  { tier: 8, xp: 10500, kind: 'car', itemId: 'cosmic' }
 ];
 /** A consistent source of truth for the free season pass UI. The total XP is
  * preserved across all eight tiers and all claims remain explicitly time-gated.
@@ -92,9 +96,13 @@ export function seasonProgress(profile: Pick<Profile, 'seasonXp' | 'claimed'>, a
   const active = at >= SEASON.from && at < SEASON.until;
   const remainingDays = active ? Math.ceil((SEASON.until - at) / 86_400_000) : 0;
   const last = SEASON_REWARDS[SEASON_REWARDS.length - 1];
-  const unlocked = SEASON_REWARDS.filter(reward => profile.seasonXp >= reward.xp);
-  const claimable = active ? unlocked.filter(reward => !profile.claimed.includes(reward.tier)) : [];
-  const next = SEASON_REWARDS.find(reward => profile.seasonXp < reward.xp) ?? null;
+  // Previously claimed milestones remain earned even after raising XP goals.
+  const unlocked = SEASON_REWARDS.filter(reward =>
+    profile.seasonXp >= reward.xp || profile.claimed.includes(reward.tier));
+  const claimable = active ? SEASON_REWARDS.filter(reward =>
+    profile.seasonXp >= reward.xp && !profile.claimed.includes(reward.tier)) : [];
+  const next = SEASON_REWARDS.find(reward =>
+    profile.seasonXp < reward.xp && !profile.claimed.includes(reward.tier)) ?? null;
   const previousXp = next ? (SEASON_REWARDS[next.tier - 2]?.xp ?? 0) : last.xp;
   const targetXp = next?.xp ?? last.xp;
   const segmentPercent = next
@@ -104,7 +112,7 @@ export function seasonProgress(profile: Pick<Profile, 'seasonXp' | 'claimed'>, a
     active, remainingDays, unlocked, claimable, next, previousXp, targetXp,
     xpToNext: next ? Math.max(0, next.xp - profile.seasonXp) : 0,
     segmentPercent, totalPercent: Math.min(100, Math.max(0, profile.seasonXp / last.xp * 100)),
-    completed: profile.claimed.length >= SEASON_REWARDS.length,
+    completed: SEASON_REWARDS.every(reward => profile.claimed.includes(reward.tier)),
     focused: claimable[0] ?? next ?? last,
   };
 }

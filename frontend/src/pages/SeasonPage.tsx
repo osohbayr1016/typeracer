@@ -1,6 +1,7 @@
+import { useEffect, useRef, useState } from 'react';
 import './SeasonPage.css';
 import {
-  SEASON, SEASON_REWARDS, SHOP, getItem, seasonProgress,
+  SEASON, SEASON_REWARDS, getItem, seasonProgress,
   type SeasonReward, type Profile
 } from '../progression';
 
@@ -12,166 +13,162 @@ type Props = {
   onShop: () => void;
 };
 
-function RewardArt({ reward, variant = 'card' }: {
-  reward: SeasonReward; variant?: 'card' | 'featured';
-}) {
+const fmt = (n: number) => n.toLocaleString('mn-MN');
+function nameOf(reward: SeasonReward): string {
   const item = reward.kind && reward.itemId ? getItem(reward.kind, reward.itemId) : null;
-  const coins = reward.coins;
-  return <div className={'pass-reward-art pass-reward-art-' + variant + (item?.kind === 'car' ? ' has-car' : '')}>
-    {item?.kind === 'car' ? <img src={item.preview} alt={item.name} loading={variant === 'featured' ? 'eager' : 'lazy'} /> :
-      <span className="pass-reward-symbol" aria-hidden="true">{coins ? '◈' : item?.preview || '✦'}</span>}
+  return item?.name ?? fmt(reward.coins ?? 0) + ' зоос';
+}
+function labelOf(reward: SeasonReward): string {
+  return reward.kind === 'car' ? 'МАШИН' : reward.kind === 'trail' ? 'ГЭРЛИЙН МӨР' :
+    reward.kind === 'sticker' ? 'ТЭМДЭГ' : reward.kind === 'title' ? 'ЦОЛ' : 'ЗООС';
+}
+function RewardArt({reward,large=false}:{reward:SeasonReward;large?:boolean}) {
+  const item=reward.kind&&reward.itemId?getItem(reward.kind,reward.itemId):null;
+  return <div className={'battle-art' + (large?' battle-art-large':'') + (item?.kind==='car'?' battle-art-car':'')}>
+    {item?.kind==='car' ? <img src={item.preview} alt={item.name} loading={large?'eager':'lazy'}/> :
+      reward.coins ? <><span className="battle-coin" aria-hidden="true">◈</span><strong className="battle-coin-value">{fmt(reward.coins)}</strong></> :
+      <span className="battle-symbol" aria-hidden="true">{item?.preview||'✦'}</span>}
   </div>;
 }
 
-function rewardName(reward: SeasonReward) {
-  const item = reward.kind && reward.itemId ? getItem(reward.kind, reward.itemId) : null;
-  return item?.name ?? (reward.coins?.toLocaleString('mn-MN') + ' зоос');
-}
+export function SeasonPage({profile,onClaim,onClaimAll,onRace,onShop}:Props) {
+  const progress=seasonProgress(profile);
+  const [selected,setSelected]=useState<number>(()=>progress.focused.tier);
+  const railRef=useRef<HTMLDivElement>(null);
+  useEffect(()=>{
+    const track=railRef.current;
+    const tile=track?.querySelector<HTMLElement>('.season-tier[data-tier="'+selected+'"]');
+    if(!track||!tile)return;
+    const left=tile.offsetLeft+tile.offsetWidth/2-track.clientWidth/2;
+    const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    track.scrollTo({left,behavior:reduced?'instant':'smooth'});
+  },[selected]);
+  const reward=SEASON_REWARDS.find(x=>x.tier===selected)??progress.focused;
+  const received=profile.claimed.includes(reward.tier);
+  const unlocked=profile.seasonXp>=reward.xp;
+  const canClaim=progress.active&&unlocked&&!received;
+  const goal=SEASON_REWARDS[SEASON_REWARDS.length-1].xp;
+  const next=progress.next;
+  const complete=progress.completed;
+  const progressText=next ? fmt(progress.xpToNext)+' XP үлдсэн' : 'Бүх шат нээгдсэн';
+  const seasonEnds=new Intl.DateTimeFormat('mn-MN',{timeZone:'Asia/Ulaanbaatar',month:'long',day:'numeric'})
+    .format(new Date(SEASON.until-1));
+  const claimed=SEASON_REWARDS.filter(r=>profile.claimed.includes(r.tier)).length;
 
-function rewardKind(reward: SeasonReward) {
-  return reward.coins ? 'ТОГЛООМЫН ЗООС' :
-    reward.kind === 'car' ? 'ШИНЭ МАШИН' :
-    reward.kind === 'trail' ? 'ГЭРЛИЙН МӨР' :
-    reward.kind === 'sticker' ? 'ТЭМДЭГ' : 'ЦОЛ';
-}
-
-export function SeasonPage({ profile, onClaim, onClaimAll, onRace, onShop }: Props) {
-  const progress = seasonProgress(profile);
-  const focused = progress.focused;
-  const focusedClaimable = progress.claimable.some(r => r.tier === focused.tier);
-  const allRewards = SEASON_REWARDS.length;
-  const claimed = SEASON_REWARDS.filter(r => profile.claimed.includes(r.tier)).length;
-  const seasonEnds = new Intl.DateTimeFormat('mn-MN', { timeZone: 'Asia/Ulaanbaatar', month: 'long', day: 'numeric' })
-    .format(new Date(SEASON.until - 1));
-  const collectionCars = SHOP.filter(item => item.kind === 'car' && item.minLevel !== undefined);
-  const showcased = ['nebula', 'royal', 'dragon'].map(id => collectionCars.find(item => item.id === id)).filter(
-    (item): item is (typeof collectionCars)[number] => Boolean(item));
-
-  return <div className="season-pass collection-page" data-testid="season-pass">
-    <header className="pass-heading">
-      <div>
-        <span className="pass-eyebrow">УЛИРАЛ 01 <span aria-hidden="true">/</span> БҮГДЭД НЭЭЛТТЭЙ</span>
-        <h1>ЭХНИЙ <span>ГАРАА</span></h1>
-        <p>Уралдаан хийж улирлын XP цуглуулаарай. Шат бүрийн шагналыг түвшинд хүрээд үнэгүй авна.</p>
+  return <div className="season-pass" data-testid="season-pass">
+    <header className="battle-head">
+      <div className="battle-heading-group">
+        <span className="battle-overline">SEASON 01 <span aria-hidden="true">/</span> ЭХНИЙ ГАРАА</span>
+        <h1>BATTLE <em>PASS</em></h1>
+        <div className="battle-subline">
+          <span className="battle-free"><span aria-hidden="true">✓</span> ҮНЭГҮЙ</span>
+          <span>{progress.active ? fmt(progress.remainingDays)+' ХОНОГ ҮЛДСЭН' : 'УЛИРАЛ ДУУССАН'}</span>
+          <span>{seasonEnds} хүртэл</span>
+        </div>
       </div>
-      <div className="pass-season-badge">
-        <span className="pass-season-live">{progress.active ? '● УЛИРАЛ ИДЭВХТЭЙ' : '○ УЛИРАЛ ДУУССАН'}</span>
-        <strong>{progress.remainingDays}<small> хоног</small></strong>
-        <span>{seasonEnds} хүртэл</span>
-      </div>
+      <button type="button" className="battle-race-button" onClick={onRace}>
+        ▶ УРАЛДАХ <span aria-hidden="true">→</span>
+      </button>
     </header>
 
-    <div className="pass-overview">
-      <section className="pass-progress-card" aria-labelledby="pass-progress-heading">
-        <div className="pass-card-top">
-          <span className="pass-eyebrow">МИНИЙ АХИЦ</span>
-          <span className="pass-free-stamp">ҮНЭГҮЙ BATTLE PASS</span>
+    <section className="battle-main" aria-label="Улирлын гол шагнал">
+      <div className="battle-featured-art" data-testid="season-spotlight">
+        <div className="battle-featured-deco" aria-hidden="true">01</div>
+        <div className="battle-featured-top">
+          <span>SEASON REWARDS</span><span>ҮЕ {String(reward.tier).padStart(2,'0')} / {SEASON_REWARDS.length}</span>
         </div>
-        <h2 id="pass-progress-heading">{progress.completed ? 'БҮХ ШАГНАЛЫГ АВСАН!' :
-          progress.claimable.length ? progress.claimable.length + ' ШАГНАЛ АВАХАД БЭЛЭН' :
-          progress.next ? 'ДАРААГИЙН ШАГНАЛ РУУ' : 'БҮХ ШАТ НЭЭГДСЭН'}</h2>
-        <div className="pass-progress-numbers">
-          <strong>{profile.seasonXp.toLocaleString('mn-MN')} <small>XP</small></strong>
-          <span>{progress.next ? progress.targetXp.toLocaleString('mn-MN') + ' XP хүртэл' : 'Бүх 8 шат нээгдсэн'}</span>
+        <RewardArt reward={reward} large/>
+        <div className="battle-featured-bottom">
+          <span className="battle-featured-type">{labelOf(reward)}</span>
+          <strong>{nameOf(reward)}</strong>
         </div>
-        <div className="pass-progress-track" role="progressbar" aria-label="Улирлын нийт ахиц"
-          aria-valuemin={0} aria-valuemax={SEASON_REWARDS[allRewards-1].xp}
-          aria-valuenow={Math.min(profile.seasonXp, SEASON_REWARDS[allRewards-1].xp)}>
-          <span style={{ width: progress.totalPercent + '%' }}/>
+      </div>
+      <div className="battle-featured-info">
+        <span className="battle-overline">{received?'✓ АВСАН':canClaim?'● АВАХАД БЭЛЭН':'СОНГОСОН ШАГНАЛ'}</span>
+        <h2>{nameOf(reward)}</h2>
+        <div className="battle-goal"><span>НЭЭХ ШААРДЛАГА</span><strong>{fmt(reward.xp)} XP</strong></div>
+        <div className="battle-goal"><span>ТАНЫ АХИЦ</span><strong>{fmt(profile.seasonXp)} XP</strong></div>
+        <div className="battle-featured-actions">
+          {canClaim ? <button type="button" className="battle-claim-primary" onClick={()=>onClaim(reward.tier)}>
+            ✓ ШАГНАЛ АВАХ
+          </button> : received ? <span className="battle-earned">✓ ЦУГЛУУЛСАН</span> :
+            <span className="battle-locked">
+              {progress.active ? fmt(Math.max(0,reward.xp-profile.seasonXp))+' XP ДУТУУ' : 'УЛИРАЛ ДУУССАН'}
+            </span>}
         </div>
-        <div className="pass-progress-caption">
-          <span>{progress.next ? progress.xpToNext.toLocaleString('mn-MN') + ' XP үлдсэн' : 'Сүүлийн шат нээгдсэн'}</span>
-          <span>{progress.unlocked.length} / {allRewards} шат нээгдсэн</span>
-        </div>
-        <div className="pass-stats">
-          <div><strong>{claimed}/{allRewards}</strong><span>АВСАН ШАГНАЛ</span></div>
-          <div><strong>{progress.claimable.length}</strong><span>АВАХ БОЛОМЖТОЙ</span></div>
-          <div><strong>{profile.races}</strong><span>НИЙТ УРАЛДААН</span></div>
-        </div>
-        <div className="pass-main-actions">
-          {progress.claimable.length > 0 && <button type="button" className="pass-claim-all"
-            onClick={onClaimAll} data-testid="season-claim-all">
-            <span aria-hidden="true">✓</span> {progress.claimable.length} ШАГНАЛЫГ БҮГДИЙГ АВАХ
-          </button>}
-          <button className="pass-race-cta" type="button" onClick={onRace}>▶ УРАЛДАЖ XP ОЛОХ <span aria-hidden="true">→</span></button>
-        </div>
-      </section>
+        <p className="battle-note">8 шат · Тоглож XP цуглуулна · Төлбөргүй</p>
+      </div>
+    </section>
 
-      <section className={'pass-next-card' + (focusedClaimable ? ' can-claim' : '')}
-        aria-labelledby="pass-next-heading" data-testid="season-spotlight">
-        <div className="pass-next-top">
-          <span className="pass-eyebrow">{focusedClaimable ? 'ОДОО АВЧ БОЛНО' : progress.next ? 'ДАРААГИЙН ШАГНАЛ' : 'СҮҮЛЧИЙН ШАГНАЛ'}</span>
-          <span className="pass-next-tier">ҮЕ {String(focused.tier).padStart(2, '0')}</span>
+    <section className="battle-progress-panel" aria-label="Battle Pass ахиц">
+      <div className="battle-progress-top">
+        <div><span className="battle-overline">МИНИЙ АХИЦ</span>
+          <strong>{fmt(profile.seasonXp)} <small>/ {fmt(goal)} XP</small></strong></div>
+        <div className="battle-progress-aside"><strong>{progress.unlocked.length}/{SEASON_REWARDS.length} ШАТ</strong>
+          <span>{progressText}</span></div>
+      </div>
+      <div className="battle-progress-bar" role="progressbar" aria-label="Улирлын нийт ахиц"
+        aria-valuemin={0} aria-valuemax={goal} aria-valuenow={Math.min(goal,profile.seasonXp)}>
+        <span style={{width:progress.totalPercent+'%'}}/>
+      </div>
+      <div className="battle-progress-bottom">
+        <span>{claimed} ШАГНАЛ АВСАН</span>
+        {progress.claimable.length>0 ? <button data-testid="season-claim-all" type="button" onClick={onClaimAll}>
+          ✓ {progress.claimable.length} ШАГНАЛЫГ БҮГДИЙГ АВАХ
+        </button> : <span>{complete?'БҮХ ШАГНАЛ АВСАН':'ДАРААГИЙН ШАТАА НЭЭ'}</span>}
+      </div>
+    </section>
+
+    <section className="battle-roadmap" aria-labelledby="battle-roadmap-title">
+      <div className="battle-roadmap-top">
+        <div><span className="battle-overline">01 / ШАГНАЛЫН ЗАМ</span>
+          <h2 id="battle-roadmap-title">ШАТУУД</h2></div>
+        <div className="battle-rail-controls">
+          <span className="battle-scroll-hint">8 ШАТ · ГҮЙЛГЭНЭ ҮҮ</span>
+          <button type="button" aria-label="Өмнөх шагнал" disabled={selected<=1}
+            onClick={()=>setSelected(Math.max(1,selected-1))}>‹</button>
+          <button type="button" aria-label="Дараагийн шагнал" disabled={selected>=SEASON_REWARDS.length}
+            onClick={()=>setSelected(Math.min(SEASON_REWARDS.length,selected+1))}>›</button>
         </div>
-        <RewardArt reward={focused} variant="featured"/>
-        <div className="pass-next-bottom">
-          <span>{rewardKind(focused)}</span>
-          <h2 id="pass-next-heading">{rewardName(focused)}</h2>
-          <p>{focusedClaimable ? 'Нээгдсэн шагналаа одоо гараждаа нэмээрэй.' :
-            progress.completed ? 'Энэ улирлын бүх бэлгийг цуглуулсан байна.' :
-            progress.active ? focused.xp.toLocaleString('mn-MN') + ' улирлын XP хүрэхэд нээгдэнэ.' :
-            'Улирлын шагнал авах хугацаа дууссан.'}</p>
-          {focusedClaimable && <button type="button" onClick={() => onClaim(focused.tier)}>ШАГНАЛ АВАХ →</button>}
-        </div>
-      </section>
+      </div>
+      <div className="battle-rail-wrap" ref={railRef} tabIndex={0} aria-label="Battle Pass-ийн 8 шаттай шагналын зам. Хэвтээ гүйлгэнэ.">
+        <ol className="battle-rail">
+          {SEASON_REWARDS.map((tier,index)=>{
+            const got=profile.claimed.includes(tier.tier);
+            const earned=profile.seasonXp>=tier.xp;
+            const available=progress.active&&earned&&!got;
+            const state=got?'received':available?'available':'locked';
+            return <li className={'battle-rail-step '+state} key={tier.tier}>
+              <article className={'season-tier pass-tier '+state+(selected===tier.tier?' selected':'')}
+                data-tier={tier.tier}>
+                <button type="button" className="battle-select-tier" onClick={()=>setSelected(tier.tier)}
+                  aria-pressed={selected===tier.tier} aria-label={'Үе '+tier.tier+': '+nameOf(tier)+', '+fmt(tier.xp)+' XP'}>
+                  <div className="battle-tile-top">
+                    <span className="battle-tier-number">{String(tier.tier).padStart(2,'0')}</span>
+                    <span className="battle-tile-state">{got?'✓ АВСАН':available?'● БЭЛЭН':'🔒'}</span>
+                  </div>
+                  <RewardArt reward={tier}/>
+                  <div className="battle-tier-label">
+                    <span>{labelOf(tier)}</span>
+                    <strong>{nameOf(tier)}</strong>
+                  </div>
+                  <span className="battle-tier-xp">{fmt(tier.xp)} XP</span>
+                </button>
+                <button type="button" className="battle-tier-action" onClick={()=>onClaim(tier.tier)}
+                  disabled={!available}>
+                  {got?'✓ Авсан':available?'Шагнал авах':fmt(tier.xp)+' XP'}
+                </button>
+              </article>
+              <span className="battle-rail-node" aria-hidden="true">{got?'✓':index+1}</span>
+            </li>;
+          })}
+        </ol>
+      </div>
+    </section>
+    <div className="battle-bottom">
+      <p>Шагналаа авахын тулд XP цуглуул. Өмнө авсан шагнал хэвээр үлдэнэ.</p>
+      <button type="button" onClick={onShop}>ДЭЛГҮҮР ҮЗЭХ ↗</button>
     </div>
-
-    <section className="pass-roadmap" aria-labelledby="pass-rewards-title">
-      <div className="pass-section-heading">
-        <div><span className="pass-eyebrow">ТАНЫ ШАГНАЛЫН ЗАМ</span>
-          <h2 id="pass-rewards-title">8 ШАТ · 8 ШАГНАЛ</h2>
-          <p>Өмнөх шатыг алгасаж болно. XP хүрсэн бүх шагналаа тус тусад нь эсвэл нэг дор аваарай.</p></div>
-        {progress.claimable.length > 0 && <span className="pass-ready-indicator">{progress.claimable.length} шагнал бэлэн</span>}
-      </div>
-      <ol className="pass-tier-list">
-        {SEASON_REWARDS.map(reward => {
-          const received = profile.claimed.includes(reward.tier);
-          const earned = profile.seasonXp >= reward.xp;
-          const canClaim = progress.active && earned && !received;
-          const state = received ? 'received' : canClaim ? 'available' : 'locked';
-          return <li key={reward.tier} className={'pass-tier-wrap ' + state}>
-            <article className={'season-tier pass-tier ' + state} data-tier={reward.tier}>
-              <div className="pass-tier-top">
-                <span className="pass-tier-number">{String(reward.tier).padStart(2, '0')}</span>
-                <span className={'pass-tier-status ' + state}>
-                  {received ? '✓ АВСАН' : canClaim ? '● АВАХАД БЭЛЭН' : earned ? 'НЭЭГДСЭН' : '🔒 ХҮЛЭЭГДЭЖ БАЙНА'}
-                </span>
-              </div>
-              <RewardArt reward={reward}/>
-              <div className="pass-tier-details">
-                <span className="pass-reward-kind">{rewardKind(reward)}</span>
-                <h3>{rewardName(reward)}</h3>
-                <span className="pass-tier-xp">{reward.xp.toLocaleString('mn-MN')} XP</span>
-              </div>
-              <button type="button" onClick={() => onClaim(reward.tier)}
-                disabled={!canClaim}>
-                {received ? '✓ Авсан' : !progress.active ? 'Улирал дууссан' : canClaim ? 'Шагнал авах' : '🔒 ' + reward.xp + ' XP'}
-              </button>
-            </article>
-          </li>;
-        })}
-      </ol>
-    </section>
-
-    <section className="pass-bottom" aria-label="XP авах заавар болон дэлгүүрийн цуглуулга">
-      <div className="pass-how">
-        <span className="pass-eyebrow">ХЭРХЭН АХИХ ВЭ?</span>
-        <h2>УРАЛД · XP ОЛ · ШАГНАЛАА АВ</h2>
-        <p>1. Уралдаанд орно <span>→</span> 2. Дуусгаад XP авна <span>→</span> 3. Нээгдсэн шагналаа авна.</p>
-        <button type="button" onClick={onRace}>УРАЛДААНД ОРОХ →</button>
-      </div>
-      <div className="pass-shop-discovery">
-        <div className="pass-shop-art" aria-hidden="true">
-          {showcased.map(item => <img key={item.id} src={item.preview} alt="" loading="lazy"/>)}
-        </div>
-        <div><span className="pass-eyebrow">ДЭЛГҮҮРИЙН ЦУГЛУУЛГА</span>
-          <h2>{collectionCars.length} ШИНЭ МАШИН</h2>
-          <p>6 зэрэглэл · XP түвшнээр нээгдэнэ · зоосоор авна</p>
-          <button type="button" onClick={onShop}>ДЭЛГҮҮР ҮЗЭХ ↗</button></div>
-      </div>
-    </section>
-
-    <p className="pass-disclaimer">Улирлын хугацаа: 2026.10.01–2026.11.30, Улаанбаатарын цагаар. Бүх шагнал үнэгүй, санамсаргүй хайрцаг эсвэл төлбөрт зам байхгүй.
-      Ахиц болон шагнал одоогоор зөвхөн энэ төхөөрөмжийн хөтөчид хадгалагдана.</p>
+    <p className="battle-disclaimer">2026.10.01–2026.11.30 · Улаанбаатарын цаг · Бүх шагнал үнэгүй. Ахиц энэ төхөөрөмжид хадгалагдана.</p>
   </div>;
 }
