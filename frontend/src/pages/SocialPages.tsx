@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AuthPanel } from './AuthPanel';
 import { CARS } from './cars';
 import { type Profile, TITLE_NAMES, quickDayStreak, playerLevel } from '../progression';
 import { type QuickRaceOutcome, raceStandings } from './quickResultsModel';
@@ -29,6 +30,7 @@ export function ProfilePage({ profile, nickname, best, onPlay, onGarage, onNameC
       </div>
       <img src={CARS[profile.car].icon} alt={CARS[profile.car].label} className="social-profile-car"/>
     </section>
+    <AuthPanel/>
     <div className="social-stats-row">
       <div><span>ХУВИЙН РЕКОРД</span><strong>{best}<small> WPM</small></strong></div>
       <div><span>НИЙТ ГАРАА</span><strong>{localNumber(profile.races)}</strong></div>
