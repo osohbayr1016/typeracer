@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buyItem, claimReward, equipItem, isOwned, raceReward, starterProfile, SEASON, SHOP, NEW_CAR_COLLECTION, playerLevel, shopRotation,
-  isLevelUnlocked, COLLECTION_RARITIES } from './progression';
+  isLevelUnlocked, COLLECTION_RARITIES, seasonProgress, claimAvailableRewards, SEASON_REWARDS } from './progression';
 
 describe('Mongolian device-local cosmetic economy', () => {
   it('buys one deterministic shop item once and equips only what is owned', () => {
@@ -79,5 +79,59 @@ describe('six rarity collections, level economy and featured rotation', () => {
     expect(new Set(first.daily.map(item => item.id)).size).toBe(3);
     expect(shopRotation(Date.parse('2026-10-12T08:00:00+08:00')).daily.map(i => i.id)).not.toEqual(first.daily.map(i => i.id));
     expect(NEW_CAR_COLLECTION).toHaveLength(18);
+  });
+});
+
+
+describe('free season battle pass progress and bulk claiming', () => {
+  it('calculates an understandable next goal and claimable rewards', () => {
+    const initial = starterProfile();
+    const start = seasonProgress(initial, SEASON.from + 1000);
+    expect(start.active).toBe(true);
+    expect(start.next?.tier).toBe(1);
+    expect(start.xpToNext).toBe(100);
+    expect(start.claimable).toHaveLength(0);
+    expect(start.totalPercent).toBe(0);
+
+    const profile = { ...initial, seasonXp: 250 };
+    const halfway = seasonProgress(profile, SEASON.from + 1000);
+    expect(halfway.claimable.map(r => r.tier)).toEqual([1, 2]);
+    expect(halfway.next?.tier).toBe(3);
+    expect(halfway.previousXp).toBe(240);
+    expect(halfway.targetXp).toBe(420);
+    expect(halfway.xpToNext).toBe(170);
+    expect(halfway.segmentPercent).toBe(6);
+    expect(halfway.totalPercent).toBeGreaterThan(10);
+    expect(halfway.focused.tier).toBe(1);
+  });
+
+  it('claims all earned rewards exactly once in a single profile update', () => {
+    const profile = { ...starterProfile(), seasonXp: 1800 };
+    const when = SEASON.from + 1000;
+    const claimed = claimAvailableRewards(profile, when);
+    expect(claimed.claimed).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(claimed.coins).toBe(profile.coins + 120 + 350);
+    expect(isOwned(claimed, 'car', 'dawn')).toBe(true);
+    expect(isOwned(claimed, 'car', 'khan')).toBe(true);
+    expect(isOwned(claimed, 'trail', 'aurora')).toBe(true);
+    expect(isOwned(claimed, 'sticker', 'star')).toBe(true);
+    expect(isOwned(claimed, 'car', 'cosmic')).toBe(false);
+    expect(claimAvailableRewards(claimed, when)).toBe(claimed);
+    expect(claimAvailableRewards(profile, SEASON.until)).toBe(profile);
+    expect(claimAvailableRewards(profile, SEASON.from - 1)).toBe(profile);
+  });
+
+  it('supports full completion with eight nonrandom rewards', () => {
+    const profile = { ...starterProfile(), seasonXp: 5000 };
+    const all = claimAvailableRewards(profile, SEASON.until - 1);
+    expect(all.claimed).toHaveLength(SEASON_REWARDS.length);
+    expect(isOwned(all, 'car', 'cosmic')).toBe(true);
+    const state = seasonProgress(all, SEASON.until - 1);
+    expect(state.completed).toBe(true);
+    expect(state.next).toBeNull();
+    expect(state.totalPercent).toBe(100);
+    expect(state.claimable).toHaveLength(0);
+    expect(seasonProgress(all, SEASON.until).active).toBe(false);
+    expect(seasonProgress(all, SEASON.until).remainingDays).toBe(0);
   });
 });
