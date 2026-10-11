@@ -6,6 +6,7 @@ import { CARS, type Skin } from './cars';
 import { type Profile } from '../progression';
 import { QuickTypingPanel } from './QuickTypingPanel';
 import { sendRaceKey } from './typingSync';
+import { startSignal } from './raceStartSignal';
 import { type QuickRaceOutcome, type QuickResult } from './quickResultsModel';
 import './QuickRacePage.css';
 
@@ -121,8 +122,7 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
     return () => window.clearInterval(timer);
   }, []);
   const self = snapshot?.players.find(p => p.id === myId);
-  const countdown = snapshot?.phase === 'countdown' && snapshot.startAt
-    ? Math.max(1, Math.ceil((snapshot.startAt - now) / 1000)) : 0;
+  const signal = startSignal(snapshot?.phase, snapshot?.startAt, now);
   const filled = snapshot?.players.length ?? 0;
   const myRank = snapshot && self ? 1 + snapshot.players.filter(p => p.id !== myId &&
     (p.progress > self.progress || (p.progress === self.progress &&
@@ -160,9 +160,8 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
         <span className="quick-phase-value">{filled}<em>/5</em></span>
       </> : snapshot.phase === 'countdown' ? <>
         <span className="quick-phase-badge">2 / 2</span>
-        <div className="quick-phase-copy"><strong>БҮГД БЭЛЭН · ГАРААНЫ ТООЛОЛ</strong>
-          <small>Бичих текстээ хараарай. Тэг болоход бичиж эхэлнэ.</small></div>
-        <strong className="quick-phase-value" data-testid="race-start-countdown">{countdown}</strong>
+        <div className="quick-phase-copy"><strong>ГАРААНД БЭЛЭН</strong>
+          <small>Гэрэл ногоон болмогц бичиж эхлээрэй.</small></div>
       </> : snapshot.phase === 'racing' ? <>
         <span className="quick-phase-live">● ЭХЭЛЛЭЭ</span>
         <div className="quick-phase-copy"><strong>ОДОО БИЧЭЭРЭЙ!</strong>
@@ -175,6 +174,16 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
     </div>}
 
     {snapshot && <section className="quick-track" aria-label="Таван тоглогчийн байрлал">
+      {signal !== 'off' && <div className={'quick-start-lights signal-'+signal}
+        role="status" aria-live="assertive" data-testid="race-start-lights" data-signal={signal}
+        aria-label={signal === 'red' ? 'УЛААН. ХҮЛЭЭНЭ ҮҮ' : signal === 'yellow' ? 'ШАР. БЭЛД' : 'НОГООН. ЭХЭЛ'}>
+        <div className="quick-start-housing" aria-hidden="true">
+          <span className={'light-red'+(signal==='red'?' active':'')}/>
+          <span className={'light-yellow'+(signal==='yellow'?' active':'')}/>
+          <span className={'light-green'+(signal==='green'?' active':'')}/>
+        </div>
+        <strong>{signal==='red'?'ХҮЛЭЭ':signal==='yellow'?'БЭЛД':'ЭХЭЛ!'}</strong>
+      </div>}
       <div className="quick-track-head">
         <span>УРАЛДАГЧИД</span>
         <strong>{filled} / 5 · {snapshot.players.filter(p => !p.bot).length} ХҮН · {snapshot.players.filter(p => p.bot).length} БОТ</strong>
