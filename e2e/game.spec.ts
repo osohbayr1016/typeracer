@@ -457,22 +457,26 @@ test('all 18 rarity collectible cars serve their own detailed self-contained art
     ['royal', 'aurora-x', 'dragon']
   ];
   const uniqueBodies = new Set<string>();
+  const wheelCounts = new Set<number>();
   for (const id of tiers.flat()) {
     const response = await request.get('/cars/' + id + '.svg');
     expect(response.status(), id).toBe(200);
     expect(response.headers()['content-type'], id).toMatch(/image\/svg\+xml/);
     const art = await response.text();
-    expect(art, id).toContain('viewBox="0 0 690 236"');
+    expect(art, id).toContain('viewBox="0 0 680 260"');
     expect(art, id).toContain('<title>');
-    expect(art, id).toContain('url(#body)');
-    expect(art, id).toContain('url(#metal)');
-    expect(art.length, id).toBeGreaterThan(5500);
+    expect(art, id).toContain('url(#paint)');
+    expect(art, id).toContain('url(#rim)');
+    expect(art.length, id).toBeGreaterThan(3000);
     expect(art, id).not.toMatch(/<(?:image|script|foreignObject)\b|(?:href|xlink:href)=["']https?:\/\//i);
-    const body = art.match(/<path d="([^"]+)" fill="url\(#body\)"/);
+    const body = art.match(/<path d="([^"]+)" fill="url\(#paint\)"/);
     expect(body, id).not.toBeNull();
     uniqueBodies.add(body![1]);
+    wheelCounts.add((art.match(/<g transform="translate\(\d+ \d+\)"><circle r=/g) || []).length);
   }
   expect(uniqueBodies.size).toBe(18);
+  // Cars, buggies, six-wheel rigs and hover vehicles must not share one silhouette.
+  expect(wheelCounts.size).toBeGreaterThanOrEqual(3);
   await page.goto('/shop');
   await expect(page.getByTestId('shop-tier-explanation')).toContainText('МИНИЙ ТҮВШИН');
   await expect(page.getByTestId('shop-tier-explanation')).toContainText('ЗООС');
@@ -484,4 +488,40 @@ test('all 18 rarity collectible cars serve their own detailed self-contained art
       images.every(image => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0)
     ), { timeout: 7000 }
   ).toBe(true);
+});
+
+
+test('shop car viewer makes each shape easy to inspect, closes with Escape, and keeps level rules', async ({ page }) => {
+  for (const size of [{ width: 1366, height: 768 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(size);
+    await page.goto('/shop');
+    const item = page.locator('[data-item-id="nomad"]');
+    await expect(item).toBeVisible();
+    await item.getByRole('button', { name: 'Говийн нүүдэл машиныг томоор харах' }).click();
+    const viewer = page.getByTestId('shop-car-preview');
+    await expect(viewer).toBeVisible();
+    await expect(viewer).toContainText('Говийн нүүдэл');
+    await expect(viewer).toContainText('НЭЭХ ТҮВШИН 1');
+    await expect(viewer.locator('.shop-preview-stage img')).toHaveAttribute('src', '/cars/nomad.svg');
+    await expect(viewer.locator('.shop-preview-stage img')).toBeVisible();
+    const geometry = await page.evaluate(() => {
+      const v = document.querySelector('[data-testid="shop-car-preview"]')!.getBoundingClientRect();
+      return { left:v.left,right:v.right,top:v.top,bottom:v.bottom,innerWidth,innerHeight };
+    });
+    expect(geometry.left).toBeGreaterThanOrEqual(-1);
+    expect(geometry.right).toBeLessThanOrEqual(geometry.innerWidth+1);
+    expect(geometry.top).toBeGreaterThanOrEqual(-1);
+    expect(geometry.bottom).toBeLessThanOrEqual(geometry.innerHeight+1);
+    await page.keyboard.press('Escape');
+    await expect(viewer).toHaveCount(0);
+  }
+  // A new player cannot bypass rarity-level checks through the enlarged preview.
+  await page.locator('.shop-rarity-tabs .rarity-legendary').click();
+  await page.locator('[data-item-id="dragon"] .shop-inspect-button').click();
+  const legendary = page.getByTestId('shop-car-preview');
+  await expect(legendary).toContainText('НЭЭХ ТҮВШИН 35');
+  await expect(legendary).toContainText('◈ 5,000');
+  await expect(legendary.getByRole('button', { name: /ТҮВШИН 35/ })).toBeDisabled();
+  await legendary.getByRole('button', { name: /УРАЛДАЖ XP, ЗООС ОЛОХ/ }).click();
+  await expect(page).toHaveURL(/\/play$/);
 });
