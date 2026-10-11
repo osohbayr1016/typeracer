@@ -41,8 +41,8 @@ test('two real browsers create a waiting lobby, join, ready and race live', asyn
     await joiner.getByRole('button', { name: /НЭВТРЭХ/ }).click();
     await expect(creator.locator('.lobby-player:not(.empty)')).toHaveCount(2);
     await expect(joiner.locator('.lobby-player:not(.empty)')).toHaveCount(2);
-    await creator.getByRole('button', { name: /УРАЛДАХАД/ }).click();
-    await joiner.getByRole('button', { name: /УРАЛДАХАД/ }).click();
+    await creator.getByRole('button', { name: /БЭЛЭН/ }).click();
+    await joiner.getByRole('button', { name: /БЭЛЭН/ }).click();
     await expect(creator).toHaveURL(/\/multiplayer\/race$/);
     await expect(joiner).toHaveURL(/\/multiplayer\/race$/);
     await expect(creator.locator('.multiplayer-track .lane')).toHaveCount(2);
@@ -53,7 +53,7 @@ test('two real browsers create a waiting lobby, join, ready and race live', asyn
     await input.pressSequentially(prompt.slice(0, 5), { delay: 10 });
     await expect(creator.locator('.online-type .typing-label')).toContainText('5 /');
   } finally {
-    await Promise.all([creator.close(), joiner.close()]);
+    await Promise.allSettled([creator.close(), joiner.close()]);
   }
 });
 
@@ -94,7 +94,7 @@ test('solo opponents are labelled practice pace ghosts, garage progression is no
   await page.goto('/garage');
   await expect(page.getByRole('button', { name: /Ногоон оч/ })).toBeDisabled();
   await expect(page.getByRole('button', { name: /Сүүдэр/ })).toBeDisabled();
-  await expect(page.locator('.garage-page-grid .garage-car-tile')).toHaveCount(5);
+  await expect(page.locator('.garage-page-grid .garage-car-tile')).toHaveCount(11);
 });
 
 test('Монгол дэлгүүр: зоосоор мөр авч, гаражид зүүж, шинэчлэхэд хадгална', async ({ page }) => {
