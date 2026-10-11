@@ -7,7 +7,7 @@ import { ShopPage } from './pages/ShopPage';
 import { SeasonPage } from './pages/SeasonPage';
 import { loadProfile, saveProfile, raceReward, buyItem, claimReward, equipItem,
   TITLE_NAMES, STICKER_SYMBOLS, type CosmeticKind, type Cosmetic } from './progression';
-import { CARS, type Skin } from './pages/cars';
+import { CARS } from './pages/cars';
 import {
   accuracyPercent, characters, choosePrompt, normalizeText, progressPercent,
   PROMPTS, wordsPerMinute, type Language, type Prompt, type RoomSnapshot
@@ -29,12 +29,6 @@ const roomCodePattern = /^[A-F0-9]{8}$/;
 function storedNumber(key: string): number {
   try { return Math.max(0, Number(localStorage.getItem(key)) || 0); }
   catch { return 0; }
-}
-function storedSkin(): Skin {
-  try {
-    const value = localStorage.getItem('racer.skin');
-    return value && value in CARS ? value as Skin : 'sunset';
-  } catch { return 'sunset'; }
 }
 function PhraseView({ prompt, typed, progress = null }: {
   prompt: Prompt; typed: string; progress?: number | null
@@ -180,7 +174,6 @@ export function App() {
     updateTypingValue(event.target.value);
   }
   function handleEquip(kind: CosmeticKind, id: string) { setProfile(p => equipItem(p, kind, id)); }
-  function updateSkin(value: Skin) { handleEquip('car', value); }
   function handleBuy(item: Cosmetic) { setProfile(p => buyItem(p, item.kind, item.id)); }
   function handleClaim(tier: number) { setProfile(p => claimReward(p, tier)); }
   function disconnect() {
@@ -334,7 +327,7 @@ export function App() {
       {page === 'race' && <>
         <div className="game-header">
           <button className="back-link" onClick={() => navigate('play')}>← ГОРИМ СОНГОХ</button>
-          <span className="section-kicker">01 / SOLO RACE · {language === 'mn' ? 'MONGOLIAN' : 'ENGLISH'}</span>
+          <span className="section-kicker">01 / ГАНЦААРЧИЛСАН УРАЛДААН · МОНГОЛ ХЭЛ</span>
           <div className="game-timer">{(elapsed / 1000).toFixed(1)}s</div>
         </div>
         <section className="race-panel" aria-label="Ганцаарчилсан бичих уралдаан">
