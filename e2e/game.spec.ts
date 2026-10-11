@@ -319,7 +319,10 @@ test('normal navigation stays instant and no vehicle wipe returns on browser his
   await page.getByRole('button', { name: 'Тоглох', exact: true }).click();
   await expect(page).toHaveURL(/\/play$/);
   await expect(page.locator('.play-choice-public .play-choice-main-car')).toHaveAttribute('src','/cars/blue-sprint.svg');
-  await page.getByRole('button', { name: 'Дэлгүүр', exact: true }).click();
+  // Shop moved into the compact overflow menu: exercise the real flow.
+  await page.getByRole('button', { name: 'Бусад хуудас' }).click();
+  await page.locator('#premium-more-panel').getByRole('button', { name: /Дэлгүүр/ }).click();
+  await expect(page).toHaveURL(/\/shop$/);
   await page.goBack();
   await expect(page).toHaveURL(/\/play$/);
   await expect(page.getByTestId('race-route-motion')).toHaveCount(0);
