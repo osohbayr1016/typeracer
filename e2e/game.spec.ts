@@ -37,6 +37,9 @@ test('two real browsers create a waiting lobby, join, ready and race live', asyn
     await expect(creator.locator('.lobby-player')).toHaveCount(2); // one racer + one empty invite slot
     await expect(creator.getByRole('button', { name: /НАЙЗАА ХҮЛЭЭЖ БАЙНА/ })).toBeDisabled();
 
+    await joiner.goto('http://127.0.0.1:5173/garage');
+    await joiner.getByRole('button', { name: /Цэнхэр салхи/ }).click();
+    await joiner.goto('http://127.0.0.1:5173/multiplayer');
     await joiner.getByRole('textbox', { name: 'Өрөөний код' }).fill(code);
     await joiner.getByRole('button', { name: /НЭВТРЭХ/ }).click();
     await expect(creator.locator('.lobby-player:not(.empty)')).toHaveCount(2);
@@ -46,6 +49,8 @@ test('two real browsers create a waiting lobby, join, ready and race live', asyn
     await expect(creator).toHaveURL(/\/multiplayer\/race$/);
     await expect(joiner).toHaveURL(/\/multiplayer\/race$/);
     await expect(creator.locator('.multiplayer-track .lane')).toHaveCount(2);
+    await expect(creator.locator('.multiplayer-track .lane').nth(1).locator('.lane-car'))
+      .toHaveAttribute('src', '/cars/blue-sprint.svg');
 
     const input = creator.getByRole('textbox', { name: 'Онлайн уралдааны бичих хэсэг' });
     await expect(input).toBeEditable({ timeout: 12_000 });
