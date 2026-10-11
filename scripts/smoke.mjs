@@ -160,11 +160,13 @@ try {
   const botRacers = firstQuickRace.players.filter(player => player.bot === true);
   assert(humanRacers.some(player => player.name === quickAliceName));
   assert(humanRacers.some(player => player.name === quickBobName));
-  assert(firstQuickRace.players.length >= 4, 'Public race must fill vacant lanes with bots');
+  assert.equal(firstQuickRace.players.length, 10, 'Public race must have ten humans/bots');
   assert(botRacers.every(player => player.id.startsWith('bot-')), 'Bots must be identified explicitly');
-  if (humanRacers.length < 4) {
-    assert.equal(botRacers.length, 4 - humanRacers.length, 'Missing racer slots must be bot-filled');
+  if (humanRacers.length < 10) {
+    assert.equal(botRacers.length, 10 - humanRacers.length, 'Missing racer slots must be bot-filled');
   }
+  assert.equal(new Set(botRacers.map(player => player.name)).size, botRacers.length,
+    'Every generated bot must have a distinct name');
   console.log('✓ Public race starts with human/bot labels and a synchronized clock');
 
   const quickKeys = [...firstQuickRace.prompt.text].slice(0, 5);
