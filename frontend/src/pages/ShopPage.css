@@ -212,3 +212,9 @@
 @media(prefers-reduced-motion:reduce) {
  .shop-preview-stage img, .shop-preview-stage .car-aura { animation:none!important; transition:none!important; }
 }
+
+/* A descriptive vehicle class is meaningful; "special effect" alone isn't. */
+.shop-vehicle-type { display:inline-block; align-self:flex-start; margin:2px 0 7px; padding:4px 7px;
+  border:1px solid #647171; border-left:3px solid var(--rare-accent,#f4b077);
+  color:#e0e8e6; background:#2d3638; font-size:10px; font-weight:850; letter-spacing:.12px; }
+.shop-preview-info .shop-vehicle-type { margin:4px 0 7px; font-size:11px; }
