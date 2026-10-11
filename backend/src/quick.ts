@@ -14,6 +14,9 @@ type QuickRace = {
   queueEndsAt: number; deadline: ReturnType<typeof setTimeout> | null;
   countdownTimer: ReturnType<typeof setTimeout> | null;
   tick: ReturnType<typeof setInterval> | null;
+  botJoinTimer: ReturnType<typeof setInterval> | null;
+  botSequence: number;
+  botOffset: number;
   broadcastTimer: ReturnType<typeof setTimeout> | null;
 };
 
@@ -23,9 +26,35 @@ type QuickRace = {
  */
 export const QUICK_QUEUE_MS = 5_000;
 export const QUICK_COUNTDOWN_MS = 3_000;
-export const QUICK_LANES = 4;
-export const QUICK_MAX_HUMANS = 5;
-export const QUICK_PRIZES = [120, 95, 75, 55, 40] as const;
+export const QUICK_LANES = 10;
+export const QUICK_MAX_HUMANS = 10;
+export const QUICK_PRIZES = [120, 95, 75, 55, 40, 35, 30, 25, 20, 15] as const;
+export const QUICK_BOT_JOIN_MS = 400;
+
+/** Original Mongolian guest bot roster. Bots are identified as bots in every snapshot.
+ * Starting at an offset varies the lineup across consecutive races, without duplicate names.
+ */
+export const QUICK_BOT_ROSTER = [
+  { name: 'Талын аянга', pace: 39, car: 'mint' },
+  { name: 'Өглөөний салхи', pace: 51, car: 'steppe' },
+  { name: 'Хурдан хүлэг', pace: 67, car: 'thunder' },
+  { name: 'Хөх чоно', pace: 74, car: 'midnight' },
+  { name: 'Уудам тал', pace: 43, car: 'dawn' },
+  { name: 'Алтан соёмбо', pace: 81, car: 'khan' },
+  { name: 'Говийн шонхор', pace: 57, car: 'sunset' },
+  { name: 'Мөнгөн сум', pace: 90, car: 'cosmic' },
+  { name: 'Өндөр уул', pace: 48, car: 'purple' },
+  { name: 'Цахилгаан Үүл', pace: 100, car: 'lime' },
+  { name: 'Салхин жигүүр', pace: 63, car: 'phantom' },
+  { name: 'Тэнгэрийн нум', pace: 79, car: 'mint' },
+  { name: 'Үүрийн од', pace: 55, car: 'dawn' },
+  { name: 'Хүлэг баатар', pace: 86, car: 'thunder' },
+  { name: 'Хөх тэнгэр', pace: 72, car: 'steppe' }
+] as const;
+export function quickBotForSlot(offset: number, slot: number) {
+  return QUICK_BOT_ROSTER[((offset + slot) % QUICK_BOT_ROSTER.length + QUICK_BOT_ROSTER.length) % QUICK_BOT_ROSTER.length];
+}
+
 
 const carIds = ['mint', 'sunset', 'purple', 'lime', 'phantom', 'steppe', 'thunder', 'midnight', 'khan', 'dawn', 'cosmic'];
 const trailIds = ['none','ember','steppe','ice','aurora'];
@@ -70,6 +99,9 @@ export class QuickMatchmaker {
       this.pending = race;
     }
     race.humans.add(human);
+    // Replace the last bot with an incoming real racer while matchmaking is open.
+    // A full-looking animated lobby must never lock real players out of the queue.
+    while (race.humans.size + race.bots.length > QUICK_LANES) race.bots.pop();
     this.sockets.set(server, { race, human });
     server.accept();
     server.addEventListener('message', (event: MessageEvent) => this.receive(server, event.data));
@@ -86,11 +118,30 @@ export class QuickMatchmaker {
       id: crypto.randomUUID(), prompt: choosePrompt('mn'), phase: 'waiting',
       humans: new Set(), bots: [], startAt: null,
       queueEndsAt: Date.now() + QUICK_QUEUE_MS,
-      deadline: null, countdownTimer: null, tick: null, broadcastTimer: null
+      deadline: null, countdownTimer: null, tick: null, broadcastTimer: null,
+      botJoinTimer: null, botSequence: 0,
+      botOffset: Math.floor(Math.random() * QUICK_BOT_ROSTER.length)
     };
     this.active.add(race);
+    // Add one identifiable bot at a time so the lobby visibly fills, like people
+    // arriving at the starting line. Keep the queue open for real humans until timeout.
+    race.botJoinTimer = setInterval(() => this.joinBot(race), QUICK_BOT_JOIN_MS);
     race.deadline = setTimeout(() => this.startCountdown(race), QUICK_QUEUE_MS);
     return race;
+  }
+
+  private joinBot(race: QuickRace): void {
+    if (race.phase !== 'waiting' || race.humans.size === 0) return;
+    if (race.humans.size + race.bots.length >= QUICK_LANES) return;
+    const slot = race.botSequence++;
+    const preset = quickBotForSlot(race.botOffset, slot);
+    race.bots.push({
+      id: 'bot-' + race.id + '-' + slot, name: preset.name,
+      bot: true, car: preset.car, trail: 'none', sticker: 'none',
+      progress: 0, mistakes: 0, strokes: 0, completedAt: null,
+      ready: true, pace: preset.pace
+    });
+    this.broadcast(race);
   }
 
   private startCountdown(race: QuickRace): void {
@@ -98,18 +149,12 @@ export class QuickMatchmaker {
     if (race.humans.size === 0) { this.dispose(race); return; }
     if (this.pending === race) this.pending = null;
     if (race.deadline) clearTimeout(race.deadline);
+    if (race.botJoinTimer) clearInterval(race.botJoinTimer);
     race.deadline = null;
-    const presets = [
-      { name: 'Талын аянга', pace: 37, car: 'mint' },
-      { name: 'Өглөөний салхи', pace: 52, car: 'steppe' },
-      { name: 'Хурдан хүлэг', pace: 67, car: 'thunder' }
-    ];
-    const missing = Math.max(0, QUICK_LANES - race.humans.size);
-    race.bots = presets.slice(0, missing).map((bot, i) => ({
-      id: 'bot-' + race.id + '-' + i, name: bot.name, bot: true as const,
-      car: bot.car, trail: 'none', sticker: 'none',
-      progress: 0, mistakes: 0, strokes: 0, completedAt: null, ready: true, pace: bot.pace
-    }));
+    race.botJoinTimer = null;
+    // All competitors are present before the 3-second countdown begins.
+    // Remaining slots may occur if the event loop was briefly suspended.
+    while (race.humans.size + race.bots.length < QUICK_LANES) this.joinBot(race);
     race.phase = 'countdown';
     race.startAt = Date.now() + QUICK_COUNTDOWN_MS;
     this.broadcast(race);
@@ -119,7 +164,7 @@ export class QuickMatchmaker {
       }
       race.phase = 'racing';
       this.broadcast(race);
-      race.tick = setInterval(() => this.tickBots(race), 200);
+      race.tick = setInterval(() => this.tickBots(race), 180);
       race.deadline = setTimeout(() => this.finish(race), RACE_DURATION_MS);
     }, QUICK_COUNTDOWN_MS);
   }
@@ -231,9 +276,10 @@ export class QuickMatchmaker {
     if (race.deadline) clearTimeout(race.deadline);
     if (race.countdownTimer) clearTimeout(race.countdownTimer);
     if (race.tick) clearInterval(race.tick);
+    if (race.botJoinTimer) clearInterval(race.botJoinTimer);
     if (race.broadcastTimer) clearTimeout(race.broadcastTimer);
     race.deadline = race.countdownTimer = race.broadcastTimer = null;
-    race.tick = null;
+    race.tick = race.botJoinTimer = null;
   }
   private dispose(race: QuickRace): void {
     this.stopTimers(race);
