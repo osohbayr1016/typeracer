@@ -751,3 +751,52 @@ test('mobile post-race styles and social pages avoid horizontal overflow', async
     }
   }
 });
+
+test('guest racing contributes authenticated-by-cookie server points to ALL players leaderboard, never bots', async ({ page, request }) => {
+  await page.goto('/quick-race');
+  const input=page.getByRole('textbox',{name:'Шууд уралдааны бичих талбар'});
+  await expect(input).toBeEditable({timeout:14000});
+  const prompt=(await page.locator('.quick-phrase').innerText()).replace(/\u00a0/g,' ').trim();
+  await input.pressSequentially(prompt,{delay:44});
+  await expect(page).toHaveURL(/\/quick-results$/,{timeout:15000});
+  const response=await page.request.get('/api/leaderboard?limit=20&offset=0');
+  expect(response.status()).toBe(200);
+  const data=await response.json() as {players:Array<{rank:number;name:string;points:number;races:number;wpm:number;accuracy:number;guest:boolean}>};
+  expect(data.players.length).toBeGreaterThan(0);
+  const own=data.players.find(p=>p.name.includes('Зочин'));
+  expect(own).toBeDefined();
+  expect(own!.points).toBeGreaterThan(0);
+  expect(own!.races).toBeGreaterThanOrEqual(1);
+  expect(own!.accuracy).toBeGreaterThanOrEqual(70);
+  // All public quickmatch bots have distinctive names and MUST NOT appear as accounts.
+  expect(data.players.some(p=>p.name==='Талын аянга')).toBe(false);
+  await page.goto('/leaderboard');
+  await expect(page.getByTestId('global-points-table')).toContainText(own!.name);
+  await expect(page.getByTestId('global-points-table')).toContainText(String(own!.points));
+});
+
+test('team create, invite-only join and member roster persist in SQLite DO across distinct browsers', async ({ browser }) => {
+  const captain=await browser.newPage();
+  const teammate=await browser.newPage();
+  try {
+    await captain.goto('http://127.0.0.1:5173/teams');
+    await expect(captain.getByTestId('teams-page')).toBeVisible();
+    const tag='T'+Math.random().toString(16).slice(2,5).toUpperCase();
+    await captain.getByRole('textbox',{name:'БАГИЙН НЭР'}).fill('Хурдны баг');
+    await captain.getByRole('textbox',{name:/TAG/}).fill(tag);
+    await captain.getByRole('button',{name:/БАГ ҮҮСГЭХ/}).click();
+    await expect(captain.locator('.rank-invite strong')).toBeVisible();
+    const code=(await captain.locator('.rank-invite strong').innerText()).trim();
+    expect(code).toMatch(/^[A-F0-9]{8}$/);
+    await teammate.goto('http://127.0.0.1:5173/teams');
+    await teammate.getByRole('button',{name:'КОДООР НЭГДЭХ'}).click();
+    await teammate.getByRole('textbox',{name:'УРЬХ КОД'}).fill(code);
+    await teammate.getByRole('button',{name:/БАГТ НЭГДЭХ/}).click();
+    await expect(captain.locator('.rank-roster li')).toHaveCount(1);
+    await captain.reload();
+    await expect(captain.locator('.rank-roster li')).toHaveCount(2);
+    await expect(teammate.locator('.rank-roster li')).toHaveCount(2);
+    await expect(captain.getByTestId('team-points-table')).toContainText('Хурдны баг');
+    await expect(captain.getByTestId('team-points-table')).toContainText(tag);
+  } finally {await Promise.allSettled([captain.close(),teammate.close()]);}
+});
