@@ -17,7 +17,10 @@ function safeCosmetic(value: string | null, allowed: readonly string[], fallback
 }
 
 export class RaceRoom {
-  private quick = new QuickMatchmaker();
+  private quick: QuickMatchmaker | null = null;
+  private quickService(): QuickMatchmaker {
+    return this.quick ??= new QuickMatchmaker(this.state.storage);
+  }
   private sockets = new Map<WebSocket, Player>();
   private prompt = choosePrompt('mn');
   private phase: Phase = 'waiting';
@@ -28,7 +31,55 @@ export class RaceRoom {
   constructor(private readonly state: DurableObjectState, _env: unknown) {}
 
   async fetch(request: Request): Promise<Response> {
-    if (new URL(request.url).pathname === '/quickplay') return this.quick.fetch(request);
+    const path = new URL(request.url).pathname;
+    if (path === '/quickplay') return this.quickService().fetch(request);
+    if (path.startsWith('/ranking/') || path === '/account') {
+      const rank = this.quickService().rankings!;
+      const cookie = request.headers.get('Cookie');
+      if (path === '/account' && request.method === 'GET') {
+        const {player,newToken} = rank.session(cookie);
+        const headers = new Headers({ 'Content-Type': 'application/json', 'Cache-Control':'no-store' });
+        if (newToken) {
+          const secure = new URL(request.url).searchParams.get('secure') === '1';
+          headers.append('Set-Cookie', 'tr_guest='+newToken+'; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000'+(secure?'; Secure':''));
+        }
+        return new Response(JSON.stringify({player:rank.publicPlayer(player)}), {headers});
+      }
+      if (path === '/ranking/players' && request.method === 'GET')
+        return Response.json(rank.leaderboard(Date.now()));
+      if (path === '/ranking/teams' && request.method === 'GET')
+        return Response.json(rank.teams(Date.now()));
+      const player = rank.fromCookie(cookie);
+      if (!player) return Response.json({error:'Нэвтрэх шаардлагатай.'},{status:401});
+      if (path === '/ranking/team' && request.method === 'GET')
+        return Response.json({team:rank.myTeam(player)});
+      if (request.method !== 'POST') return new Response('Method not allowed',{status:405});
+      if (Number(request.headers.get('Content-Length')||0)>4096)
+        return new Response('Payload too large',{status:413});
+      let data:Record<string,unknown>;
+      try { const value=await request.json(); if (!value || typeof value!=='object') throw Error('bad'); data=value as Record<string,unknown>; }
+      catch { return Response.json({error:'Invalid JSON'},{status:400}); }
+      if (path === '/ranking/name') {
+        if (typeof data.name!=='string') return Response.json({error:'Invalid name'},{status:400});
+        const next=rank.rename(player,data.name.slice(0,80));
+        return Response.json({player:rank.publicPlayer(next)});
+      }
+      if (path === '/ranking/team') {
+        if (data.action==='create' && typeof data.name==='string' && typeof data.tag==='string') {
+          const result=rank.createTeam(player,data.name,data.tag);
+          return Response.json(result,{status:result.error?400:201});
+        }
+        if (data.action==='join' && typeof data.code==='string') {
+          const result=rank.joinTeam(player,data.code.trim().toUpperCase());
+          return Response.json(result,{status:result.error?400:200});
+        }
+        if (data.action==='leave') {
+          const success=rank.leaveTeam(player);
+          return Response.json(success?{ok:true}:{error:'Багийн ахлагч гарахын өмнө эрхээ шилжүүлэх шаардлагатай.'},{status:success?200:409});
+        }
+      }
+      return Response.json({error:'Invalid action'},{status:400});
+    }
     // Only an API-created room can accept players. Durable storage survives DO eviction.
     if (new URL(request.url).pathname === '/create' && request.method === 'POST') {
       await this.state.storage.put('createdAt', Date.now());
