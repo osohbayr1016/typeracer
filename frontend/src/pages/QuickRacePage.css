@@ -57,7 +57,7 @@
 .quick-road-progress { position: absolute; inset: 0 auto 0 0; background: #f2644220; border-right: 1px solid #f88b69;
   transition: width 145ms linear; }
 .quick-road > img { position: absolute; top: 1px; width: 69px; height: 40px; object-fit: contain;
-  z-index: 2; filter: drop-shadow(-4px 3px 2px #0008); transition: left 140ms linear; }
+  z-index: 2; filter: drop-shadow(-4px 3px 2px #0008); transition: left 210ms cubic-bezier(.2,.8,.2,1), transform 210ms cubic-bezier(.2,.8,.2,1); }
 .quick-flag { position: absolute; z-index: 1; top: 0; bottom: 0; right: 5px; width: 11px;
   background: conic-gradient(#f5f1e8 25%,#273235 0 50%,#f5f1e8 0 75%,#273235 0) 0 0/12px 12px; }
 .quick-empty { display: flex; align-items: center; gap: 9px; height: 43px; padding: 0 12px;

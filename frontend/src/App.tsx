@@ -1,22 +1,27 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties } from 'react';
 import { HomePage } from './pages/HomePage';
 import { QuickRacePage, type QuickResult } from './pages/QuickRacePage';
+import { QuickRaceResultsPage } from './pages/QuickRaceResultsPage';
+import { type QuickRaceOutcome } from './pages/quickResultsModel';
+import { ProfilePage, LeaderboardPage, StatsPage, FriendsPage } from './pages/SocialPages';
 import { PlayPage } from './pages/PlayPage';
 import { GaragePage } from './pages/GaragePage';
 import { ResultsPage } from './pages/ResultsPage';
 import { ShopPage } from './pages/ShopPage';
 import { SeasonPage } from './pages/SeasonPage';
 import { loadProfile, saveProfile, raceReward, awardQuickRace, buyItem, claimReward, claimAvailableRewards, equipItem,
-  TITLE_NAMES, STICKER_SYMBOLS, type CosmeticKind, type Cosmetic } from './progression';
+  TITLE_NAMES, STICKER_SYMBOLS, claimDailyQuest, type DailyQuestId, type CosmeticKind, type Cosmetic } from './progression';
 import { CARS, type Skin } from './pages/cars';
 import {
   accuracyPercent, characters, choosePrompt, normalizeText, progressPercent,
   PROMPTS, wordsPerMinute, type Language, type Prompt, type RoomSnapshot
 } from '@typeracer/shared';
 
-type Page = 'home' | 'play' | 'quickRace' | 'race' | 'garage' | 'results' | 'shop' | 'season' | 'multiplayer' | 'multiplayerRace';
+type Page = 'home' | 'play' | 'quickRace' | 'quickResults' | 'profile' | 'leaderboard' | 'stats' | 'friends' | 'race' | 'garage' | 'results' | 'shop' | 'season' | 'multiplayer' | 'multiplayerRace';
 const PAGE_URLS: Record<Page, string> = {
-  home: '/', play: '/play', quickRace: '/quick-race', race: '/race', garage: '/garage', results: '/results',
+  home: '/', play: '/play', quickRace: '/quick-race', quickResults: '/quick-results',
+  profile: '/profile', leaderboard: '/leaderboard', stats: '/stats', friends: '/friends',
+  race: '/race', garage: '/garage', results: '/results',
   shop: '/shop', season: '/season',
   multiplayer: '/multiplayer', multiplayerRace: '/multiplayer/race'
 };
@@ -83,6 +88,7 @@ export function App() {
   const [now, setNow] = useState(Date.now());
   const [best, setBest] = useState(() => storedNumber('racer.best'));
   const [profile, setProfile] = useState(loadProfile);
+  const [quickOutcome, setQuickOutcome] = useState<QuickRaceOutcome | null>(null);
   const xp = profile.xp;
   const skin = profile.car;
   const inputRef = useRef<HTMLInputElement>(null);
@@ -178,6 +184,7 @@ export function App() {
   function handleBuy(item: Cosmetic) { setProfile(p => buyItem(p, item.kind, item.id)); }
   function handleClaim(tier: number) { setProfile(p => claimReward(p, tier)); }
   function handleClaimAll() { setProfile(p => claimAvailableRewards(p)); }
+  function handleQuestClaim(id: DailyQuestId) { setProfile(p => claimDailyQuest(p, id)); }
   function disconnect() {
     socketRef.current?.close(); socketRef.current = null;
     setStatus('disconnected'); setSnapshot(null); setCode(''); setMyId(''); setRaceResult(null);
@@ -291,12 +298,16 @@ export function App() {
         <nav className="main-nav" aria-label="Үндсэн цэс">
           <button className={'nav-item ' + (page === 'home' ? 'selected' : '')} aria-current={page === 'home' ? 'page' : undefined}
             onClick={() => navigate('home')}>Нүүр</button>
-          <button className={'nav-item ' + (['play','race','results'].includes(page) ? 'selected' : '')}
-            aria-current={['play','race','results'].includes(page) ? 'page' : undefined}
+          <button className={'nav-item ' + (['play','race','results','quickRace','quickResults'].includes(page) ? 'selected' : '')}
+            aria-current={['play','race','results','quickRace','quickResults'].includes(page) ? 'page' : undefined}
             onClick={() => navigate('play')}>Тоглох</button>
-          <button className={'nav-item ' + (['multiplayer','multiplayerRace'].includes(page) ? 'selected' : '')}
-            aria-current={['multiplayer','multiplayerRace'].includes(page) ? 'page' : undefined}
-            onClick={() => navigate('multiplayer')}>Олон тоглогч</button>
+          <button className={'nav-item ' + (['multiplayer','multiplayerRace','friends'].includes(page) ? 'selected' : '')}
+            aria-current={['multiplayer','multiplayerRace','friends'].includes(page) ? 'page' : undefined}
+            onClick={() => navigate('friends')}>Найзууд</button>
+          <button className={'nav-item ' + (page === 'leaderboard' ? 'selected' : '')}
+            onClick={() => navigate('leaderboard')}>Чансаа</button>
+          <button className={'nav-item ' + (page === 'stats' ? 'selected' : '')}
+            onClick={() => navigate('stats')}>Стат</button>
           <button className={'nav-item ' + (page === 'shop' ? 'selected' : '')}
             aria-current={page === 'shop' ? 'page' : undefined} onClick={() => navigate('shop')}>Дэлгүүр</button>
           <button className={'nav-item ' + (page === 'season' ? 'selected' : '')}
@@ -307,10 +318,11 @@ export function App() {
         </nav>
         <div className="header-right">
           <span className="beta-label">BETA</span>
-          <div className="profile-chip" aria-label="Хөтөч дээрх тоглогчийн мэдээлэл">
+          <button type="button" className="profile-chip profile-chip-link" onClick={() => navigate('profile')}
+            aria-label="Миний профайл" aria-current={page === 'profile' ? 'page' : undefined}>
             <span className="profile-avatar" aria-hidden="true">●</span>
             <span className="profile-name">{nickname}<small>ТҮВШИН {level} · ◈ {profile.coins}</small></span>
-          </div>
+          </button>
           <button className="primary-button nav-play" onClick={() => navigate('play')}>▶ ТОГЛОХ</button>
         </div>
       </div>
@@ -319,9 +331,27 @@ export function App() {
       {page === 'home' && <HomePage best={best} xp={xp} onPlay={() => navigate('play')}
         onMultiplayer={() => navigate('multiplayer')} onGarage={() => navigate('garage')}/>}
       {page === 'play' && <PlayPage best={best} carIcon={CARS[skin].icon} carName={CARS[skin].label}
-        onPlay={() => navigate('quickRace')} onMultiplayer={() => navigate('multiplayer')} onGarage={() => navigate('garage')}/>}
+        onPlay={() => navigate('quickRace')} onMultiplayer={() => navigate('multiplayer')}
+        onCreateRoom={() => { navigate('multiplayer'); void createRoom(); }}
+        onJoinRoom={room => { navigate('multiplayer'); setJoinCode(room); connectRoom(room); }}
+        onGarage={() => navigate('garage')}/>}
+      {page === 'profile' && <ProfilePage profile={profile} nickname={nickname} best={best}
+        onNameChange={updateNickname} onPlay={() => navigate('quickRace')}
+        onGarage={() => navigate('garage')} onSeason={() => navigate('season')} onStats={() => navigate('stats')}/>}
+      {page === 'stats' && <StatsPage profile={profile} best={best} onPlay={() => navigate('quickRace')}/>}
+      {page === 'leaderboard' && <LeaderboardPage profile={profile} outcome={quickOutcome}
+        onPlay={() => navigate('quickRace')}/>}
+      {page === 'friends' && <FriendsPage
+        onCreateRoom={() => { navigate('multiplayer'); void createRoom(); }}
+        onJoinRoom={room => { navigate('multiplayer'); setJoinCode(room); connectRoom(room); }}
+        onLobby={() => navigate('multiplayer')}/>}
+      {page === 'quickResults' && <QuickRaceResultsPage outcome={quickOutcome} nickname={nickname} profile={profile} best={best}
+        onAgain={() => { setQuickOutcome(null); navigate('quickRace'); }}
+        onHome={() => navigate('home')} onGarage={() => navigate('garage')}
+        onSeason={() => navigate('season')} onClaimQuest={handleQuestClaim} onClaimSeason={handleClaimAll}/>}
       {page === 'quickRace' && <QuickRacePage nickname={nickname} car={skin} profile={profile}
         onBack={() => navigate('play')} onGarage={() => navigate('garage')}
+        onFinish={outcome => { setQuickOutcome(outcome); navigate('quickResults'); }}
         onReward={(result: QuickResult) => {
           setProfile(prev => awardQuickRace(prev, { ...result, at: Date.now() }));
           if (result.place !== null && result.wpm > best) {

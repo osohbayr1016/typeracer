@@ -1,10 +1,31 @@
+test('server-synced car reaches the checkered finish marker instead of stopping at 71 percent', async ({ page }) => {
+  await page.goto('/quick-race');
+  const input = page.getByRole('textbox',{name:'Шууд уралдааны бичих талбар'});
+  await expect(input).toBeEditable({timeout:14000});
+  const prompt = (await page.locator('.quick-phrase').innerText()).replace(/\u00a0/g,' ').trim();
+  // Stay one character short so the live track remains mounted for geometry QA.
+  await input.pressSequentially(prompt.slice(0,-1),{delay:44});
+  await expect.poll(async () => Number((await page.locator('.quick-lane.me .quick-lane-meta b')
+    .innerText()).replace('%','')),{timeout:5000}).toBeGreaterThan(90);
+  // Let the short easing finish, then inspect actual browser layout rather than only CSS strings.
+  await page.waitForTimeout(260);
+  const geometry = await page.evaluate(() => {
+    const road = document.querySelector('.quick-lane.me .quick-road')!;
+    const car = road.querySelector('img')!.getBoundingClientRect();
+    const flag = road.querySelector('.quick-flag')!.getBoundingClientRect();
+    return {bumper:car.right,marker:flag.left,finish:flag.right};
+  });
+  expect(geometry.bumper,'Car front must reach checkerboard').toBeGreaterThan(geometry.marker-22);
+  expect(geometry.bumper,'Car must not overshoot beyond checkerboard').toBeLessThan(geometry.finish+8);
+});
+
 import { test, expect } from '@playwright/test';
 
 test('main Play starts live matchmaking, adds bots and awards a finished match', async ({ page }) => {
   await page.goto('/');
   await page.locator('.home-hero').getByRole('button', { name: /ТОГЛОХ/ }).click();
   await expect(page).toHaveURL(/\/play$/);
-  await page.locator('.play-start-button').click();
+  await page.locator('.play-choice-primary').click();
   await expect(page).toHaveURL(/\/quick-race$/);
   await expect(page.getByTestId('quick-race')).toBeVisible();
   await expect(page.locator('.quick-phrase')).toBeVisible();
@@ -16,10 +37,12 @@ test('main Play starts live matchmaking, adds bots and awards a finished match',
   const prompt = (await page.locator('.quick-phrase').innerText()).replace(/\u00a0/g, ' ').trim();
   expect(prompt).toMatch(/[ӨөҮү]/);
   await input.pressSequentially(prompt, { delay: 44 });
-  await expect(page.locator('.quick-result-panel')).toBeVisible({ timeout: 15000 });
-  await expect(page.locator('.quick-result-score')).toContainText('120');
+  await expect(page.locator('.qr-results')).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('.qr-earned')).toContainText('120');
+  await expect(page).toHaveURL(/\/quick-results$/);
+  await expect(page.getByRole('heading',{name:/УРАЛДАГЧДЫН БАЙРЛАЛ/})).toBeVisible();
   await page.getByRole('button', { name: /ДАХИН УРАЛДАХ/ }).click();
-  await expect(page.locator('.quick-result-panel')).toHaveCount(0);
+  await expect(page.locator('.qr-results')).toHaveCount(0);
   await expect(page.locator('.quick-lane')).toHaveCount(5, { timeout: 12000 });
 });
 test('two real browsers create a waiting lobby, join, ready and race live', async ({ browser }) => {
@@ -68,7 +91,7 @@ test('mobile equipped vehicle appears in live public matchmaking', async ({ page
   await expect(car).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: /ЭНЭ МАШИНААР УРАЛДАХ/ }).click();
   await expect(page).toHaveURL(/\/play$/);
-  await page.locator('.play-start-button').click();
+  await page.locator('.play-choice-primary').click();
   await expect(page).toHaveURL(/\/quick-race$/);
   await expect(page.locator('.quick-lane.me .quick-road img')).toHaveAttribute('src', '/cars/blue-sprint.svg',{timeout:12000});
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
@@ -84,7 +107,7 @@ test('invitation links, history and deep-link pages resolve correctly', async ({
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('heading', { name: /ХУРДАН БИЧ/ })).toBeVisible();
   await page.goto('/play');
-  await expect(page.getByRole('heading', { name: /УРАЛДАХАД/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'ТОГЛОХ' })).toBeVisible();
 });
 
 test('solo opponents are labelled practice pace ghosts, garage progression is not fake multiplayer', async ({ page }) => {
@@ -117,12 +140,12 @@ test('Монгол дэлгүүр: зоосоор мөр авч, гаражид 
 
 test('public multiplayer finish credits season XP once and supports a one-time season claim', async ({ page }) => {
   await page.goto('/play');
-  await page.locator('.play-start-button').click();
+  await page.locator('.play-choice-primary').click();
   const input = page.getByRole('textbox', { name: 'Шууд уралдааны бичих талбар' });
   await expect(input).toBeEditable({ timeout: 13000 });
   const prompt = (await page.locator('.quick-phrase').innerText()).replace(/\u00a0/g,' ').trim();
   await input.pressSequentially(prompt, { delay: 44 });
-  await expect(page.locator('.quick-result-panel')).toBeVisible({timeout:15000});
+  await expect(page.locator('.qr-results')).toBeVisible({timeout:15000});
   await page.goto('/season');
   const firstTier = page.locator('.season-tier').first();
   await expect(firstTier.getByRole('button', { name: 'Шагнал авах' })).toBeEnabled();
@@ -166,12 +189,12 @@ test('Ө Ү typography uses Cyrillic-safe display, body and typing fonts without
 
 test('Play presents live matchmaking rather than a solo practice choice', async ({ page }) => {
   await page.goto('/play');
-  await expect(page.getByRole('heading', { name: /УРАЛДАХАД БЭЛЭН ҮҮ/ })).toBeVisible();
-  await expect(page.locator('.play-start-button')).toContainText('УРАЛДААНД ОРОХ');
-  await expect(page.locator('.play-friends-button')).toHaveCount(1);
-  await expect(page.locator('.play-quick-payout')).toContainText('120');
+  await expect(page.getByRole('heading', { name: 'ТОГЛОХ' })).toBeVisible();
+  await expect(page.locator('.play-choice-primary')).toContainText('УРАЛДАХ');
+  await expect(page.locator('.play-choice-create')).toHaveCount(1);
+  await expect(page.locator('.play-choice-public')).toContainText('5 УРАЛДАГЧ');
   await expect(page.getByText('ГАНЦААРАА ЭХЛЭХ')).toHaveCount(0);
-  await page.locator('.play-start-button').click();
+  await page.locator('.play-choice-primary').click();
   await expect(page).toHaveURL(/\/quick-race$/);
   await expect(page.getByTestId('quick-race')).toBeVisible();
 });
@@ -179,31 +202,31 @@ test('play page friend path opens the real lobby; equipped car appears in play p
   await page.goto('/garage');
   await page.getByRole('button', { name: /Цэнхэр салхи/ }).click();
   await page.goto('/play');
-  await expect(page.locator('.play-preview-lane-you img')).toHaveAttribute('src', '/cars/blue-sprint.svg');
-  await expect(page.locator('.play-preview-bottom')).toContainText('Цэнхэр салхи');
-  await page.locator('.play-preview-bottom button').click();
+  await expect(page.locator('.play-choice-public .play-choice-main-car')).toHaveAttribute('src', '/cars/blue-sprint.svg');
+  await expect(page.locator('.play-choice-public .play-choice-main-car')).toHaveAttribute('alt','Цэнхэр салхи');
+  await page.locator('.play-choice-bottom button').click();
   await expect(page).toHaveURL(/\/garage$/);
   await page.goto('/play');
-  await page.locator('.play-friends-button').click();
+  await page.locator('.play-choice-create').click();
   await expect(page).toHaveURL(/\/multiplayer$/);
-  await expect(page.getByRole('button', { name: /ӨРӨӨ ҮҮСГЭХ/ })).toBeVisible();
+  await expect(page.locator('.room-info strong')).toHaveText(/^[A-F0-9]{8}$/, { timeout: 10000 });
 });
 
 test('play page has safe Cyrillic headings and accessible primary CTA at phone, tablet and desktop sizes', async ({ page }) => {
   for (const width of [360, 390, 768, 1440]) {
     await page.setViewportSize({ width, height: 844 });
     await page.goto('/play');
-    const primary = page.locator('.play-start-button');
+    const primary = page.locator('.play-choice-primary');
     await expect(primary).toBeVisible();
     await expect(primary).toBeInViewport({ ratio: 0.5 });
-    const heading = page.locator('.play-entry-heading h1');
+    const heading = page.locator('.play-choice-header h1');
     await expect(heading).toBeVisible();
     const font = await heading.evaluate(el => getComputedStyle(el).fontFamily);
     expect(font).toContain('Roboto Condensed');
     const measurements = await page.evaluate(() => ({
       documentWidth: document.documentElement.scrollWidth,
       windowWidth: window.innerWidth,
-      buttonHeight: document.querySelector('.play-start-button')!.getBoundingClientRect().height
+      buttonHeight: document.querySelector('.play-choice-primary')!.getBoundingClientRect().height
     }));
     expect(measurements.documentWidth).toBeLessThanOrEqual(measurements.windowWidth + 1);
     expect(measurements.buttonHeight).toBeGreaterThanOrEqual(44);
@@ -226,7 +249,7 @@ test('normal navigation stays instant and no vehicle wipe returns on browser his
   await page.getByRole('button', { name: /Цэнхэр салхи/ }).click();
   await page.getByRole('button', { name: 'Тоглох', exact: true }).click();
   await expect(page).toHaveURL(/\/play$/);
-  await expect(page.locator('.play-preview-lane-you img')).toHaveAttribute('src','/cars/blue-sprint.svg');
+  await expect(page.locator('.play-choice-public .play-choice-main-car')).toHaveAttribute('src','/cars/blue-sprint.svg');
   await page.getByRole('button', { name: 'Дэлгүүр', exact: true }).click();
   await page.goBack();
   await expect(page).toHaveURL(/\/play$/);
@@ -237,7 +260,7 @@ test('reduced motion still supports live public Play without loading animations'
   await page.goto('/');
   await expect(page.getByTestId('race-boot')).toHaveCount(0);
   await page.getByRole('button', { name: 'Тоглох', exact: true }).click();
-  await page.locator('.play-start-button').click();
+  await page.locator('.play-choice-primary').click();
   await expect(page).toHaveURL(/\/quick-race$/);
   await expect(page.getByTestId('race-route-motion')).toHaveCount(0);
   await expect(page.locator('.quick-lane')).toHaveCount(5,{timeout:12000});
@@ -637,4 +660,78 @@ test('Durable Object resumes the same public race and confirmed typing after soc
   await expect(page.locator('.quick-connection')).toContainText('ОНЛАЙН');
   await expect(page.locator('.quick-type-head span')).toContainText(/^1\s*\//);
   await expect(page.locator('.quick-lane.me')).toHaveCount(1);
+});
+
+
+test('play choices are compact and friends create/join can be reached without explanatory walls', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('play-choices')).toBeVisible();
+  await expect(page.getByRole('heading', {name:'ТОГЛОХ'})).toBeVisible();
+  await expect(page.getByText('УРАЛДАХАД БЭЛЭН ҮҮ?')).toHaveCount(0);
+  await expect(page.getByRole('heading',{name:'ШУУД УРАЛДАХ'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'НАЙЗУУДТАЙГАА'})).toBeVisible();
+  await expect(page.locator('.play-choice-grid > section')).toHaveCount(2);
+  await expect(page.getByTestId('quick-play-button')).toBeVisible();
+  await expect(page.getByTestId('create-friends-room')).toBeVisible();
+  await expect(page.getByRole('button',{name:'Кодоор нэгдэх'})).toBeDisabled();
+  await page.getByRole('textbox',{name:'Өрөөний код'}).fill('ab12cd34');
+  await expect(page.getByRole('button',{name:'Кодоор нэгдэх'})).toBeEnabled();
+});
+
+test('profile nickname persists and profile, stats, friends, leaderboard are real routes', async ({ page }) => {
+  await page.goto('/profile');
+  await expect(page.getByTestId('profile-page')).toBeVisible();
+  await page.getByRole('textbox',{name:'Тоглогчийн нэр'}).fill('Өлзий');
+  await page.reload();
+  await expect(page.getByRole('textbox',{name:'Тоглогчийн нэр'})).toHaveValue('Өлзий');
+  await page.goto('/stats');
+  await expect(page.getByTestId('stats-page')).toBeVisible();
+  await expect(page.getByText('Өгөгдөл алга.')).toBeVisible();
+  await page.goto('/leaderboard');
+  await expect(page.getByTestId('leaderboard-page')).toBeVisible();
+  await page.getByRole('button',{name:'МИНИЙ РЕКОРДУУД'}).click();
+  await expect(page.getByText('Таны бүртгэсэн уралдаан алга.')).toBeVisible();
+  await page.goto('/friends');
+  await expect(page.getByTestId('friends-page')).toBeVisible();
+  await expect(page.getByRole('button',{name:/ӨРӨӨНД НЭГДЭХ/})).toBeDisabled();
+  await page.getByRole('textbox',{name:'Найзын өрөөний код'}).fill('ABCDEF12');
+  await expect(page.getByRole('button',{name:/ӨРӨӨНД НЭГДЭХ/})).toBeEnabled();
+});
+
+test('completed quickplay opens post-race standings and claims daily goals only once', async ({ page }) => {
+  await page.goto('/quick-race');
+  const input = page.getByRole('textbox',{name:'Шууд уралдааны бичих талбар'});
+  await expect(input).toBeEditable({timeout:13000});
+  const prompt = (await page.locator('.quick-phrase').innerText()).replace(/\u00a0/g,' ').trim();
+  await input.pressSequentially(prompt,{delay:44});
+  await expect(page).toHaveURL(/\/quick-results$/,{timeout:15000});
+  await expect(page.getByTestId('quick-results')).toBeVisible();
+  await expect(page.locator('.qr-standings li')).toHaveCount(5);
+  await expect(page.locator('.qr-standing.own')).toContainText('ТА');
+  await expect(page.locator('.qr-earned')).toContainText('120');
+  await expect(page.locator('.qr-pass-panel')).toBeVisible();
+  await expect(page.locator('.qr-stats-panel')).toBeVisible();
+  const claim = page.locator('[data-quest-id="first-finish"] button');
+  await expect(claim).toBeEnabled();
+  const before = await page.locator('.profile-name small').innerText();
+  await claim.click();
+  await expect(claim).toBeDisabled();
+  await expect(claim).toContainText('АВСАН');
+  const after = await page.locator('.profile-name small').innerText();
+  expect(after).not.toBe(before);
+  await page.getByRole('button',{name:'НҮҮР ХУУДАС'}).click();
+  await expect(page).toHaveURL(/\/$/);
+  await page.goto('/profile');
+  await expect(page.locator('.social-stats-row')).toBeVisible();
+});
+
+test('mobile post-race styles and social pages avoid horizontal overflow', async ({ page }) => {
+  for(const width of [360,390,768,1440]){
+    await page.setViewportSize({width,height:850});
+    for(const route of ['/play','/profile','/leaderboard','/stats','/friends','/quick-results']){
+      await page.goto(route);
+      const overshoot = await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
+      expect(overshoot,route+' at '+width+'px').toBeLessThanOrEqual(1);
+    }
+  }
 });

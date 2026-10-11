@@ -1,3 +1,42 @@
+## 2026-10-11 — PR #23 staging evidence and current P0–P3 backlog
+
+**Completed previous priority:** [PR #23](https://github.com/osohbayr1016/typeracer/pull/23) is merged into `main` at `2eeb42d2`. Its behavioral closed/throwing WebSocket unit/Chromium tests, real local Worker resume tests, typecheck and build passed. [Main push run 38133888580](https://github.com/osohbayr1016/typeracer/actions/runs/38133888580) passed Cloudflare staging deployment and real public/private WebSocket smoke: two private clients synchronized, public queue joined two clients, bot and human progress was observed. This is CI smoke evidence, not a manual browser/device review.
+
+**Current unfinished priority:** [PR #24](https://github.com/osohbayr1016/typeracer/pull/24) fixes the confirmed 71%-of-lane finish-line car display defect and replaces the verbose Play page with clear side-by-side public/friends options. Adds guest profile, stats, last-race/local-record leaderboard, friend room actions and post-race results. [PR run 38136164109](https://github.com/osohbayr1016/typeracer/actions/runs/38136164109) passed typecheck, unit, build, Chromium; PR staging skipped by design. Recheck CI after documentation changes, then merge only if green, then verify main staging smoke.
+
+### Evidence-ranked open issues
+
+| Priority | Area and evidence | Next test or fix |
+|---|---|---|
+| P0 | None confirmed in reviewed CI and staging runs. | Reassess on new failure evidence. |
+| P1 | Guest economy and ranking: `progression.ts` persists coins/XP/ownership in localStorage; quick results are `verified:false`. | Authenticated server ledger before any official global rankings. |
+| P1 | Public match memory: `backend/src/quick.ts` active race state is not durable across DO restart; 15s reconnect is same-instance only. | Persist/recover match state; restart E2E. |
+| P1 | Fair play: quick WebSocket accepts up to 35 keys/s, bot-filled five-lane races; no stronger verification of human input. | Concurrent-join, race timing and bot fairness tests. |
+| P1 fixed in #24 | 71%-of-track car geometry and text-heavy `/play`. | New-head CI and staging release gate; mobile visual review. |
+| P2 | Mongolian mobile IME and optimistic typing: local send success is not server ACK; no p95 typing-latency measurement. | Composition tests and authoritative per-key reconciliation. |
+| P2 | Resume/finish UX: disconnect under packet loss and page reload after a result are not durable/reproducible. | Network-shaping and reload recovery tests. |
+| P2 | Mobile/accessibility: automated responsive overflow and reduced-motion checks exist, not physical-device, screen-reader or 200%-zoom QA. | Keyboard, zoom, contrast and real Mongolian IME QA. |
+| P2 | Staging smoke validates public queue/progress, not a complete hosted race finish/reward. | Safe isolated end-to-end staging finish smoke. |
+| P3 | Performance unmeasured; cosmetics six rarity tiers and 18 original SVG cars should remain unchanged while gameplay work is open. | Load profiling; handle dependency PRs independently. |
+
+No production changes, migrations or new paid dependencies.
+
+---
+
+## 2026-10-11 — Race finish alignment, clean race entry and real player pages (PR pending)
+
+**Confirmed on user's staging screenshot:** at reported 100% progress, the quick-race car graphic remained roughly one quarter track length behind the checkerboard despite a server-computed #1 finish and 120-coin reward. Root cause in `QuickRacePage.tsx`: `left: done * .71 + '%'` caps the car position at 71%; it is a *display geometry* bug, not proof of an incorrect server finish.
+
+**Fix:** car left = progress percent, compensate with proportional full-car translation and 14px flag clearance, so front bumper reaches checkerboard when progress reaches 100. Race result still arrives only on the server's `quick-result`, with no client-generated prize. On result, navigate from crowded track to a dedicated compact post-race results screen: standings with explicit unfinished bots, verified outcome/coins, deduped device-local XP/season progress, claimable season rewards, idempotent daily quests, Mongolia-local streak, and Play Again/Home/Garage actions.
+
+**User requested less text and obvious navigation:** replaced long `УРАЛДАХАД БЭЛЭН ҮҮ?` pitch and duplicate explanations with one compact Play heading and two full-width side-by-side choices (public quick match and friends private room, direct create/join code). Added navigable Profile, Stats, Leaderboard and Friends views with responsive styling and editable stored nickname. Profile and stats use real local race ledger; leaderboard shows the latest actual race and personal record rankings, NOT fabricated global users. Friends page creates/joins the existing real private WebSocket room; account friends/presence still require auth and storage.
+
+**Research reference (principles only, not copied assets):** Nitro Type's current [leagues](https://www.nitrotype.com/leagues), [friends UX](https://www.nitrotype.com/friends/) and [May 2025 stats overhaul](https://www.nitrotype.com/updates) support concise actions and player-centric data; Nitro retired earlier global leaderboards. Keep six rarity tiers, existing shop catalog and gameplay/level fairness unchanged.
+
+**Tests added/updated:** deterministic frontend Vitest race standings, Mongolia-local daily-quest/idempotent-claim/streak unit tests; Chromium E2E for race results and rewards, entry/friend choice, mobile layout, profile persistence, stats and leaderboard honesty. **Do not claim CI, staging, hosting, mobile host QA or production readiness until actual workflow results are inspected.** No destructive migrations, paid APIs or production changes. Remaining: authenticated public rankings, true friend accounts/presence, race anti-cheat/DB ledger, full DO persistence; users can see beta labeling.
+
+---
+
 ## 2026-10-11 — PR #23 Chromium regression: ghost waiting racers
 
 **Observed CI failure:** GitHub Actions run [38132361548](https://github.com/osohbayr1016/typeracer/actions/runs/38132361548) passed typecheck/unit/build but failed Chromium: three legacy bot-count checks observed 3 bots instead of 4 (or 1 instead of 3); the new reconnect browser test could not reach an editable input. Failure output: 24 passed, 4 failed. Root cause consistent with immediate React StrictMode WebSocket cleanup leaving a disconnected **waiting** participant reserved for 15 seconds, hence phantom occupied lanes and early countdown. This was introduced with reconnect grace, not pre-existing matchmaker behavior.
