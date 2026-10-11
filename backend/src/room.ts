@@ -37,7 +37,7 @@ export class RaceRoom {
       const rank = this.quickService().rankings!;
       const cookie = request.headers.get('Cookie');
       if (path === '/account' && request.method === 'GET') {
-        const {player,newToken} = rank.session(cookie);
+        const {player,newToken} = await rank.session(cookie);
         const headers = new Headers({ 'Content-Type': 'application/json', 'Cache-Control':'no-store' });
         if (newToken) {
           const secure = new URL(request.url).searchParams.get('secure') === '1';
@@ -46,7 +46,7 @@ export class RaceRoom {
         return new Response(JSON.stringify({player:rank.publicPlayer(player)}), {headers});
       }
       if (path === '/account/logout' && request.method === 'POST') {
-        const out=rank.logout(cookie);
+        const out=await rank.logout(cookie);
         const secure=new URL(request.url).searchParams.get('secure')==='1';
         const headers=new Headers({'Content-Type':'application/json','Cache-Control':'no-store'});
         headers.append('Set-Cookie','tr_guest='+out.newToken+'; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000'+(secure?'; Secure':''));
@@ -60,13 +60,13 @@ export class RaceRoom {
         if (provider!=='google' && provider!=='facebook') return Response.json({error:'Invalid provider'},{status:400});
         if (typeof input.state!=='string') return Response.json({error:'Invalid state'},{status:400});
         if (path==='/oauth/start') {
-          const ok=rank.startOAuth(cookie,provider,input.state);
+          const ok=await rank.startOAuth(cookie,provider,input.state);
           return Response.json(ok?{ok:true}:{error:'Guest account required'},{status:ok?200:401});
         }
         if (path==='/oauth/finish') {
           if (typeof input.providerSubject!=='string' || typeof input.displayName!=='string')
             return Response.json({error:'Invalid provider profile'},{status:400});
-          const result=rank.completeOAuth(cookie,provider,input.state,input.providerSubject,input.displayName);
+          const result=await rank.completeOAuth(cookie,provider,input.state,input.providerSubject,input.displayName);
           if (!result) return Response.json({error:'Expired or invalid OAuth state'},{status:403});
           const headers=new Headers({'Content-Type':'application/json','Cache-Control':'no-store'});
           const secure=new URL(request.url).searchParams.get('secure')==='1';
@@ -83,7 +83,7 @@ export class RaceRoom {
       }
       if (path === '/ranking/teams' && request.method === 'GET')
         return Response.json(rank.teams(Date.now()));
-      const player = rank.fromCookie(cookie);
+      const player = await rank.fromCookie(cookie);
       if (!player) return Response.json({error:'Нэвтрэх шаардлагатай.'},{status:401});
       if (path === '/ranking/team' && request.method === 'GET')
         return Response.json({team:rank.myTeam(player)});
