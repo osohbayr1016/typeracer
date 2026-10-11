@@ -3,9 +3,10 @@ import { cors } from 'hono/cors';
 import { PROMPTS, ROOM_CAPACITY } from '@typeracer/shared';
 import { validRoomCode } from './logic';
 import { originAllowed } from './origin';
+import { authorizeUrl, exchangeProviderIdentity, isOAuthProvider, providerReady, type OAuthEnv } from './oauth';
 export { RaceRoom } from './room';
 
-type Env = {
+type Env = OAuthEnv & {
   RACE_ROOMS: DurableObjectNamespace;
 };
 const app = new Hono<{ Bindings: Env }>();
@@ -44,6 +45,54 @@ const publicRanking = (c: {env:Env;req:{raw:Request}},path:string) => {
   );
 };
 app.get('/api/account',c=>publicRanking(c,'/account?secure='+(new URL(c.req.url).protocol==='https:'?'1':'0')));
+app.get('/api/auth/providers',c=>c.json({
+  google:providerReady(c.env,'google'),facebook:providerReady(c.env,'facebook')
+}));
+function oauthOrigin(c:{env:Env;req:{url:string}}):string {
+  const requested=new URL(c.req.url).origin;
+  // Configured origin prevents callback URL manipulation via Host headers.
+  return c.env.OAUTH_REDIRECT_ORIGIN?.replace(/\/$/,'')||requested;
+}
+async function oauthInternal(c:{env:Env;req:{raw:Request;header:(x:string)=>string|undefined}},action:'start'|'finish',data:object,secure=false):Promise<Response> {
+  const ns=c.env.RACE_ROOMS;
+  return ns.get(ns.idFromName('MONGOLIAN-QUICK-V1')).fetch(
+    'https://room.internal/oauth/'+action+(secure?'?secure=1':''),
+    {method:'POST',headers:{'Content-Type':'application/json','Cookie':c.req.header('Cookie')||''},
+      body:JSON.stringify(data)}
+  );
+}
+app.get('/api/auth/:provider/start',async c=>{
+  const p=c.req.param('provider');
+  if(!isOAuthProvider(p))return c.json({error:'Provider not found'},404);
+  if(!providerReady(c.env,p))return c.json({error:'Provider not configured'},503);
+  if(c.env.OAUTH_REDIRECT_ORIGIN && oauthOrigin(c)!==new URL(c.req.url).origin)
+    return c.json({error:'OAuth origin mismatch'},403);
+  const state=crypto.randomUUID();
+  const ready=await oauthInternal(c,'start',{state,provider:p});
+  if(!ready.ok)return c.json({error:'First open Profile to initialize your browser session'},401);
+  return c.redirect(authorizeUrl(p,c.env,oauthOrigin(c),state),302);
+});
+app.get('/api/auth/:provider/callback',async c=>{
+  const p=c.req.param('provider');
+  if(!isOAuthProvider(p)||!providerReady(c.env,p))return c.redirect('/profile?auth=unavailable',302);
+  const state=c.req.query('state')||'',code=c.req.query('code')||'';
+  if(!/^[0-9a-f-]{36}$/.test(state)||!code||c.req.query('error'))
+    return c.redirect('/profile?auth=denied',302);
+  if(c.env.OAUTH_REDIRECT_ORIGIN && oauthOrigin(c)!==new URL(c.req.url).origin)
+    return c.redirect('/profile?auth=origin',302);
+  try{
+    const identity=await exchangeProviderIdentity(p,c.env,oauthOrigin(c),code);
+    const completed=await oauthInternal(c,'finish',{state,provider:p,...identity},new URL(c.req.url).protocol==='https:');
+    if(!completed.ok)return c.redirect('/profile?auth=expired',302);
+    const headers=new Headers({'Location':'/profile?auth=connected','Cache-Control':'no-store'});
+    const cookie=completed.headers.get('Set-Cookie');
+    if(cookie)headers.append('Set-Cookie',cookie);
+    return new Response(null,{status:302,headers});
+  }catch{
+    // Provider errors and secrets are never included in the browser redirect.
+    return c.redirect('/profile?auth=failed',302);
+  }
+});
 app.post('/api/account/name',c=>publicRanking(c,'/ranking/name'));
 app.get('/api/leaderboard',c=>publicRanking(c,'/ranking/players'+new URL(c.req.url).search));
 app.get('/api/teams',c=>publicRanking(c,'/ranking/teams'));
