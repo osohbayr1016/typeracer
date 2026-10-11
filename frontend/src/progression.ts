@@ -178,7 +178,9 @@ export function saveProfile(profile: Profile): void {
 export function raceReward(p: Profile, score: { wpm: number; accuracy: number; elapsedMs: number; at: number }): Profile {
   if (!Number.isFinite(score.wpm) || score.wpm < 0 || score.accuracy < 0 || score.accuracy > 100 || score.elapsedMs <= 0) return p;
   const earnedXp = Math.max(25, Math.min(160, Math.round(score.wpm * .6 + score.accuracy * .45)));
-  const earnedCoins = Math.max(30, Math.min(110, Math.round(score.wpm * .45 + score.accuracy * .20)));
+  // Solo practice: ~20–30 coins for normal human speeds. XP is unchanged
+  // so an already-launched season remains achievable at its stated pace.
+  const earnedCoins = Math.max(12, Math.min(30, Math.round(9 + score.wpm * .15 + score.accuracy * .055)));
   const entry: RaceHistory = { id: String(score.at) + '-' + p.races, wpm: score.wpm, accuracy: score.accuracy, elapsedMs: score.elapsedMs,
     at: score.at, earnedXp, earnedCoins };
   const inSeason = score.at >= SEASON.from && score.at < SEASON.until;
@@ -195,7 +197,7 @@ export function awardQuickRace(p: Profile, score: {
   const key = 'quick:' + score.raceId;
   if (!/^[0-9a-f-]{36}$/i.test(score.raceId) || p.history.some(entry => entry.id === key) ||
       score.place === null || score.place < 1 || score.place > 5 || !Number.isInteger(score.coins) ||
-      score.coins < 0 || score.coins > 120 || score.elapsedMs <= 0 || score.wpm < 0 ||
+      score.coins < 0 || score.coins > 30 || score.elapsedMs <= 0 || score.wpm < 0 ||
       !Number.isFinite(score.wpm) || score.accuracy < 0 || score.accuracy > 100) return p;
   const awarded = raceReward(p, score);
   return { ...awarded, coins: p.coins + score.coins, history: [
@@ -235,9 +237,9 @@ export const STICKER_SYMBOLS: Record<Sticker,string> = { none: '', horse: '♞',
  * are no fabricated lifetime milestones or paid/random rewards.
  */
 export const DAILY_QUESTS = [
-  { id: 'first-finish', name: 'Эхний бариа', detail: 'Өнөөдөр нэг уралдаан дуусгах', target: 1, coins: 25 },
-  { id: 'precision', name: 'Алдаагүй ойролцоо', detail: '95% буюу түүнээс дээш нарийвчлалтай дуусгах', target: 1, coins: 35 },
-  { id: 'speed', name: 'Хурдны сорилт', detail: '70 WPM буюу түүнээс хурдан дуусгах', target: 1, coins: 50 }
+  { id: 'first-finish', name: 'Эхний бариа', detail: 'Өнөөдөр нэг уралдаан дуусгах', target: 1, coins: 8 },
+  { id: 'precision', name: 'Нямбай жолооч', detail: '95%-ийн нарийвчлалтай 3 уралдаан дуусгах', target: 3, coins: 12 },
+  { id: 'speed', name: 'Хурдны сорилт', detail: '70 WPM-ээс хурдан 5 уралдаан дуусгах', target: 5, coins: 15 }
 ] as const;
 export type DailyQuestId = (typeof DAILY_QUESTS)[number]['id'];
 
