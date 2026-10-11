@@ -1,0 +1,133 @@
+/* TypeRacer Mongolia rarity collection — editorial layout, original SVG assets. */
+.rarity-shop { --rare-accent: #c3ccd1; padding-top: 12px; }
+.shop-wallet { display:flex; flex-direction:column; gap:10px; min-width:175px; }
+.shop-collection-progress { padding:0 4px; }
+.shop-collection-progress > span { font-size:10px; color:#c0c9c9; font-weight:800; letter-spacing:.5px; }
+.shop-meter { height:5px; border-radius:2px; overflow:hidden; background:#3c4548; margin-top:9px; }
+.shop-meter > span { display:block; height:100%; background:#fa8860; transition:width .2s; }
+.rarity-common { --rare-accent:#bdcbd3; --rare-glow:#92b7d42b; }
+.rarity-uncommon { --rare-accent:#85e2b1; --rare-glow:#52c79537; }
+.rarity-rare { --rare-accent:#78c7ff; --rare-glow:#3999e34f; }
+.rarity-epic { --rare-accent:#c59dff; --rare-glow:#9c59d850; }
+.rarity-mythic { --rare-accent:#ffd18a; --rare-glow:#e9ab5d4c; }
+.rarity-legendary { --rare-accent:#fff0b0; --rare-glow:#e7c16c6b; }
+.shop-spotlight-grid { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(280px,.85fr); gap:13px; margin:24px 12px 0; }
+.shop-featured { position:relative; display:grid; grid-template-columns:minmax(0,1fr) minmax(180px,.85fr);
+ min-height:236px; overflow:hidden; border:1px solid #6b5b50; border-top:3px solid var(--rare-accent);
+ background:radial-gradient(ellipse at 75% 58%,var(--rare-glow),transparent 55%),linear-gradient(105deg,#292e30,#1a2326); }
+.shop-featured-copy { position:relative; z-index:2; display:flex; flex-direction:column; align-items:flex-start; justify-content:center;
+ gap:10px; padding:23px 0 23px 26px; }
+.shop-eyebrow { color:var(--rare-accent); font-size:10px; letter-spacing:1.1px; font-weight:900; }
+.shop-featured-copy h2 { margin:0; font:900 clamp(25px,3vw,37px)/1.08 var(--font-display); color:#f5f4ef; }
+.shop-featured-copy p { margin:0; color:#bdc6c5; font-size:11px; line-height:1.5; }
+.shop-feature-meta { font-size:11px; font-weight:800; color:#f6d29e; }
+.shop-featured-copy button { padding:11px 15px; background:#e96149; border:1px solid #ff8269; color:#fff;
+ font-size:11px; min-height:42px; font-weight:900; }
+.shop-featured-copy button:hover { background:#ff795d; }
+.shop-car-art { position:relative; isolation:isolate; overflow:hidden; }
+.shop-car-art img { position:relative; z-index:2; width:100%; object-fit:contain;
+ filter:drop-shadow(0 12px 8px #000a); transform:translateZ(0); will-change:transform; }
+.shop-featured-car { display:grid; place-items:center; min-width:0; padding:12px; }
+.shop-featured-car img { height:176px; max-width:100%; animation:shop-idle 3.8s ease-in-out infinite alternate; }
+.shop-car-art .car-aura { position:absolute; z-index:0; width:65%; height:34%;
+ left:16%; bottom:17%; border-radius:50%; background:var(--rare-glow);
+ filter:blur(23px); pointer-events:none; animation:shop-aura 3s ease-in-out infinite alternate; }
+.shop-car-art::after { content:''; position:absolute; z-index:1; inset:25% 10% 24%;
+ background:repeating-linear-gradient(-24deg,transparent 0 26px,var(--rare-accent) 27px 28px,transparent 29px 68px);
+ opacity:.13; pointer-events:none; transform:translateX(-10%); transition:opacity .2s; }
+.effect-spark .shop-car-art::after,.effect-flare .shop-car-art::after,.effect-cosmos .shop-car-art::after {
+ opacity:.32; animation:shop-energy 4s linear infinite; }
+.effect-shadow .shop-car-art .car-aura { animation:shop-shadow 2.5s ease-in-out infinite alternate; }
+.effect-frost .shop-car-art .car-aura { filter:blur(15px); }
+.effect-halo .shop-car-art::after,.effect-royal .shop-car-art::after {
+ opacity:.26; animation:shop-glint 4.5s ease-in-out infinite; }
+.shop-daily { border:1px solid #454f51; background:#20282a; min-width:0; }
+.shop-daily-head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:5px;
+ border-bottom:1px solid #3c474a; padding:14px 16px; }
+.shop-daily-head h2 { margin:0; font:900 17px/1.2 var(--font-display); }
+.shop-daily-head span { color:#b4bebe; font-size:9px; }
+.shop-daily-list { display:grid; }
+.shop-daily-item { display:flex; align-items:center; text-align:left; gap:10px; min-width:0; padding:3px 12px;
+ background:transparent; border:0; border-bottom:1px solid #3c4649; color:#f3f4f1; }
+.shop-daily-item:last-child { border:0; }
+.shop-daily-item:hover { background:#313b3e; }
+.shop-daily-item > .shop-car-art { width:93px; height:58px; flex:0 0 93px; display:grid; place-items:center; }
+.shop-daily-item > .shop-car-art img { height:60px; }
+.shop-daily-name { display:block; min-width:0; flex:1; }
+.shop-daily-name strong { display:block; font-size:12px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.shop-daily-name small { display:block; color:var(--rare-accent); margin-top:4px; font-size:10px; }
+.shop-daily-item > span:last-child { color:var(--rare-accent); font-size:18px; }
+.shop-spotlight-note { margin:8px 14px 0; color:#a9b6b3; font-size:10px; line-height:1.5; }
+.shop-catalog-head { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:13px; margin:28px 12px 8px; }
+.shop-catalog-head h2 { font:900 28px/1.15 var(--font-display); margin:6px 0 0; }
+.shop-catalog-head h2 small { font:750 12px var(--font-body); color:#aab5b5; vertical-align:middle; margin-left:6px; }
+.shop-catalog-head > button { background:transparent; color:#f9ece1; border:1px solid #687273; padding:12px 16px;
+ font-size:11px; font-weight:900; min-height:42px; }
+.shop-catalog-head > button:hover { border-color:#fb8764; }
+.shop-rarity-tabs { display:flex; align-items:center; flex-wrap:wrap; gap:7px; margin:14px 12px 0; }
+.shop-rarity-tabs button { border:1px solid #4e5759; background:#242d30; color:#c6ccca; padding:9px 11px;
+ min-height:43px; font-size:11px; font-weight:850; display:inline-flex; align-items:center; gap:5px; }
+.shop-rarity-tabs button.current { background:#303c3e; border-color:var(--rare-accent,#ff8c6d); color:#f4f4ed; }
+.shop-rarity-tabs button:hover { border-color:#bbb; }
+.shop-rarity-tabs button small { font-size:9px; color:#acb8b4; font-weight:600; }
+.rarity-gem { display:inline-block; width:10px; height:10px; background:var(--rare-accent,#f4cca2);
+ transform:rotate(45deg) scale(.85); box-shadow:0 0 7px var(--rare-glow,#ffffff24); margin-right:3px; }
+.shop-item-grid { margin-top:13px; }
+.shop-collectible { position:relative;
+ border-top:3px solid var(--rare-accent); background:linear-gradient(165deg,#232b2d,#1b2426);
+ transition:border-color .18s,transform .18s; }
+.shop-collectible:hover { border-color:var(--rare-accent); transform:translateY(-2px); }
+.shop-collectible .item-rarity { display:flex; align-items:center; gap:5px; color:var(--rare-accent); letter-spacing:.3px; }
+.shop-collectible .item-art { margin:7px -8px 8px; height:135px;
+ background:radial-gradient(ellipse at 50% 82%,var(--rare-glow),transparent 72%); }
+.shop-collectible .item-art img { width:95%; max-height:132px; object-fit:contain; }
+.shop-collectible:hover .item-art img { transform:translate3d(5px,-3px,0); }
+.shop-collectible.rarity-legendary .item-art img { animation:shop-idle 4s ease-in-out infinite alternate; }
+.shop-collectible.rarity-mythic .item-art img { animation:shop-idle 5.4s ease-in-out infinite alternate; }
+.shop-collectible h2 { font:900 19px/1.2 var(--font-display); margin:4px 0 6px; }
+.shop-collectible p { min-height:30px; margin-bottom:10px; }
+.shop-collectible .shop-item-meta { display:flex; align-items:center; gap:6px; flex-wrap:wrap; min-height:28px; margin-bottom:12px; }
+.shop-collectible .shop-item-meta span { border:1px solid #4a5756; padding:5px 6px; font-size:9px; font-weight:750; color:#c9d4cc; }
+.shop-collectible.level-locked .shop-item-meta span:first-child { border-color:#a8755a; color:#ffc49c; }
+.shop-collectible .item-action { padding-top:10px; }
+.shop-collectible .item-action button { font-size:10px; }
+@keyframes shop-idle { from { transform:translate3d(0,0,0); } to { transform:translate3d(7px,-5px,0); } }
+@keyframes shop-aura { from { opacity:.5; transform:scale(.83); } to { opacity:1; transform:scale(1.1); } }
+@keyframes shop-shadow { from { opacity:.14; transform:translateX(-18%); } to { opacity:1; transform:translateX(20%); } }
+@keyframes shop-energy { from { transform:translateX(-20%); } to { transform:translateX(20%); } }
+@keyframes shop-glint { 0%,100% { opacity:.1; } 50% { opacity:.43; } }
+@media(max-width:900px) {
+ .shop-spotlight-grid { grid-template-columns:minmax(0,1fr); }
+ .shop-featured { min-height:215px; }
+ .shop-daily-list { grid-template-columns:repeat(3,minmax(0,1fr)); }
+ .shop-daily-item { flex-direction:column; align-items:flex-start; padding:8px; }
+ .shop-daily-item > .shop-car-art { align-self:center; }
+ .shop-daily-item > span:last-child { display:none; }
+ .shop-rarity-tabs button small { display:none; }
+}
+@media(max-width:560px) {
+ .shop-wallet { width:100%; }
+ .shop-spotlight-grid { margin-inline:0; gap:8px; }
+ .shop-featured { grid-template-columns:1fr; }
+ .shop-featured-copy { padding:18px 17px 0; }
+ .shop-featured-car { height:132px; }
+ .shop-featured-car img { height:118px; }
+ .shop-daily-head { padding:11px; }
+ .shop-daily-item > .shop-car-art { width:100%; flex:0 0 57px; }
+ .shop-daily-item > .shop-car-art img { height:58px; }
+ .shop-daily-name strong { font-size:10px; }
+ .shop-daily-name small { font-size:9px; }
+ .shop-catalog-head { margin-inline:0; }
+ .shop-catalog-head h2 { font-size:23px; }
+ .shop-rarity-tabs { margin-inline:0; gap:5px; }
+ .shop-rarity-tabs button { padding:8px 9px; min-height:38px; }
+ .shop-collectible .item-art { height:104px; }
+ .shop-collectible .item-art img { max-height:102px; }
+ .shop-collectible h2 { font-size:16px; }
+ .shop-collectible .item-action { flex-wrap:wrap; }
+ .shop-collectible .item-action button { width:100%; }
+}
+@media(prefers-reduced-motion:reduce) {
+ .rarity-shop .shop-car-art img,.rarity-shop .car-aura,.rarity-shop .shop-car-art::after { animation:none!important; transition:none!important; }
+ .shop-collectible:hover { transform:none; }
+}

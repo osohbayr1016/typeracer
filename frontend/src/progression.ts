@@ -1,4 +1,4 @@
-import { CARS, type Skin } from './pages/cars';
+import { CARS, RARITIES, type Skin, type Rarity } from './pages/cars';
 
 export type CosmeticKind = 'car' | 'trail' | 'title' | 'sticker';
 export type Trail = 'none' | 'ember' | 'steppe' | 'ice' | 'aurora';
@@ -6,9 +6,27 @@ export type Title = 'rookie' | 'swift' | 'khan' | 'legend';
 export type Sticker = 'none' | 'horse' | 'bolt' | 'star';
 export type Cosmetic = {
   id: string; kind: CosmeticKind; name: string; description: string;
-  price: number; rarity: 'Энгийн' | 'Ховор' | 'Домогт'; preview: string;
+  price: number; rarity: Rarity; preview: string; minLevel?: number; effect?: string;
 };
 export const SHOP: Cosmetic[] = [
+  { id: 'falcon', kind: 'car', name: 'Шонхор GT', description: 'Хөх өнгийн салхин зурвас', price: 300, rarity: 'Энгийн', minLevel: 1, preview: '/cars/falcon.svg', effect: 'breeze' },
+  { id: 'nomad', kind: 'car', name: 'Говийн нүүдэл', description: 'Элсний тоосон эффект', price: 350, rarity: 'Энгийн', minLevel: 1, preview: '/cars/nomad.svg', effect: 'dust' },
+  { id: 'rover', kind: 'car', name: 'Хотын эргүүл', description: 'Хотын гэрлийн цохилт', price: 400, rarity: 'Энгийн', minLevel: 2, preview: '/cars/rover.svg', effect: 'pulse' },
+  { id: 'sunflare', kind: 'car', name: 'Нарны ир', description: 'Нарны гялбаа', price: 550, rarity: 'Сайжруулсан', minLevel: 3, preview: '/cars/sunflare.svg', effect: 'flare' },
+  { id: 'dune', kind: 'car', name: 'Элсний шувуу', description: 'Говийн хурдны тоосон мөр', price: 650, rarity: 'Сайжруулсан', minLevel: 4, preview: '/cars/dune.svg', effect: 'dust' },
+  { id: 'cobalt', kind: 'car', name: 'Кобальт X', description: 'Цэнхэр импульс гэрэл', price: 750, rarity: 'Сайжруулсан', minLevel: 5, preview: '/cars/cobalt.svg', effect: 'pulse' },
+  { id: 'glacier', kind: 'car', name: 'Мөсөн барс', description: 'Хүйтэн цэнхэр манан', price: 850, rarity: 'Ховор', minLevel: 6, preview: '/cars/glacier.svg', effect: 'frost' },
+  { id: 'fox', kind: 'car', name: 'Цасан үнэг', description: 'Цасан дундах салхи', price: 950, rarity: 'Ховор', minLevel: 7, preview: '/cars/fox.svg', effect: 'breeze' },
+  { id: 'streak', kind: 'car', name: 'Аянгын судал', description: 'Ногоон цахилгаан оч', price: 1100, rarity: 'Ховор', minLevel: 8, preview: '/cars/streak.svg', effect: 'spark' },
+  { id: 'ghost', kind: 'car', name: 'Хий үзэгдэл', description: 'Нил ягаан сүүдрийн гэрэл', price: 1350, rarity: 'Онцгой', minLevel: 10, preview: '/cars/ghost.svg', effect: 'shadow' },
+  { id: 'onyx', kind: 'car', name: 'Оникс сүүдэр', description: 'Тод ба бараан сүүдрийн хөдөлгөөн', price: 1550, rarity: 'Онцгой', minLevel: 12, preview: '/cars/onyx.svg', effect: 'shadow' },
+  { id: 'meteor', kind: 'car', name: 'Солир 77', description: 'Улаан солирын оч', price: 1750, rarity: 'Онцгой', minLevel: 14, preview: '/cars/meteor.svg', effect: 'spark' },
+  { id: 'temple', kind: 'car', name: 'Алтан хүрд', description: 'Алтан цагираг гэрэл', price: 2100, rarity: 'Туульс', minLevel: 17, preview: '/cars/temple.svg', effect: 'halo' },
+  { id: 'nebula', kind: 'car', name: 'Одон манан', description: 'Сансрын оддын туяа', price: 2500, rarity: 'Туульс', minLevel: 20, preview: '/cars/nebula.svg', effect: 'cosmos' },
+  { id: 'eagle', kind: 'car', name: 'Далавчит бүргэд', description: 'Бүргэдийн алтан туяа', price: 2900, rarity: 'Туульс', minLevel: 23, preview: '/cars/eagle.svg', effect: 'halo' },
+  { id: 'royal', kind: 'car', name: 'Тэнгэрийн титэм', description: 'Тэнгэрийн титэм гэрэл', price: 3500, rarity: 'Домогт', minLevel: 26, preview: '/cars/royal.svg', effect: 'royal' },
+  { id: 'aurora-x', kind: 'car', name: 'Туйлын туяа', description: 'Туйлын солонгорсон туяа', price: 4200, rarity: 'Домогт', minLevel: 30, preview: '/cars/aurora-x.svg', effect: 'cosmos' },
+  { id: 'dragon', kind: 'car', name: 'Лууны дөл', description: 'Лууны галын гэрэлтэх мөр', price: 5000, rarity: 'Домогт', minLevel: 35, preview: '/cars/dragon.svg', effect: 'flare' },
   { id: 'steppe', kind: 'car', name: 'Талын салхи', description: 'Тал нутгийн цэнхэр хүлэг', price: 550, rarity: 'Ховор', preview: '/cars/steppe.svg' },
   { id: 'thunder', kind: 'car', name: 'Аянга', description: 'Цахилгаан хурдны машин', price: 850, rarity: 'Ховор', preview: '/cars/thunder.svg' },
   { id: 'midnight', kind: 'car', name: 'Шөнийн хүлэг', description: 'Хар хром өнгөтэй хүлэг', price: 1400, rarity: 'Домогт', preview: '/cars/midnight.svg' },
@@ -19,6 +37,27 @@ export const SHOP: Cosmetic[] = [
   { id: 'horse', kind: 'sticker', name: 'Хүлэг', description: 'Машины хажууд харагдах тэмдэг', price: 180, rarity: 'Энгийн', preview: '♞' },
   { id: 'bolt', kind: 'sticker', name: 'Аянга', description: 'Эрч хүчний тэмдэг', price: 220, rarity: 'Ховор', preview: 'ϟ' }
 ];
+/** A deterministic daily and weekly spotlight; items never disappear from the full catalog. */
+export const NEW_CAR_COLLECTION = SHOP.filter(item => item.kind === 'car' && item.minLevel !== undefined);
+export function playerLevel(xp: number): number {
+  return Math.floor(Math.max(0, xp) / 300) + 1;
+}
+export function isLevelUnlocked(profile: Pick<Profile, 'xp'>, item: Cosmetic): boolean {
+  return playerLevel(profile.xp) >= (item.minLevel ?? 1);
+}
+export function shopRotation(at = Date.now()) {
+  const day = Math.floor((at + 8 * 60 * 60_000) / 86_400_000);
+  const week = Math.floor(day / 7);
+  // Stable real local-date rotation: the same selection for all users in Mongolia.
+  const featured = [NEW_CAR_COLLECTION[week % NEW_CAR_COLLECTION.length],
+    NEW_CAR_COLLECTION[(week + 9) % NEW_CAR_COLLECTION.length]];
+  const daily = [NEW_CAR_COLLECTION[(day * 3 + 2) % NEW_CAR_COLLECTION.length],
+    NEW_CAR_COLLECTION[(day * 3 + 7) % NEW_CAR_COLLECTION.length],
+    NEW_CAR_COLLECTION[(day * 3 + 12) % NEW_CAR_COLLECTION.length]];
+  return { featured, daily, day };
+}
+export const COLLECTION_RARITIES = RARITIES;
+
 export const ITEMS: Cosmetic[] = [
   ...SHOP,
   { id: 'khan', kind: 'car', name: 'Хааны хүлэг', description: 'Улирлын онцгой машин', price: 0, rarity: 'Домогт', preview: '/cars/khan.svg' },
@@ -130,7 +169,7 @@ export function awardQuickRace(p: Profile, score: {
 }
 export function buyItem(p: Profile, kind: CosmeticKind, id: string): Profile {
   const item = SHOP.find(x => x.kind === kind && x.id === id);
-  if (!item || owned(p, kind, id) || p.coins < item.price) return p;
+  if (!item || owned(p, kind, id) || !isLevelUnlocked(p, item) || p.coins < item.price) return p;
   return { ...p, coins: p.coins - item.price, owned: [...p.owned, itemKey(kind, id)] };
 }
 export function claimReward(p: Profile, tier: number, at: number = Date.now()): Profile {

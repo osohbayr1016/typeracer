@@ -1,0 +1,31 @@
+.garage-preview-car { isolation:isolate; }
+.garage-collectible-aura { position:absolute; left:18%; bottom:22%; width:63%; height:35%;
+  border-radius:50%; filter:blur(23px); opacity:.0; pointer-events:none; z-index:0; }
+.garage-rarity-Энгийн { --garage-glow:#a4b6c3; }
+.garage-rarity-Сайжруулсан { --garage-glow:#6fe5b2; }
+.garage-rarity-Ховор { --garage-glow:#74caff; }
+.garage-rarity-Онцгой { --garage-glow:#ad85ff; }
+.garage-rarity-Туульс { --garage-glow:#ffc879; }
+.garage-rarity-Домогт { --garage-glow:#f8e5a4; }
+.garage-preview-car:not(.garage-rarity-starter) .garage-collectible-aura {
+ background:var(--garage-glow,#81c1c1); opacity:.4; animation:garage-glow 3s ease-in-out infinite alternate; }
+.garage-preview-car.garage-effect-spark .garage-collectible-aura,
+.garage-preview-car.garage-effect-cosmos .garage-collectible-aura,
+.garage-preview-car.garage-effect-flare .garage-collectible-aura { opacity:.66; animation-duration:1.9s; }
+.garage-preview-car.garage-effect-shadow .garage-collectible-aura { opacity:.25; }
+.garage-preview-car.garage-effect-royal .garage-collectible-aura,
+.garage-preview-car.garage-effect-halo .garage-collectible-aura { filter:blur(16px); }
+.garage-preview-car:not(.garage-rarity-starter) img { animation:garage-rarity-float 4.8s ease-in-out infinite alternate; }
+.garage-preview-car.garage-effect-breeze img { animation-duration:3.1s; }
+.garage-preview-car.garage-effect-flare img { animation-duration:2.8s; }
+.garage-preview-car.garage-effect-cosmos img { animation-duration:6.1s; }
+.garage-rarity-label { border-color:#9b946a !important; color:#fff0bd !important; }
+.garage-tile-rarity { display:inline-flex; margin-left:auto; font-size:9px; padding:3px 7px;
+ border:1px solid #86745d; color:#f0d2a0; letter-spacing:.1px; }
+.garage-car-tile { position:relative; }
+.garage-car-tile .garage-tile-number { display:inline-block; }
+@keyframes garage-glow { from { transform:scale(.85);opacity:.22 } to { transform:scale(1.15);opacity:.65 } }
+@keyframes garage-rarity-float { from { transform:translate3d(0,1px,0) } to { transform:translate3d(6px,-5px,0) } }
+@media(prefers-reduced-motion:reduce) {
+ .garage-preview-car img,.garage-collectible-aura { animation:none !important; }
+}

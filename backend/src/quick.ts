@@ -56,7 +56,7 @@ export function quickBotForSlot(offset: number, slot: number) {
 }
 
 
-const carIds = ['mint', 'sunset', 'purple', 'lime', 'phantom', 'steppe', 'thunder', 'midnight', 'khan', 'dawn', 'cosmic'];
+const carIds = ['mint', 'sunset', 'purple', 'lime', 'phantom', 'steppe', 'thunder', 'midnight', 'khan', 'dawn', 'cosmic', 'falcon', 'nomad', 'rover', 'sunflare', 'dune', 'cobalt', 'glacier', 'fox', 'streak', 'ghost', 'onyx', 'meteor', 'temple', 'nebula', 'eagle', 'royal', 'aurora-x', 'dragon'];
 const trailIds = ['none','ember','steppe','ice','aurora'];
 const stickerIds = ['none','horse','bolt','star'];
 

@@ -8,7 +8,7 @@ import { QuickMatchmaker } from './quick';
 type Message = { type: 'ready' } | { type: 'key'; key: string };
 type Player = Racer & { socket: WebSocket; windowStart: number; windowCount: number };
 type Phase = RoomSnapshot['phase'];
-const CAR_IDS = ['mint','sunset','purple','lime','phantom','steppe','thunder','midnight','khan','dawn','cosmic'] as const;
+const CAR_IDS = ['mint','sunset','purple','lime','phantom','steppe','thunder','midnight','khan','dawn','cosmic', 'falcon', 'nomad', 'rover', 'sunflare', 'dune', 'cobalt', 'glacier', 'fox', 'streak', 'ghost', 'onyx', 'meteor', 'temple', 'nebula', 'eagle', 'royal', 'aurora-x', 'dragon'] as const;
 const TRAIL_IDS = ['none','ember','steppe','ice','aurora'] as const;
 const STICKER_IDS = ['none','horse','bolt','star'] as const;
 const TITLE_IDS = ['rookie','swift','khan','legend'] as const;

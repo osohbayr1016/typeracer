@@ -1,3 +1,17 @@
+## 2026-10-11 — Six rarity tiers, 18 original shop cars and level-aware future content
+
+**User clarified scope:** requested **5–8 rarity tiers**, *not* 5–8 cars. Implemented **6 distinct tiers with 3 new original car skins each** (18 assets), rather than a single flat set of 8 cars. Eight starter illustrations were already created on this feature branch; ten additional original SVGs complete the six families.
+
+**Changes:** `frontend/public/cars/` (18 new self-contained, editable SVG car illustrations); `frontend/src/pages/cars.ts` (full collection IDs and tier/effect metadata); `frontend/src/progression.ts` (level-gated in-game-coin purchases and deterministic Featured/Daily spotlight selection); `frontend/src/pages/ShopPage.tsx` and `ShopPage.css` (shopfront, rarity filters, independent cards/animations); `GaragePage.tsx` and `GaragePage.css` (rarity-aware owned/equipped car displays); `backend/src/quick.ts` and `room.ts` (server cosmetics allowlist); unit and E2E tests; `docs/SHOP-COLLECTION-GUIDE.md` (safe future content playbook).
+
+**Critical test gates:** Shop six filter tiers, 18 served SVGs, level lock with ample coins, no double-purchases, garage persistence, mobile overflow, and server allowlist for real multiplayer. Run typecheck/unit/build/E2E and confirm Cloudflare staging smoke after low-risk merge; never claim tested before checks pass.
+
+**Upcoming scheduled cycle:** Existing hourly automation should inspect code/CI first. No more than once daily, if appropriate and tested, add at most 1–2 original car skins or non-car cosmetics to balanced rarity/XP tiers; do not flood the shop hourly with unreviewed output, and do not invent player usage statistics.
+
+**Known risk:** All virtual coins and ownership remain locally stored; do not market premium purchases, trading or leaderboard-verified assets until server wallet/auth exists.
+
+---
+
 # TypeRacer Mongolia — continuous improvement handoff
 
 Purpose: a short factual log for the next hourly cycle. Update only after checking the repository's current state and GitHub Actions; do not assume this document is current.
