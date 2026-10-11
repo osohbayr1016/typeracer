@@ -3,15 +3,20 @@ import { HomePage } from './pages/HomePage';
 import { PlayPage } from './pages/PlayPage';
 import { GaragePage } from './pages/GaragePage';
 import { ResultsPage } from './pages/ResultsPage';
+import { ShopPage } from './pages/ShopPage';
+import { SeasonPage } from './pages/SeasonPage';
+import { loadProfile, saveProfile, raceReward, buyItem, claimReward, equipItem,
+  TITLE_NAMES, STICKER_SYMBOLS, type CosmeticKind, type Cosmetic } from './progression';
 import { CARS, type Skin } from './pages/cars';
 import {
   accuracyPercent, characters, choosePrompt, normalizeText, progressPercent,
   PROMPTS, wordsPerMinute, type Language, type Prompt, type RoomSnapshot
 } from '@typeracer/shared';
 
-type Page = 'home' | 'play' | 'race' | 'garage' | 'results' | 'multiplayer' | 'multiplayerRace';
+type Page = 'home' | 'play' | 'race' | 'garage' | 'results' | 'shop' | 'season' | 'multiplayer' | 'multiplayerRace';
 const PAGE_URLS: Record<Page, string> = {
   home: '/', play: '/play', race: '/race', garage: '/garage', results: '/results',
+  shop: '/shop', season: '/season',
   multiplayer: '/multiplayer', multiplayerRace: '/multiplayer/race'
 };
 function routeFromLocation(): Page {
@@ -46,8 +51,9 @@ function PhraseView({ prompt, typed, progress = null }: {
     })}
   </div>;
 }
-function Lane({ name, progress, color, icon, subtitle, isYou, position = 1 }: {
-  name: string; progress: number; color: string; icon: string; subtitle: string; isYou?: boolean; position?: number
+function Lane({ name, progress, color, icon, subtitle, isYou, position = 1, trail = 'none', sticker = '' }: {
+  name: string; progress: number; color: string; icon: string; subtitle: string; isYou?: boolean;
+  position?: number; trail?: string; sticker?: string
 }) {
   return <div className={'lane ' + (isYou ? 'you' : '')} style={{ '--lane-color': color } as CSSProperties}>
     <div className="lane-header">
@@ -59,9 +65,11 @@ function Lane({ name, progress, color, icon, subtitle, isYou, position = 1 }: {
       </div>
       <span className="lane-percentage">{progress}%</span>
     </div>
-    <div className="lane-road" aria-label={name + ': ' + progress + '%'}>
+    <div className={'lane-road trail-' + trail} aria-label={name + ': ' + progress + '%'}>
       <div className="lane-progress" style={{ width: progress + '%' }}/>
+      <span className="race-trail" style={{ left: (2 + progress * .76) + '%' }} aria-hidden="true"/>
       <img className="lane-car" style={{ left: (2 + progress * .76) + '%' }} src={icon} alt="" aria-hidden="true" draggable={false}/>
+      {sticker && <span className="race-sticker" style={{ left: (2 + progress * .76) + '%' }} aria-hidden="true">{sticker}</span>}
       <span className="finish-flag" aria-hidden="true"/>
     </div>
   </div>;
@@ -79,8 +87,9 @@ export function App() {
   const [finishedAt, setFinishedAt] = useState<number | null>(null);
   const [now, setNow] = useState(Date.now());
   const [best, setBest] = useState(() => storedNumber('racer.best'));
-  const [xp, setXp] = useState(() => storedNumber('racer.xp'));
-  const [skin, setSkin] = useState<Skin>(storedSkin);
+  const [profile, setProfile] = useState(loadProfile);
+  const xp = profile.xp;
+  const skin = profile.car;
   const inputRef = useRef<HTMLInputElement>(null);
   const [nickname, setNickname] = useState(() => {
     try { return localStorage.getItem('racer.nickname')?.slice(0, 20) || 'Зочин'; } catch { return 'Зочин'; }
@@ -116,6 +125,7 @@ export function App() {
   const progress = progressPercent(correct, prompt.text);
   const ghostProgress = (pace: number) => Math.min(100, Math.round(elapsed / 60000 * pace * 5 / Math.max(1, target.length) * 100));
   const level = Math.floor(xp / 300) + 1;
+  useEffect(() => saveProfile(profile), [profile]);
   const myPlayer = snapshot?.players.find(p => p.id === myId);
   const onlineWpm = myPlayer && snapshot?.startAt
     ? wordsPerMinute(myPlayer.progress, Math.max(1, (myPlayer.completedAt ?? now) - snapshot.startAt)) : 0;
@@ -159,22 +169,20 @@ export function App() {
         setBest(score);
         try { localStorage.setItem('racer.best', String(score)); } catch { /* storage unavailable */ }
       }
-      const points = Math.max(10, Math.min(100, score));
-      setXp(prev => {
-        try { localStorage.setItem('racer.xp', String(prev + points)); } catch { /* storage unavailable */ }
-        return prev + points;
-      });
+      setProfile(prev => raceReward(prev, {
+        wpm: score, accuracy: accuracyPercent(Math.max(0, strokes + 1 - mistakes), strokes + 1),
+        elapsedMs: Math.max(1, end - (startedAt ?? end)), at: end
+      }));
     }
   }
   function updateTyping(event: ChangeEvent<HTMLInputElement>) {
     if ((event.nativeEvent as InputEvent).isComposing) return;
     updateTypingValue(event.target.value);
   }
-  function updateSkin(value: Skin) {
-    if (xp < CARS[value].unlockAt) return;
-    setSkin(value);
-    try { localStorage.setItem('racer.skin', value); } catch { /* storage unavailable */ }
-  }
+  function handleEquip(kind: CosmeticKind, id: string) { setProfile(p => equipItem(p, kind, id)); }
+  function updateSkin(value: Skin) { handleEquip('car', value); }
+  function handleBuy(item: Cosmetic) { setProfile(p => buyItem(p, item.kind, item.id)); }
+  function handleClaim(tier: number) { setProfile(p => claimReward(p, tier)); }
   function disconnect() {
     socketRef.current?.close(); socketRef.current = null;
     setStatus('disconnected'); setSnapshot(null); setCode(''); setMyId(''); setRaceResult(null);
@@ -267,7 +275,7 @@ export function App() {
     window.scrollTo({ top: 0, behavior: 'auto' });
   }
   function startSolo() {
-    resetPractice(language, false);
+    resetPractice('mn', false);
     setCountdown(3);
     navigate('race');
   }
@@ -285,50 +293,55 @@ export function App() {
         </a>
         <nav className="main-nav" aria-label="Үндсэн цэс">
           <button className={'nav-item ' + (page === 'home' ? 'selected' : '')} aria-current={page === 'home' ? 'page' : undefined}
-            onClick={() => navigate('home')}>Home</button>
+            onClick={() => navigate('home')}>Нүүр</button>
           <button className={'nav-item ' + (['play','race','results'].includes(page) ? 'selected' : '')}
             aria-current={['play','race','results'].includes(page) ? 'page' : undefined}
-            onClick={() => navigate('play')}>Play</button>
+            onClick={() => navigate('play')}>Тоглох</button>
           <button className={'nav-item ' + (['multiplayer','multiplayerRace'].includes(page) ? 'selected' : '')}
             aria-current={['multiplayer','multiplayerRace'].includes(page) ? 'page' : undefined}
-            onClick={() => navigate('multiplayer')}>Multiplayer</button>
+            onClick={() => navigate('multiplayer')}>Олон тоглогч</button>
+          <button className={'nav-item ' + (page === 'shop' ? 'selected' : '')}
+            aria-current={page === 'shop' ? 'page' : undefined} onClick={() => navigate('shop')}>Дэлгүүр</button>
+          <button className={'nav-item ' + (page === 'season' ? 'selected' : '')}
+            aria-current={page === 'season' ? 'page' : undefined} onClick={() => navigate('season')}>Улирал</button>
           <button className={'nav-item ' + (page === 'garage' ? 'selected' : '')}
             aria-current={page === 'garage' ? 'page' : undefined}
-            onClick={() => navigate('garage')}>Garage</button>
+            onClick={() => navigate('garage')}>Гараж</button>
         </nav>
         <div className="header-right">
           <span className="beta-label">BETA</span>
           <div className="profile-chip" aria-label="Хөтөч дээрх тоглогчийн мэдээлэл">
             <span className="profile-avatar" aria-hidden="true">●</span>
-            <span className="profile-name">{nickname}<small>LV. {level} · {xp} XP</small></span>
+            <span className="profile-name">{nickname}<small>ТҮВШИН {level} · ◈ {profile.coins}</small></span>
           </div>
-          <button className="primary-button nav-play" onClick={() => navigate('play')}>▶ PLAY</button>
+          <button className="primary-button nav-play" onClick={() => navigate('play')}>▶ ТОГЛОХ</button>
         </div>
       </div>
     </header>
     <main className="shell main">
       {page === 'home' && <HomePage best={best} xp={xp} onPlay={() => navigate('play')}
         onMultiplayer={() => navigate('multiplayer')} onGarage={() => navigate('garage')}/>}
-      {page === 'play' && <PlayPage language={language} best={best}
-        onLanguage={l => { setLanguage(l); resetPractice(l, false); }}
+      {page === 'play' && <PlayPage best={best}
         onSolo={startSolo} onMultiplayer={() => navigate('multiplayer')} onGarage={() => navigate('garage')}/>}
-      {page === 'garage' && <GaragePage skin={skin} xp={xp} onSelect={updateSkin} onPlay={() => navigate('play')}/>}
-      {page === 'results' && <ResultsPage wpm={wpm} accuracy={accuracy} elapsed={elapsed} best={best} correct={correct} carIcon={CARS[skin].icon}
+      {page === 'garage' && <GaragePage profile={profile} onEquip={handleEquip} onPlay={() => navigate('play')}
+        onShop={() => navigate('shop')} onSeason={() => navigate('season')}/>}
+      {page === 'shop' && <ShopPage profile={profile} onBuy={handleBuy}
+        onEquip={item => handleEquip(item.kind, item.id)} onRace={() => navigate('play')}/>}
+      {page === 'season' && <SeasonPage profile={profile} onClaim={handleClaim} onRace={() => navigate('play')}/>}
+
+      {page === 'results' && <ResultsPage wpm={wpm} accuracy={accuracy} elapsed={elapsed} best={best} correct={correct} carIcon={CARS[skin].icon} earnedXp={profile.history[0]?.earnedXp || 0} earnedCoins={profile.history[0]?.earnedCoins || 0}
         onAgain={startSolo} onPlay={() => navigate('play')} onGarage={() => navigate('garage')} />}
       {page === 'race' && <>
         <div className="game-header">
-          <button className="back-link" onClick={() => navigate('play')}>← RACE LOBBY</button>
+          <button className="back-link" onClick={() => navigate('play')}>← ГОРИМ СОНГОХ</button>
           <span className="section-kicker">01 / SOLO RACE · {language === 'mn' ? 'MONGOLIAN' : 'ENGLISH'}</span>
           <div className="game-timer">{(elapsed / 1000).toFixed(1)}s</div>
         </div>
         <section className="race-panel" aria-label="Ганцаарчилсан бичих уралдаан">
           <div className="race-panel-head">
-            <div className="race-title"><span className="race-indicator" aria-hidden="true"/> <h2>THE TRACK</h2><span className="race-chip">SOLO RACE</span></div>
+            <div className="race-title"><span className="race-indicator" aria-hidden="true"/> <h2>УРАЛДААНЫ ЗАМ</h2><span className="race-chip">ГАНЦААРАА</span></div>
             <div className="panel-actions">
-              <div className="segmented" role="group" aria-label="Хэл сонгох">
-                <button className={language === 'mn' ? 'active' : ''} aria-pressed={language === 'mn'} onClick={() => resetPractice('mn')}>Монгол</button>
-                <button className={language === 'en' ? 'active' : ''} aria-pressed={language === 'en'} onClick={() => resetPractice('en')}>English</button>
-              </div>
+<span className="language-note">🇲🇳 МОНГОЛ ХЭЛ</span>
               <button className="text-button" onClick={() => resetPractice()} aria-label="Шинэ текст">↻ Шинэ текст</button>
             </div>
           </div>
@@ -337,7 +350,8 @@ export function App() {
               <span>GET READY</span><strong>{countdown === 0 ? 'GO!' : countdown}</strong><small>Уралдаан эхлэх гэж байна</small>
             </div>}
             <div className="track-meta"><span>START YOUR ENGINES</span><span>FINISH →</span></div>
-            <Lane name={nickname} position={1} progress={progress} color={CARS[skin].color} icon={CARS[skin].icon} subtitle="YOU · ACTIVE RACER" isYou />
+            <Lane name={nickname} position={1} progress={progress} color={CARS[skin].color} icon={CARS[skin].icon}
+              subtitle={TITLE_NAMES[profile.title]} trail={profile.trail} sticker={STICKER_SYMBOLS[profile.sticker]} isYou />
             <Lane name={best > 0 ? 'Хувийн рекорд' : '60 WPM зорилт'} position={2} progress={ghostProgress(best > 0 ? best : 60)}
               color="#d8dce0" icon="/cars/graphite-r.svg" subtitle={best > 0 ? 'PB GHOST · ӨМНӨХ ХУРД' : 'PACE GHOST · БОДИТ ТОГЛОГЧ БИШ'}/>
             <Lane name="40 WPM зорилт" position={3} progress={ghostProgress(40)}
@@ -345,7 +359,7 @@ export function App() {
             <div className="track-note">PACE GHOSTS ARE TIME-BASED TARGETS, NOT LIVE PLAYERS</div>
           </div>
           <div className="typing-area" onClick={() => { if (countdown === null) inputRef.current?.focus(); }}>
-            <div className="typing-label"><span><i aria-hidden="true">//</i> {language === 'mn' ? 'МОНГОЛ ТЕКСТ' : 'ENGLISH TEXT'}</span><span>{prompt.id.toUpperCase()} · {correct} / {target.length}</span></div>
+            <div className="typing-label"><span><i aria-hidden="true">//</i> МОНГОЛ ӨГҮҮЛБЭР</span><span>{prompt.id.toUpperCase()} · {correct} / {target.length}</span></div>
             <PhraseView prompt={prompt} typed={typed}/>
             <div className="typing-input-row">
               <input ref={inputRef} autoFocus={false} readOnly={countdown !== null} autoCapitalize="off" autoCorrect="off" autoComplete="off"
@@ -361,7 +375,7 @@ export function App() {
             <div className="stat-block"><strong>{wpm}</strong><span>WPM</span><small>Хурд</small></div>
             <div className="stat-block"><strong>{accuracy}<em>%</em></strong><small>Нарийвчлал</small></div>
             <div className="stat-block stat-progress"><strong>{correct} <em>/ {target.length}</em></strong><small>Тэмдэгт</small><span className="stat-progress-bar" aria-label={'Явц ' + progress + '%'}><span style={{ width: progress + '%' }}/></span></div>
-            <div className="stat-block stat-cta"><button className="primary-button race-again" onClick={startSolo}>RACE AGAIN <span aria-hidden="true">→</span></button></div>
+            <div className="stat-block stat-cta"><button className="primary-button race-again" onClick={startSolo}>ДАХИН УРАЛДАХ <span aria-hidden="true">→</span></button></div>
           </div>
         </section>
         <p className="help-note">Ө, Ү үсгийг зөв бичээрэй. Алдааг Backspace дарж засна. Сүнс машинууд бол жишиг хурд бөгөөд бодит өрсөлдөгч биш.</p>
@@ -370,7 +384,7 @@ export function App() {
       </>}
       {(page === 'multiplayer' || page === 'multiplayerRace') && <>
         <div className="flow-heading multiplayer-heading">
-          <button className="back-link" onClick={() => navigate('play')}>← CHOOSE MODE</button>
+          <button className="back-link" onClick={() => navigate('play')}>← ГОРИМ СОНГОХ</button>
           <span className="section-kicker">MULTIPLAYER / PRIVATE FRIEND LOBBY</span>
           <h1>{page === 'multiplayerRace' ? <>THE <span>RACE.</span></> : <>RACE <span>LOBBY.</span></>}</h1>
           <p>2–6 тоглогч · Урилгын код · Бүгд бэлэн болмогц уралдаан эхэлнэ.</p>
@@ -395,7 +409,7 @@ export function App() {
                 <span className="section-kicker">01 / HOST</span>
                 <h4>Шинэ өрөө нээх</h4>
                 <p>Өөрийн өрөөг үүсгээд бусдад урилга илгээнэ.</p>
-                <button className="primary-button full" onClick={() => void createRoom()}>+ CREATE LOBBY →</button>
+                <button className="primary-button full" onClick={() => void createRoom()}>+ ӨРӨӨ ҮҮСГЭХ →</button>
               </section>
               <section className="lobby-entry-card">
                 <span className="section-kicker">02 / JOIN</span>
@@ -427,6 +441,8 @@ export function App() {
             </div>}
             {snapshot.phase !== 'waiting' && <div className="multiplayer-track">
               {snapshot.players.map((player, index) => <Lane key={player.id} name={player.name} position={index + 1} isYou={player.id === myId}
+                trail={player.id === myId ? profile.trail : 'none'}
+                sticker={player.id === myId ? STICKER_SYMBOLS[profile.sticker] : ''}
                 progress={progressPercent(player.progress, snapshot.prompt.text)}
                 color={player.id === myId ? CARS[skin].color : ['#ec6b55', '#66788f', '#3679e8'][index % 3]}
                 icon={player.id === myId ? CARS[skin].icon : ['/cars/coral-gt.svg', '/cars/graphite-r.svg', '/cars/blue-sprint.svg'][index % 3]}
@@ -434,7 +450,7 @@ export function App() {
             </div>}
             {snapshot.phase === 'waiting' && <div className="ready-area">
               <p>Бүх тоглогч бэлэн болмогц 3 секундын дараа уралдаан эхэлнэ.</p>
-              <button className="primary-button" onClick={ready} disabled={myPlayer?.ready || snapshot.players.length < 2}>{myPlayer?.ready ? '✓ БЭЛЭН' : snapshot.players.length < 2 ? 'НАЙЗАА ХҮЛЭЭЖ БАЙНА' : '✓ READY TO RACE →'}</button>
+              <button className="primary-button" onClick={ready} disabled={myPlayer?.ready || snapshot.players.length < 2}>{myPlayer?.ready ? '✓ БЭЛЭН' : snapshot.players.length < 2 ? 'НАЙЗАА ХҮЛЭЭЖ БАЙНА' : '✓ БЭЛЭН →'}</button>
             </div>}
             {(snapshot.phase === 'countdown' || snapshot.phase === 'racing' || snapshot.phase === 'finished') &&
               <div className="online-type">
@@ -450,7 +466,7 @@ export function App() {
               <div><strong>{onlineAccuracy}<small>%</small></strong><span>Нарийвчлал</span></div>
               <div><strong>{myPlayer ? progressPercent(myPlayer.progress, snapshot.prompt.text) : 0}<small>%</small></strong><span>Замын явц</span></div>
             </div>}
-            {snapshot.phase === 'finished' && <div className="finish-banner" role="status"><strong>Уралдаан дууслаа{raceResult !== null ? ' · ' + raceResult + ' WPM' : ''}</strong><button className="primary-button" onClick={() => { disconnect(); navigate('multiplayer'); }}>NEW LOBBY →</button></div>}
+            {snapshot.phase === 'finished' && <div className="finish-banner" role="status"><strong>Уралдаан дууслаа{raceResult !== null ? ' · ' + raceResult + ' WPM' : ''}</strong><button className="primary-button" onClick={() => { disconnect(); navigate('multiplayer'); }}>ШИНЭ ӨРӨӨ →</button></div>}
             <button className="leave-link" onClick={() => { disconnect(); navigate('multiplayer'); }}>← Өрөөнөөс гарах</button>
           </div>}
           {!!error && <p className="error-note" role="alert">{error}</p>}
