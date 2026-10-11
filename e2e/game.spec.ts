@@ -531,12 +531,13 @@ test('closed and throwing public WebSockets cannot create phantom local typing',
   await page.addInitScript(() => {
     const NativeSocket = window.WebSocket;
     const target = window as typeof window & { __activeQuickSocket?: WebSocket };
-    window.WebSocket = class extends NativeSocket {
-      constructor(url: string | URL) {
-        super(url);
-        if (String(url).includes('/api/quickplay/ws')) target.__activeQuickSocket = this;
+    window.WebSocket = new Proxy(NativeSocket, {
+      construct(ctor, args) {
+        const socket = Reflect.construct(ctor, args) as WebSocket;
+        if (String(args[0]).includes('/api/quickplay/ws')) target.__activeQuickSocket = socket;
+        return socket;
       }
-    } as typeof WebSocket;
+    });
   });
   await page.goto('/quick-race');
   const input = page.getByRole('textbox', { name: 'Шууд уралдааны бичих талбар' });
@@ -567,20 +568,20 @@ test('Durable Object resumes the same public race and confirmed typing after soc
     const target = window as typeof window & { __quickRaceDebug?: RaceDebug };
     const NativeWebSocket = window.WebSocket;
     target.__quickRaceDebug = { sockets: [], welcomes: [] };
-    class ObservedSocket extends NativeWebSocket {
-      constructor(url: string | URL) {
-        super(url);
-        if (!String(url).includes('/api/quickplay/ws')) return;
-        target.__quickRaceDebug!.sockets.push(this);
-        this.addEventListener('message', event => {
+    window.WebSocket = new Proxy(NativeWebSocket, {
+      construct(ctor, args) {
+        const socket = Reflect.construct(ctor, args) as WebSocket;
+        if (!String(args[0]).includes('/api/quickplay/ws')) return socket;
+        target.__quickRaceDebug!.sockets.push(socket);
+        socket.addEventListener('message', event => {
           try {
             const message = JSON.parse(String(event.data));
             if (message.type === 'welcome') target.__quickRaceDebug!.welcomes.push(message);
           } catch { /* the real app owns protocol validation */ }
         });
+        return socket;
       }
-    }
-    window.WebSocket = ObservedSocket as typeof WebSocket;
+    });
   });
   await page.goto('/quick-race');
   const input = page.getByRole('textbox', { name: 'Шууд уралдааны бичих талбар' });
