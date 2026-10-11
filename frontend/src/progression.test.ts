@@ -22,6 +22,8 @@ describe('Mongolian device-local cosmetic economy', () => {
     expect(result.races).toBe(1);
     expect(result.xp).toBeGreaterThan(0);
     expect(result.coins).toBeGreaterThan(first.coins);
+    expect(result.coins-first.coins).toBeGreaterThanOrEqual(20);
+    expect(result.coins-first.coins).toBeLessThanOrEqual(30);
     expect(result.seasonXp).toBe(result.xp);
     expect(result.history[0]?.accuracy).toBe(99);
   });
@@ -172,19 +174,29 @@ describe('quickplay post-race rewards, Mongolian day quests and streak', () => {
   });
   it('awards real completed race once, and claims mission coins exactly once', () => {
     const initial = starterProfile();
-    const input = {raceId:'12345678-1234-4123-8123-123456789abc',place:1,coins:120,
+    const input = {raceId:'12345678-1234-4123-8123-123456789abc',place:1,coins:30,
       wpm:88,accuracy:99,elapsedMs:25000,at:day};
     const won = awardQuickRace(initial,input);
     expect(won.races).toBe(1);
-    expect(won.history[0].earnedCoins).toBe(120);
+    expect(won.history[0].earnedCoins).toBe(30);
     expect(awardQuickRace(won,input)).toBe(won);
     const quests = dailyQuests(won,day);
-    expect(quests.map(q=>q.done)).toEqual([true,true,true]);
+    expect(quests.map(q=>q.done)).toEqual([true,false,false]);
     const claimed = claimDailyQuest(won,'first-finish',day);
-    expect(claimed.coins).toBe(won.coins+25);
+    expect(claimed.coins).toBe(won.coins+8);
     expect(claimDailyQuest(claimed,'first-finish',day)).toBe(claimed);
     expect(claimDailyQuest(won,'first-finish',day-86400000)).toBe(won);
     expect(quickDayStreak(won,day)).toBe(1);
+  });
+  it('caps credits at the NEW server amount instead of trusting old/forged 120-coin results', () => {
+    const first=starterProfile();
+    const reference={raceId:'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+      place:1,coins:30,wpm:85,accuracy:98,elapsedMs:29_000,at:day};
+    const actual=awardQuickRace(first,reference);
+    expect(actual.coins).toBe(first.coins+30);
+    expect(actual.history[0].earnedCoins).toBe(30);
+    expect(awardQuickRace(first,{...reference,coins:120})).toBe(first);
+    expect(awardQuickRace(actual,reference)).toBe(actual);
   });
   it('unfinished race cannot earn XP or quests; streak crosses Mongolia midnight', () => {
     const first = starterProfile();
@@ -193,11 +205,11 @@ describe('quickplay post-race rewards, Mongolian day quests and streak', () => {
     expect(unfinished).toBe(first);
     expect(dailyQuests(first,day).every(q=>!q.done)).toBe(true);
     const yesterday = awardQuickRace(first,{raceId:'12345678-1234-4123-8123-123456789aaa',
-      place:3,coins:75,wpm:65,accuracy:96,elapsedMs:30000,at:day-86400000});
+      place:3,coins:24,wpm:65,accuracy:96,elapsedMs:30000,at:day-86400000});
     const today = awardQuickRace(yesterday,{raceId:'12345678-1234-4123-8123-123456789aab',
-      place:2,coins:95,wpm:76,accuracy:92,elapsedMs:27000,at:day});
+      place:2,coins:27,wpm:76,accuracy:92,elapsedMs:27000,at:day});
     expect(quickDayStreak(today,day)).toBe(2);
     expect(dailyQuests(today,day).find(q=>q.id==='precision')?.done).toBe(false);
-    expect(dailyQuests(today,day).find(q=>q.id==='speed')?.done).toBe(true);
+    expect(dailyQuests(today,day).find(q=>q.id==='speed')?.done).toBe(false);
   });
 });
