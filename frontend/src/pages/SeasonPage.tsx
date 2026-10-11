@@ -47,7 +47,7 @@ export function SeasonPage({ profile, onClaim, onClaimAll, onRace, onShop }: Pro
   const showcased = ['nebula', 'royal', 'dragon'].map(id => collectionCars.find(item => item.id === id)).filter(
     (item): item is (typeof collectionCars)[number] => Boolean(item));
 
-  return <main className="season-pass collection-page" data-testid="season-pass">
+  return <div className="season-pass collection-page" data-testid="season-pass">
     <header className="pass-heading">
       <div>
         <span className="pass-eyebrow">УЛИРАЛ 01 <span aria-hidden="true">/</span> БҮГДЭД НЭЭЛТТЭЙ</span>
@@ -173,5 +173,5 @@ export function SeasonPage({ profile, onClaim, onClaimAll, onRace, onShop }: Pro
 
     <p className="pass-disclaimer">Улирлын хугацаа: 2026.10.01–2026.11.30, Улаанбаатарын цагаар. Бүх шагнал үнэгүй, санамсаргүй хайрцаг эсвэл төлбөрт зам байхгүй.
       Ахиц болон шагнал одоогоор зөвхөн энэ төхөөрөмжийн хөтөчид хадгалагдана.</p>
-  </main>;
+  </div>;
 }
