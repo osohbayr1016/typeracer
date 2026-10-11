@@ -33,6 +33,7 @@ test('server-synced car reaches the checkered finish marker instead of stopping 
 });
 
 import { test, expect } from '@playwright/test';
+import { createHash } from 'node:crypto';
 
 test('minimal home and premium desktop navigation keep actions obvious without text walls', async ({page})=>{
   await page.setViewportSize({width:1440,height:900});
@@ -138,7 +139,7 @@ test('two real browsers create a waiting lobby, join, ready and race live', asyn
     await expect(joiner).toHaveURL(/\/multiplayer\/race$/);
     await expect(creator.locator('.multiplayer-track .lane')).toHaveCount(2);
     await expect(creator.locator('.multiplayer-track .lane').nth(1).locator('.lane-car'))
-      .toHaveAttribute('src', '/cars/blue-sprint.svg');
+      .toHaveAttribute('src', '/cars/race/mint.webp');
 
     const input = creator.getByRole('textbox', { name: 'Онлайн уралдааны бичих хэсэг' });
     await expect(input).toBeEditable({ timeout: 12_000 });
@@ -160,7 +161,7 @@ test('mobile equipped vehicle appears in live public matchmaking', async ({ page
   await expect(page).toHaveURL(/\/play$/);
   await page.locator('.play-choice-primary').click();
   await expect(page).toHaveURL(/\/quick-race$/);
-  await expect(page.locator('.quick-lane.me .quick-road img')).toHaveAttribute('src', '/cars/blue-sprint.svg',{timeout:12000});
+  await expect(page.locator('.quick-lane.me .quick-road img')).toHaveAttribute('src', '/cars/race/mint.webp',{timeout:12000});
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
   expect(overflow).toBeLessThanOrEqual(1);
 });
@@ -223,12 +224,15 @@ test('finishing one public race earns XP but cannot instantly unlock the battle 
   await page.reload();
   await expect(firstTier.locator('.battle-tier-action')).toBeDisabled();
 });
-test('Зургаан анхны тусгай машины зураг ажиллаж байна', async ({ request, page }) => {
+test('six original starter and season vehicle PNG replacements load as WebP', async ({ request, page }) => {
   await page.goto('/garage');
-  for (const name of ['steppe','thunder','midnight','khan','dawn','cosmic']) {
-    const response = await request.get('/cars/' + name + '.svg');
-    expect(response.ok()).toBeTruthy();
-    expect(await response.text()).toContain('<svg');
+  for(const id of ['steppe','thunder','midnight','khan','dawn','cosmic']){
+    const response=await request.get('/cars/'+id+'.webp');
+    expect(response.status(),id).toBe(200);
+    expect(response.headers()['content-type'],id).toContain('image/webp');
+    const bytes=await response.body();
+    expect(bytes.toString('ascii',0,4)).toBe('RIFF');
+    expect(bytes.toString('ascii',8,12)).toBe('WEBP');
   }
   await expect(page.locator('.garage-page-grid .garage-car-tile')).toHaveCount(29);
 });
@@ -271,7 +275,7 @@ test('play page friend path opens the real lobby; equipped car appears in play p
   await page.goto('/garage');
   await page.getByRole('button', { name: /Цэнхэр салхи/ }).click();
   await page.goto('/play');
-  await expect(page.locator('.play-choice-public .play-choice-main-car')).toHaveAttribute('src', '/cars/blue-sprint.svg');
+  await expect(page.locator('.play-choice-public .play-choice-main-car')).toHaveAttribute('src', '/cars/race/mint.webp');
   await expect(page.locator('.play-choice-public .play-choice-main-car')).toHaveAttribute('alt','Цэнхэр салхи');
   await page.locator('.play-choice-bottom button').click();
   await expect(page).toHaveURL(/\/garage$/);
@@ -318,7 +322,7 @@ test('normal navigation stays instant and no vehicle wipe returns on browser his
   await page.getByRole('button', { name: /Цэнхэр салхи/ }).click();
   await page.getByRole('button', { name: 'Тоглох', exact: true }).click();
   await expect(page).toHaveURL(/\/play$/);
-  await expect(page.locator('.play-choice-public .play-choice-main-car')).toHaveAttribute('src','/cars/blue-sprint.svg');
+  await expect(page.locator('.play-choice-public .play-choice-main-car')).toHaveAttribute('src','/cars/race/mint.webp');
   // Shop moved into the compact overflow menu: exercise the real flow.
   await page.getByRole('button', { name: 'Бусад хуудас' }).click();
   await page.locator('#premium-more-panel').getByRole('button', { name: /Дэлгүүр/ }).click();
@@ -422,9 +426,9 @@ test('rarity shop has six distinct tiers, 18 original vehicle assets and respons
   const names = ['falcon','nomad','rover','sunflare','dune','cobalt','glacier','fox','streak',
     'ghost','onyx','meteor','temple','nebula','eagle','royal','aurora-x','dragon'];
   for (const id of names) {
-    const asset = await request.get('/cars/' + id + '.svg');
+    const asset = await request.get('/cars/' + id + '.webp');
     expect(asset.ok(), id).toBeTruthy();
-    expect(await asset.text()).toContain('<svg');
+    expect((await asset.body()).toString('ascii',8,12)).toBe('WEBP');
   }
   for (const width of [390,768,1440]) {
     await page.setViewportSize({width,height:845});
@@ -455,7 +459,7 @@ test('collection purchase spends coins once, equips in garage and level-gates le
   await page.goto('/garage');
   await page.getByRole('button',{name:/Шонхор GT/}).click();
   await expect(page.locator('.garage-feature h2')).toContainText('Шонхор GT');
-  await expect(page.locator('.garage-preview-car img')).toHaveAttribute('src','/cars/falcon.svg');
+  await expect(page.locator('.garage-preview-car img')).toHaveAttribute('src','/cars/falcon.webp');
   await page.reload();
   await expect(page.locator('.garage-feature h2')).toContainText('Шонхор GT');
 });
@@ -549,49 +553,45 @@ test('claiming one season reward preserves other available rewards and accessibl
 });
 
 
-test('all 18 rarity collectible cars serve their own detailed self-contained art', async ({ page, request }) => {
-  const tiers = [
-    ['falcon', 'nomad', 'rover'],
-    ['sunflare', 'dune', 'cobalt'],
-    ['glacier', 'fox', 'streak'],
-    ['ghost', 'onyx', 'meteor'],
-    ['temple', 'nebula', 'eagle'],
-    ['royal', 'aurora-x', 'dragon']
+test('all 29 user-supplied vehicles serve distinct transparent full and compact WebP files', async ({page,request})=>{
+  const tiers=[
+    ['falcon','nomad','rover'],['sunflare','dune','cobalt'],
+    ['glacier','fox','streak'],['ghost','onyx','meteor'],
+    ['temple','nebula','eagle'],['royal','aurora-x','dragon']
   ];
-  const uniqueBodies = new Set<string>();
-  const wheelCounts = new Set<number>();
-  for (const id of tiers.flat()) {
-    const response = await request.get('/cars/' + id + '.svg');
-    expect(response.status(), id).toBe(200);
-    expect(response.headers()['content-type'], id).toMatch(/image\/svg\+xml/);
-    const art = await response.text();
-    expect(art, id).toContain('viewBox="0 0 680 260"');
-    expect(art, id).toContain('<title>');
-    expect(art, id).toContain('url(#paint)');
-    expect(art, id).toContain('url(#glass)');
-    expect(art.length, id).toBeGreaterThan(3000);
-    expect(art, id).not.toMatch(/<(?:image|script|foreignObject)\b|(?:href|xlink:href)=["']https?:\/\//i);
-    const body = art.match(/<path d="([^"]+)" fill="url\(#paint\)"/);
-    expect(body, id).not.toBeNull();
-    uniqueBodies.add(body![1]);
-    wheelCounts.add((art.match(/<g transform="translate\(\d+ \d+\)"><circle r=/g) || []).length);
+  const legacy=['mint','sunset','purple','lime','phantom','steppe','thunder','midnight','khan','dawn','cosmic'];
+  const names=[...tiers.flat(),...legacy];
+  expect(new Set(names).size).toBe(29);
+  const hashes=new Set<string>();
+  for(const id of names){
+    const full=await request.get('/cars/'+id+'.webp');
+    expect(full.status(),id).toBe(200);
+    expect(full.headers()['content-type'],id).toContain('image/webp');
+    const bytes=await full.body();
+    expect(bytes.length,id).toBeGreaterThan(7000);
+    expect(bytes.toString('ascii',0,4)).toBe('RIFF');
+    expect(bytes.toString('ascii',8,12)).toBe('WEBP');
+    expect(bytes.toString('ascii',12,16)).toBe('VP8X');
+    expect(bytes[20]&0x10,id+' has transparent alpha').toBe(0x10);
+    hashes.add(createHash('sha256').update(bytes).digest('hex'));
+    const small=await request.get('/cars/race/'+id+'.webp');
+    expect(small.status(),id+' compact').toBe(200);
+    expect(small.headers()['content-type'],id).toContain('image/webp');
+    const raceBytes=await small.body();
+    expect(raceBytes.length,id+' compact').toBeGreaterThan(3500);
+    expect(raceBytes.length,id+' compact bytes').toBeLessThan(bytes.length);
+    expect(raceBytes.toString('ascii',8,12)).toBe('WEBP');
   }
-  expect(uniqueBodies.size).toBe(18);
-  // Cars, buggies, six-wheel rigs and hover vehicles must not share one silhouette.
-  expect(wheelCounts.size).toBeGreaterThanOrEqual(3);
+  expect(hashes.size).toBe(29);
   await page.goto('/shop');
   await expect(page.getByTestId('shop-tier-explanation')).toContainText('МИНИЙ ТҮВШИН');
   await expect(page.getByTestId('shop-tier-explanation')).toContainText('ЗООС');
   await expect(page.locator('.shop-rarity-tabs .rarity-filter')).toHaveCount(6);
   await page.locator('.shop-rarity-tabs .rarity-legendary').click();
   await expect(page.locator('.shop-item-grid .shop-collectible')).toHaveCount(3);
-  await expect.poll(async () =>
-    page.locator('.shop-item-grid img').evaluateAll(images =>
-      images.every(image => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0)
-    ), { timeout: 7000 }
-  ).toBe(true);
+  await expect.poll(()=>page.locator('.shop-item-grid img').evaluateAll(imgs=>
+    imgs.every(img=>(img as HTMLImageElement).complete&&(img as HTMLImageElement).naturalWidth>0)),{timeout:7000}).toBe(true);
 });
-
 
 test('shop car viewer makes each shape easy to inspect, closes with Escape, and keeps level rules', async ({ page }) => {
   for (const size of [{ width: 1366, height: 768 }, { width: 390, height: 844 }]) {
@@ -604,7 +604,7 @@ test('shop car viewer makes each shape easy to inspect, closes with Escape, and 
     await expect(viewer).toBeVisible();
     await expect(viewer).toContainText('Говийн нүүдэл');
     await expect(viewer).toContainText('НЭЭХ ТҮВШИН 1');
-    await expect(viewer.locator('.shop-preview-stage img')).toHaveAttribute('src', '/cars/nomad.svg');
+    await expect(viewer.locator('.shop-preview-stage img')).toHaveAttribute('src', '/cars/nomad.webp');
     await expect(viewer.locator('.shop-preview-stage img')).toBeVisible();
     const geometry = await page.evaluate(() => {
       const v = document.querySelector('[data-testid="shop-car-preview"]')!.getBoundingClientRect();

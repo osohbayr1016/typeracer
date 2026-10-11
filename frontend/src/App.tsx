@@ -13,7 +13,7 @@ import { ShopPage } from './pages/ShopPage';
 import { SeasonPage } from './pages/SeasonPage';
 import { loadProfile, saveProfile, raceReward, awardQuickRace, buyItem, claimReward, claimAvailableRewards, equipItem,
   TITLE_NAMES, STICKER_SYMBOLS, claimDailyQuest, type DailyQuestId, type CosmeticKind, type Cosmetic } from './progression';
-import { CARS, type Skin } from './pages/cars';
+import { CARS, raceCarIcon, type Skin } from './pages/cars';
 import {
   accuracyPercent, characters, choosePrompt, normalizeText, progressPercent,
   PROMPTS, wordsPerMinute, type Language, type Prompt, type RoomSnapshot
@@ -296,7 +296,7 @@ export function App() {
     <main className="shell main">
       {page === 'home' && <HomePage onPlay={() => navigate('play')}
         onMultiplayer={() => navigate('friends')}/>}
-      {page === 'play' && <PlayPage best={best} carIcon={CARS[skin].icon} carName={CARS[skin].label}
+      {page === 'play' && <PlayPage best={best} carIcon={raceCarIcon(skin)} carName={CARS[skin].label}
         onPlay={() => navigate('quickRace')} onMultiplayer={() => navigate('multiplayer')}
         onCreateRoom={() => { navigate('multiplayer'); void createRoom(); }}
         onJoinRoom={room => { navigate('multiplayer'); setJoinCode(room); connectRoom(room); }}
@@ -354,12 +354,12 @@ export function App() {
               <span>БЭЛДЭЭРЭЙ</span><strong>{countdown === 0 ? 'ЭХЭЛ!' : countdown}</strong><small>Уралдаан эхлэх гэж байна</small>
             </div>}
             <div className="track-meta"><span>ГАРААНД БЭЛД</span><span>БАРИА →</span></div>
-            <Lane name={nickname} position={1} progress={progress} color={CARS[skin].color} icon={CARS[skin].icon}
+            <Lane name={nickname} position={1} progress={progress} color={CARS[skin].color} icon={raceCarIcon(skin)}
               subtitle={TITLE_NAMES[profile.title]} trail={profile.trail} sticker={STICKER_SYMBOLS[profile.sticker]} isYou />
             <Lane name={best > 0 ? 'Хувийн рекорд' : '60 WPM зорилт'} position={2} progress={ghostProgress(best > 0 ? best : 60)}
-              color="#d8dce0" icon="/cars/graphite-r.svg" subtitle={best > 0 ? 'ӨМНӨХ ХУРД · РЕКОРД' : 'ЗОРИЛТОТ ХУРД · БОДИТ ТОГЛОГЧ БИШ'}/>
+              color="#d8dce0" icon="/cars/race/purple.webp" subtitle={best > 0 ? 'ӨМНӨХ ХУРД · РЕКОРД' : 'ЗОРИЛТОТ ХУРД · БОДИТ ТОГЛОГЧ БИШ'}/>
             <Lane name="40 WPM зорилт" position={3} progress={ghostProgress(40)}
-              color="#4486ef" icon="/cars/blue-sprint.svg" subtitle="ЗОРИЛТОТ ХУРД · БОДИТ ТОГЛОГЧ БИШ"/>
+              color="#4486ef" icon="/cars/race/mint.webp" subtitle="ЗОРИЛТОТ ХУРД · БОДИТ ТОГЛОГЧ БИШ"/>
             <div className="track-note">БУСАД МАШИНУУД БОЛ ЖИШИГ ХУРД, БОДИТ ТОГЛОГЧ БИШ</div>
           </div>
           <div className="typing-area" onClick={() => { if (countdown === null) inputRef.current?.focus(); }}>
@@ -445,11 +445,12 @@ export function App() {
             </div>}
             {snapshot.phase !== 'waiting' && <div className="multiplayer-track">
               {snapshot.players.map((player, index) => {
-                const car = player.car && player.car in CARS ? CARS[player.car as Skin] : CARS[['sunset','purple','mint'][index % 3] as Skin];
+                const chosenSkin: Skin = player.car && player.car in CARS ? player.car as Skin : (['sunset','purple','mint'] as Skin[])[index % 3];
+                const car = CARS[chosenSkin];
                 return <Lane key={player.id} name={player.name} position={index + 1} isYou={player.id === myId}
                   trail={player.trail || 'none'} sticker={STICKER_SYMBOLS[player.sticker as keyof typeof STICKER_SYMBOLS] || ''}
                   progress={progressPercent(player.progress, snapshot.prompt.text)}
-                  color={car.color} icon={car.icon}
+                  color={car.color} icon={raceCarIcon(chosenSkin)}
                   subtitle={player.completedAt ? 'ДУУССАН' : player.ready ? 'БЭЛЭН' : 'ХҮЛЭЭЖ БАЙНА'}/>;
               })}
             </div>}

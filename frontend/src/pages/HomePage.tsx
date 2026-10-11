@@ -16,14 +16,14 @@ export function HomePage({onPlay,onMultiplayer}:Props) {
       </div>
       <div className="home-visual" aria-hidden="true">
         <div className="home-track-lines"/>
-        <img src="/cars/coral-gt.svg" alt="" className="home-car-image"/>
+        <img src="/cars/sunset.webp" alt="" className="home-car-image"/>
         <span className="home-finish-art">FINISH /</span>
       </div>
     </section>
     <section className="home-race-preview" aria-label="Уралдааны замын дүрслэл">
       {[0,1,2].map((lane) => <div className="home-preview-lane" key={lane} aria-hidden="true">
         <span className="home-preview-lane-number">{String(lane + 1).padStart(2,"0")}</span>
-        <span className="home-preview-road"><span className="home-preview-progress" style={{width: `${[72,54,39][lane]}%`}}/><img src="/cars/coral-gt.svg" alt="" className={`home-preview-car home-preview-car-${lane}`} style={{left:`${[72,54,39][lane]}%`}}/><span className="home-preview-finish"/></span>
+        <span className="home-preview-road"><span className="home-preview-progress" style={{width: `${[72,54,39][lane]}%`}}/><img src={["/cars/race/sunset.webp","/cars/race/mint.webp","/cars/race/purple.webp"][lane]} alt="" className={`home-preview-car home-preview-car-${lane}`} style={{left:`${[72,54,39][lane]}%`}}/><span className="home-preview-finish"/></span>
       </div>)}
     </section>
   </div>;

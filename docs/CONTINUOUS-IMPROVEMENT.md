@@ -1,3 +1,15 @@
+## 2026-10-12 — Replace repeated car thumbnail silhouettes with 29 user-owned image assets (PR pending)
+
+**User-observed issue:** Shop/Garage and multiplayer still displayed the old self-authored SVG car art despite the user repeatedly providing new high-quality PNG cutout car images and asking us to integrate them. Existing thumbnails had confusing duplicated visual concepts and made rarity look cheap. The user has supplied 35 PNG images; 29 distinct images were selected to match the 29 stable `Skin` IDs. No images were generated this cycle.
+
+**Actual code/assets:** 58 alpha WebP objects are committed under `frontend/public/cars/` (29 1024px shop/gallery + 29 416px race versions). Each object's Git blob SHA was verified against the supplied asset manifest. Catalog previews, garage and season rewards use the full art; realtime public and private lanes use `raceCarIcon` (small). Play mode, home hero and main's three-lane home preview show supplied artwork. Model-type labels were corrected to match the supplied vehicle shapes. All existing car IDs, level and virtual-coin prices, purchase/ownership/equip, effects, WebSocket car-ID allowlists and earned progression remain untouched; no loot boxes or gameplay advantages.
+
+**Required verification:** Existing and improved meaningful Chromium E2E checks include all 58 public URLs, RIFF/WEBP + transparency + distinct SHA256, compact-size bounds and decoded Shop images; unit catalog tests check each preview uses the matching WebP ID; public/private WS vehicle rendering, garage purchase/equip/persist and mobile UX remain covered. **CI and staging are NOT confirmed until the actual PR and deploy job results are inspected.** Merge only after all required checks pass. Existing staging deploy workflow only; no R2 connector/credentials available, so the files are served from the existing Cloudflare Workers static assets rather than claiming an R2 upload.
+
+**Risks / follow-up:** Manual real-device browser visual QA and the true end-to-end authenticated wallet are still outstanding. The original SVG files remain as fallback/backwards compatibility. Cloudflare R2 central asset storage remains future optional work (needs authorized bucket write access and a tested migration), not a prerequisite to displaying owner assets.
+
+---
+
 ## 2026-10-11 — Minimal home, premium nav and balanced rewards (PR pending)
 
 **Confirmed by user screenshots and code:** Home duplicated a large hero, a multi-line instruction, "ЯАЖ ТОГЛОХ ВЭ" tutorial, personal XP/statistics and garage navigation. Header showed nine primary links plus another Play CTA and a verbose profile chip. Five-person quick race gave **120/95/75/55/40** browser-local coins per finish while solo practice granted **30–110**. Daily quest rewards **25+35+50** could all be claimed after one race. Server competitive WPM/accuracy scoring separately gave 100+ weekly points per ordinary quick finish. These scales made cosmetic and ranking progression too easy.

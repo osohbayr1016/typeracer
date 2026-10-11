@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   progressPercent, type RoomSnapshot, type Racer
 } from '@typeracer/shared';
-import { CARS, type Skin } from './cars';
+import { CARS, raceCarIcon, type Skin } from './cars';
 import { type Profile } from '../progression';
 import { QuickTypingPanel } from './QuickTypingPanel';
 import { sendRaceKey } from './typingSync';
@@ -219,7 +219,7 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
             </div>
             <div className="quick-road">
               <span className="quick-road-progress" style={{ width: done+'%' }}/>
-              <img src={CARS[which].icon} alt="" draggable={false}
+              <img src={raceCarIcon(which)} alt="" draggable={false}
                 style={{ left: `calc(${done}% - ${done * .14}px)`, transform: `translateX(-${done}%)` }}/>
               <span className="quick-flag" aria-hidden="true"/>
             </div>

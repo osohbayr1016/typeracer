@@ -2,7 +2,7 @@
 
 This guide governs original TypeRacer Mongolia cosmetics, including future hourly scheduled improvement runs. No Nitro Type artwork, trademarks, or source files may be reused. Content must be earned by **in-game virtual coins**, with no paid loot boxes or purchases.
 
-## Six rarity tiers (18 original SVG cars in initial launch)
+## Six rarity tiers (original 18 car identities, new user-provided artwork)
 
 | Зэрэглэл | Level access | Initial car IDs | Coins |
 |---|---:|---|---|
@@ -13,7 +13,19 @@ This guide governs original TypeRacer Mongolia cosmetics, including future hourl
 | Туульс | 17–23 | temple, nebula, eagle | 2,100–2,900 |
 | Домогт | 26–35 | royal, aurora-x, dragon | 3,500–5,000 |
 
-Each car has a unique SVG source at `frontend/public/cars/<id>.svg`, individualized silhouette/detail, tier colors and a named cosmetic effect; the `frontend/src/pages/ShopPage.css` glow and accent themes differentiate rarities while `GaragePage.css` animates equipped cars. Prefer reduced motion for accessibility; **animations never change speed, race fairness or rewards**.
+### 2026-10-12 — User-provided art replaces the SVG thumbnails (no new products)
+
+The game now uses **29 distinct uploaded car artworks**, supplied directly by the project owner. Each existing `Skin` ID has two transparent alpha WebP assets with the *same ID*: 
+- `frontend/public/cars/<id>.webp` — original-style 1024px shop, Garage, Battle Pass and larger previews.
+- `frontend/public/cars/race/<id>.webp` — optimized 416px version in racing lanes, spectators and Play previews to reduce realtime bandwidth.
+
+These are real committed binary assets, not external links, prompts, temporary ChatGPT URLs or placeholder SVG recolors. `frontend/src/pages/cars.ts` is the single source for all 29 car IDs, the full artwork URL and `raceCarIcon` helper. `frontend/src/progression.ts` retains **all existing catalog IDs, rarity, minLevel, virtual-coin prices, ownership, persistence, season rewards and effects**, while changing car preview URLs. Cloudflare Workers' existing static-assets deployment serves the WebP files from the frontend build: **R2 is not used** and no R2 upload or public bucket access is claimed. Older SVG files are retained temporarily for backwards compatibility, not used in the refreshed catalog.
+
+The original 18 collectible slots remain three cars per `Энгийн`, `Сайжруулсан`, `Ховор`, `Онцгой`, `Туульс`, `Домогт` tier. No paid unlocks, loot boxes, competitive performance bonuses or new time-limited offers. Animations/effects remain cosmetic and respect `prefers-reduced-motion`.
+
+**Required verification for this art update:** GitHub tracked files and image SHA; all 29 large and all 29 small WebP assets serve with `image/webp`; RIFF/WEBP header, alpha flag, distinct hashes, small-image size less than full image; Chromium image decode across desktop/mobile Shop, purchased/equipped Garage, public/private racing and Season. Check PR CI before merging and the **existing staging-only** deploy+smoke after merge. No production changes.
+
+
 
 ### Required implementation per new item
 
