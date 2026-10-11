@@ -1,3 +1,17 @@
+## 2026-10-11 — Free Battle Pass UX rework with integrated rarity Shop
+
+**Baseline:** shop rarity PR #19 is already merged on `main` (six tiers, 18 new original SVG skins, all permanent in the catalog). No duplicate skins added. Its latest main-branch CI and Cloudflare staging were green at the start of this session.
+
+**Confirmed UX weakness:** `SeasonPage.tsx` treated all eight reward tiers as visually equal, with a bulky hero and no clear actionable "claimable now" summary. Players could not tell at a glance which XP target was next, how much XP remained, or how to collect multiple unlocked rewards.
+
+**Scoped implementation:** `SeasonPage.tsx` + `SeasonPage.css` provide a compact status header, next claimable/locked reward spotlight, exact next-XP requirements, full-season progress, unlocked/claimed counts, one-click `claimAvailableRewards`, clear eight-stage roadmap and explicit "Race for XP" / "Shop (18 new cars)" routes. Navigation renamed to **Шагналын зам**. `progression.ts` adds deterministic `seasonProgress` and safe idempotent bulk claiming using the existing `claimReward` rules; tier thresholds, season dates, current owned items and stored player profiles are unchanged. Unit and E2E tests cover multiple rewards, mobile layout, shop link, reload persistence and expiry.
+
+**Release gate:** PR verification must genuinely pass TypeScript, unit, frontend/Worker build and Playwright. After merge, existing staging deployment and live public/private WebSocket smoke must pass. No production deploy, payment flow or changes to server reward authority.
+
+**Risk:** guest XP and ownership still saved in browser localStorage; this is a free cosmetic beta, not a verified account economy. Future improvement cycles should favor race fairness/reliability over expanding the shop. Manual real-device visual review still advised.
+
+---
+
 ## 2026-10-11 — Six rarity tiers, 18 original shop cars and level-aware future content
 
 **User clarified scope:** requested **5–8 rarity tiers**, *not* 5–8 cars. Implemented **6 distinct tiers with 3 new original car skins each** (18 assets), rather than a single flat set of 8 cars. Eight starter illustrations were already created on this feature branch; ten additional original SVGs complete the six families.
