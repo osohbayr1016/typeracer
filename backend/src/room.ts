@@ -45,8 +45,12 @@ export class RaceRoom {
         }
         return new Response(JSON.stringify({player:rank.publicPlayer(player)}), {headers});
       }
-      if (path === '/ranking/players' && request.method === 'GET')
-        return Response.json(rank.leaderboard(Date.now()));
+      if (path === '/ranking/players' && request.method === 'GET') {
+        const query = new URL(request.url).searchParams;
+        const limit = Number(query.get('limit') ?? 50);
+        const offset = Number(query.get('offset') ?? 0);
+        return Response.json(rank.leaderboard(Date.now(),Number.isFinite(limit)?limit:50,Number.isFinite(offset)?offset:0));
+      }
       if (path === '/ranking/teams' && request.method === 'GET')
         return Response.json(rank.teams(Date.now()));
       const player = rank.fromCookie(cookie);
