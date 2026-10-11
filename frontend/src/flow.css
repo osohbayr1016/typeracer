@@ -265,3 +265,34 @@
   .home-hero h1 { font-size: clamp(42px, 10vw, 74px); }
   .flow-heading h1 { font-size: clamp(38px, 9.3vw, 51px); }
 }
+
+
+/* Streamlined site navigation: profile opens from the header; overflow stays inside nav. */
+.header-layout { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:clamp(9px,1.6vw,21px); }
+.header-layout .main-nav { min-width:0; max-width:100%; gap:0; overflow-x:auto; scrollbar-width:none; align-self:stretch; }
+.header-layout .main-nav::-webkit-scrollbar { display:none; }
+.header-layout .nav-item { padding-inline:clamp(7px,.9vw,13px); font-size:clamp(11px,.85vw,13px); }
+.header-right { margin:0; gap:10px; min-width:0; }
+.profile-chip-link { border-top:0; border-right:0; border-bottom:0; background:transparent; text-align:left; color:inherit; cursor:pointer; }
+.profile-chip-link:hover .profile-name { color:#ffac96; }
+.profile-chip-link[aria-current="page"] { border-left-color:var(--orange); }
+.header-right .nav-play { white-space:nowrap; }
+@media(max-width:1250px) { .header-right .nav-play,.header-right .beta-label {display:none;} }
+@media(max-width:990px) {
+ .header-layout { grid-template-columns:auto minmax(0,1fr); gap:0 15px; }
+ .header-layout .brand { min-height:62px; }
+ .header-right { grid-column:2; grid-row:1; justify-self:end; }
+ .header-layout .main-nav { grid-column:1/-1; grid-row:2; min-height:44px; width:100%; }
+ .header-layout .nav-item { flex:0 0 auto; padding:10px 16px; font-size:12px; }
+}
+@media(max-width:510px) {
+ .header-layout .brand-name { font-size:11px; letter-spacing:1px; }
+ .header-layout .brand-name small { letter-spacing:2.3px; font-size:7px; }
+ .header-layout .brand-mark { font-size:28px; min-width:33px; letter-spacing:-3px; }
+ .header-layout .brand {gap:8px;}
+ .header-right .profile-name {font-size:10px;max-width:97px;overflow:hidden;text-overflow:ellipsis;}
+ .header-right .profile-name small { font-size:9px; }
+ .header-right .profile-avatar {width:26px;height:26px;flex-basis:26px;font-size:20px;line-height:24px;}
+ .header-right .profile-chip {padding-left:9px;gap:7px;height:35px;}
+ .header-layout .nav-item {padding:11px 12px;}
+}
