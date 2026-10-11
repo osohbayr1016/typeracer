@@ -41,7 +41,9 @@ export function SiteNavigation({page,nickname,level,coins,onNavigate}:Props) {
       if(event.key==='Escape')setMoreOpen(false);
     };
     const closeOutside=(event:PointerEvent)=>{
-      if(event.target instanceof Node && !wrapRef.current?.contains(event.target))setMoreOpen(false);
+      if(event.target instanceof Node && !wrapRef.current?.contains(event.target) &&
+          !(event.target instanceof Element && event.target.closest('.premium-mobile-nav')))
+        setMoreOpen(false);
     };
     document.addEventListener('keydown',closeOnEscape);
     document.addEventListener('pointerdown',closeOutside);
