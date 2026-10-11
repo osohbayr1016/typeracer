@@ -1,6 +1,6 @@
 import './ShopPage.css';
 import { useEffect, useState } from 'react';
-import { RARITIES, type Rarity } from './cars';
+import { CARS, RARITIES, type Rarity, type Skin } from './cars';
 import { SHOP, NEW_CAR_COLLECTION, isOwned, isLevelUnlocked, playerLevel, shopRotation,
   type CosmeticKind, type Profile, type Cosmetic } from '../progression';
 
@@ -136,6 +136,8 @@ export function ShopPage({ profile, onBuy, onEquip, onRace }: Props) {
             </> : <span>{item.preview}</span>}
           </div>
           <h2>{item.name}</h2>
+          {item.kind === 'car' && CARS[item.id as Skin]?.modelType &&
+            <span className="shop-vehicle-type">{CARS[item.id as Skin].modelType}</span>}
           <p>{item.description}</p>
           <div className="shop-item-meta">
             <span>{acquired ? '✓ ЦУГЛУУЛСАН' : locked ? '🔒 ТҮВШИН ' + minLevel + ' ХЭРЭГТЭЙ' : '✓ ТҮВШИН ' + minLevel + ' НЭЭЛТТЭЙ'}</span>
@@ -164,7 +166,9 @@ export function ShopPage({ profile, onBuy, onEquip, onRace }: Props) {
         </div>
         <div className="shop-preview-info">
           <div><span className="shop-preview-rarity"><span className="rarity-gem" aria-hidden="true"/> {preview.rarity}</span>
-            <h2>{preview.name}</h2><p>{preview.description}</p>
+            <h2>{preview.name}</h2>
+            <span className="shop-vehicle-type">{CARS[preview.id as Skin]?.modelType ?? 'Гоёлын машин'}</span>
+            <p>{preview.description}</p>
             <p>Энэ машин уралдааны хурд, шагналыг өөрчлөхгүй. Зөвхөн таны гараж, уралдаанд харагдана.</p>
           </div>
           <div className="shop-preview-purchase">
