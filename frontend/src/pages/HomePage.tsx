@@ -16,7 +16,7 @@ export function HomePage({onPlay,onMultiplayer}:Props) {
       </div>
       <div className="home-visual" aria-hidden="true">
         <div className="home-track-lines"/>
-        <img src="/cars/coral-gt.svg" alt="" className="home-car-image"/>
+        <img src="/cars/sunset.webp" alt="" className="home-car-image"/>
         <span className="home-finish-art">FINISH /</span>
       </div>
     </section>
