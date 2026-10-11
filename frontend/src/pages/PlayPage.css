@@ -398,3 +398,10 @@
 @media (prefers-reduced-motion: reduce) {
   .play-page button { transition: none; }
 }
+
+/* Compact, straightforward quick-match payout preview. */
+.play-quick-payout { display:flex; align-items:center; flex-wrap:wrap; gap:8px 13px; border-top:1px solid #55585a; padding-top:17px; margin-top:23px; }
+.play-quick-payout span { width:100%; font-size:10px; font-weight:900; color:#abb6b2; letter-spacing:1.1px; }
+.play-quick-payout strong { color:#f8d793; font-size:11px; font-weight:850; }
+.play-quick-payout small { color:#bbc1bd; font-size:10px; }
+.play-quick-feature .play-solo-details h2 { font-size:clamp(38px,4vw,59px); }
