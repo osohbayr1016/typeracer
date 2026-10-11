@@ -7,6 +7,8 @@ import { acceptKeystroke, safePlayerName } from './logic';
 type QuickResult = {
   type: 'quick-result'; raceId: string; place: number | null; coins: number;
   wpm: number; accuracy: number; elapsedMs: number; verified: false;
+  /** All competitors at the result instant; unfinished racers stay visibly unfinished. */
+  standings: Racer[];
 };
 type Human = Racer & {
   socket: WebSocket | null; windowStart: number; windowCount: number; paid: boolean;
@@ -260,7 +262,7 @@ export class QuickMatchmaker {
       type: 'quick-result', raceId: race.id, place, coins: quickPrize(place, true),
       wpm: wordsPerMinute(human.progress, Math.max(1, human.completedAt - race.startAt)),
       accuracy: human.strokes ? Math.round((human.strokes - human.mistakes) / human.strokes * 100) : 100,
-      elapsedMs: Math.max(1, human.completedAt - race.startAt), verified: false
+      elapsedMs: Math.max(1, human.completedAt - race.startAt), verified: false, standings: this.receiveSnapshot(race).players
     };
     this.send(human.socket, human.lastResult);
   }
@@ -275,7 +277,7 @@ export class QuickMatchmaker {
         human.lastResult = { type: 'quick-result', raceId: race.id, place: null, coins: 0,
           wpm: wordsPerMinute(human.progress, Math.max(1, Date.now() - (race.startAt ?? Date.now()))),
           accuracy: human.strokes ? Math.round((human.strokes - human.mistakes) / human.strokes * 100) : 100,
-          elapsedMs: Date.now() - (race.startAt ?? Date.now()), verified: false };
+          elapsedMs: Date.now() - (race.startAt ?? Date.now()), verified: false, standings: this.receiveSnapshot(race).players };
         this.send(human.socket, human.lastResult);
       }
     }
