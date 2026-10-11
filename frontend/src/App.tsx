@@ -296,7 +296,7 @@ export function App() {
     <main className="shell main">
       {page === 'home' && <HomePage onPlay={() => navigate('play')}
         onMultiplayer={() => navigate('friends')}/>}
-      {page === 'play' && <PlayPage best={best} carIcon={CARS[skin].icon} carName={CARS[skin].label}
+      {page === 'play' && <PlayPage best={best} carIcon={raceCarIcon(skin)} carName={CARS[skin].label}
         onPlay={() => navigate('quickRace')} onMultiplayer={() => navigate('multiplayer')}
         onCreateRoom={() => { navigate('multiplayer'); void createRoom(); }}
         onJoinRoom={room => { navigate('multiplayer'); setJoinCode(room); connectRoom(room); }}
