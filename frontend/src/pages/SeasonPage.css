@@ -1,0 +1,170 @@
+/* TypeRacer Mongolia — free Season 01 progression: clear, earned and collectible.
+ * Scoped to the season pass. No animations block navigation or user input. */
+.season-pass {
+  --pass-border: #3e494b;
+  --pass-surface: #20282a;
+  --pass-muted: #adb9b6;
+  --pass-accent: #ff7356;
+  --pass-gold: #f5d78a;
+  padding: 25px 8px 36px;
+}
+.season-pass button { cursor: pointer; }
+.season-pass button:disabled { cursor: not-allowed; }
+.season-pass button:focus-visible { outline: 2px solid #ffe0a2; outline-offset: 3px; }
+.pass-eyebrow { color: #ff9c7e; font-size: 10px; font-weight: 900; letter-spacing: 1.6px; line-height: 1.4; }
+.pass-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 22px; margin: 0 4px 21px; }
+.pass-heading > div:first-child { min-width: 0; }
+.pass-heading h1 { margin: 7px 0 8px; color: #f5f5f0; font: 900 clamp(40px,4.6vw,62px)/1.08 var(--font-display); letter-spacing: -.03em; text-wrap: balance; }
+.pass-heading h1 span { color: var(--pass-accent); }
+.pass-heading p { color: #b8c2bf; font-size: 12px; line-height: 1.65; max-width: 660px; margin: 0; }
+.pass-season-badge { display: flex; flex: 0 0 188px; flex-direction: column; align-items: flex-start; justify-content: center; min-height: 91px; padding: 12px 16px; background: #242c2d; border: 1px solid #495557; }
+.pass-season-live { color: #bfe8c8; font-size: 10px; font-weight: 850; letter-spacing: .5px; }
+.pass-season-badge strong { color: #f5f1e9; font: 900 33px/1.3 var(--font-display); }
+.pass-season-badge strong small { color: #b8c3c1; font: 700 11px var(--font-body); }
+.pass-season-badge > span:last-child { color: #a7b4af; font-size: 10px; }
+
+.pass-overview { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(300px,.7fr); gap: 12px; }
+.pass-progress-card, .pass-next-card { position: relative; min-width: 0; background: var(--pass-surface); border: 1px solid var(--pass-border); overflow: hidden; }
+.pass-progress-card { padding: clamp(20px,2.3vw,31px); display: flex; flex-direction: column; }
+.pass-progress-card::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: #f46f51; }
+.pass-card-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.pass-free-stamp { padding: 6px 9px; color: #b3e4b8; font-size: 9px; font-weight: 900; letter-spacing: .5px; border: 1px solid #476f58; }
+.pass-progress-card h2 { margin: 18px 0 9px; color: #f8f4ef; font: 900 clamp(23px,2.75vw,35px)/1.1 var(--font-display); letter-spacing: -.01em; }
+.pass-progress-numbers { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 7px; margin: 7px 0 12px; }
+.pass-progress-numbers strong { color: #f4f1ec; font: 900 34px/1 var(--font-display); }
+.pass-progress-numbers strong small { color: #ff987b; font: 900 15px var(--font-body); }
+.pass-progress-numbers span { color: #bdc6c3; font-size: 11px; }
+.pass-progress-track { height: 11px; width: 100%; overflow: hidden; background: #3a4847; border-radius: 2px; border: 1px solid #4c5956; }
+.pass-progress-track > span { display: block; height: 100%; background: linear-gradient(90deg,#de704d,#ffbd67); border-right: 2px solid #ffe2a3; transition: width 300ms ease-out; }
+.pass-progress-caption { display: flex; justify-content: space-between; gap: 12px; margin-top: 9px; color: #adb9b6; font-size: 10px; }
+.pass-stats { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 0; margin-top: 26px; padding: 14px 0 17px; border-top: 1px solid #405052; }
+.pass-stats > div { padding: 0 18px; border-right: 1px solid #495456; }
+.pass-stats > div:first-child { padding-left: 0; }
+.pass-stats > div:last-child { border: 0; padding-right: 0; }
+.pass-stats strong { display: block; color: #f7f5f0; font: 900 27px/1.3 var(--font-display); font-variant-numeric: tabular-nums; }
+.pass-stats span { color: #a7b6b3; font-size: 9px; font-weight: 850; letter-spacing: .7px; }
+.pass-main-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: auto; }
+.pass-main-actions button { display: flex; align-items: center; justify-content: center; gap: 9px; min-height: 48px; border-radius: 4px; font-size: 11px; font-weight: 900; padding: 11px 16px; }
+.pass-race-cta { background: #ef674b; color: #fff; border: 1px solid #ff896e; }
+.pass-race-cta:hover { background: #fa7e60; }
+.pass-race-cta span { font-size: 18px; }
+.pass-claim-all { background: #f1c36c; color: #202523; border: 1px solid #ffe1a0; }
+.pass-claim-all:hover { background: #ffdc88; }
+.pass-next-card { display: flex; flex-direction: column; background: radial-gradient(ellipse at 50% 36%,#79604542,transparent 70%),linear-gradient(148deg,#293234,#182122); border-top: 3px solid #e9bd74; }
+.pass-next-card.can-claim { border-color: #e5c17e; box-shadow: inset 0 0 0 1px #ba905746; }
+.pass-next-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 21px 2px; }
+.pass-next-top .pass-eyebrow { color: #f5d99b; }
+.pass-next-tier { color: #f6dab1; border: 1px solid #846f4b; padding: 6px 9px; font-size: 10px; font-weight: 850; }
+.pass-reward-art { display: grid; place-items: center; min-width: 0; overflow: hidden; }
+.pass-reward-art-featured { height: 172px; padding: 6px 22px 0; }
+.pass-reward-art-featured img { height: 172px; width: min(100%,350px); object-fit: contain; filter: drop-shadow(0 14px 8px #0009); animation: pass-float 4.5s ease-in-out infinite alternate; }
+.pass-reward-art-featured .pass-reward-symbol { color: #f3ce7c; font: 900 90px/1 var(--font-display); text-shadow: 0 7px 22px #ffa94544; }
+.pass-next-bottom { display: flex; flex: 1; flex-direction: column; align-items: flex-start; padding: 0 23px 19px; }
+.pass-next-bottom > span { color: #eccb97; font-size: 10px; font-weight: 850; letter-spacing: .9px; }
+.pass-next-bottom h2 { margin: 5px 0; font: 900 29px/1.1 var(--font-display); color: #f6f2ec; }
+.pass-next-bottom p { color: #bbc5c2; font-size: 11px; line-height: 1.55; margin: 5px 0 0; }
+.pass-next-bottom button { margin-top: 13px; width: 100%; border: 1px solid #ffe9b1; background: #f3c876; color: #202523; padding: 12px; font-size: 11px; font-weight: 900; }
+
+.pass-roadmap { margin-top: 29px; }
+.pass-section-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin: 0 3px 14px; }
+.pass-section-heading h2 { color: #f6f3ee; margin: 6px 0 6px; font: 900 clamp(23px,2.8vw,32px)/1.1 var(--font-display); }
+.pass-section-heading p { color: #adb8b5; font-size: 11px; line-height: 1.55; margin: 0; }
+.pass-ready-indicator { color: #f7d49a; font-size: 10px; font-weight: 850; white-space: nowrap; }
+.pass-tier-list { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 11px; list-style: none; padding: 0; margin: 0; }
+.pass-tier-wrap { min-width: 0; position: relative; }
+.season-pass .season-tier.pass-tier { display: flex; flex-direction: column; height: 100%; min-width: 0; padding: 14px 13px 13px; border: 1px solid #4b5557; background: #222a2d; opacity: 1; border-radius: 4px; transition: border-color 180ms, transform 180ms; }
+.season-pass .season-tier.pass-tier.available { border-color: #f7b875; background: #312d29; box-shadow: inset 0 3px #f7b875; }
+.season-pass .season-tier.pass-tier.received { border-color: #547760; background: #222d28; }
+.season-pass .season-tier.pass-tier.locked { border-color: #465152; }
+.pass-tier-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.pass-tier-number { color: #f0eddf; font: 900 21px/1 var(--font-display); }
+.pass-tier-status { font-size: 9px; font-weight: 850; white-space: nowrap; letter-spacing: .2px; }
+.pass-tier-status.available { color: #ffd28c; }
+.pass-tier-status.received { color: #a9e5b6; }
+.pass-tier-status.locked { color: #a9b4b1; }
+.pass-reward-art-card { height: 99px; background: radial-gradient(ellipse at 50% 72%,#aeb5ab24,transparent 68%); }
+.pass-reward-art-card img { width: 100%; max-width: 190px; height: 99px; object-fit: contain; filter: drop-shadow(0 10px 6px #0009); transition: transform 160ms; }
+.pass-tier.available .pass-reward-art-card img { animation: pass-float 4.5s ease-in-out infinite alternate; }
+.pass-tier:hover .pass-reward-art-card img { transform: translateY(-2px); }
+.pass-reward-art-card .pass-reward-symbol { color: #f3c777; font: 900 57px/1 var(--font-display); }
+.pass-tier-details { display: flex; flex: 1; flex-direction: column; align-items: flex-start; padding-top: 6px; }
+.pass-reward-kind { color: #b4c1bd; font-size: 9px; font-weight: 850; letter-spacing: .75px; }
+.pass-tier-details h3 { margin: 6px 0 12px; color: #f5f1eb; font-size: 14px; font-weight: 850; line-height: 1.3; }
+.pass-tier-xp { margin-top: auto; color: #e5c788; font-size: 11px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.season-pass .pass-tier button { width: 100%; margin-top: 13px; min-height: 42px; padding: 9px 7px; border-radius: 4px; color: #fff; background: #ee6a50; border: 1px solid #fb9177; font-size: 11px; font-weight: 900; }
+.season-pass .pass-tier button:hover:not(:disabled) { background: #f78365; }
+.season-pass .pass-tier button:disabled { opacity: 1; background: #303c3e; border-color: #465355; color: #9faead; }
+.season-pass .pass-tier.received button:disabled { color: #b3dcc1; background: #2a4034; border-color: #476f53; }
+@keyframes pass-float { from { transform: translate3d(-3px,1px,0); } to { transform: translate3d(5px,-5px,0); } }
+
+.pass-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 23px 0 0; }
+.pass-how, .pass-shop-discovery { display: flex; min-width: 0; justify-content: center; flex-direction: column; padding: 21px; background: #20282a; border: 1px solid #404e50; }
+.pass-how h2, .pass-shop-discovery h2 { color: #f4f1ec; font: 900 24px/1.1 var(--font-display); margin: 8px 0; }
+.pass-how p, .pass-shop-discovery p { color: #bac2c0; font-size: 11px; line-height: 1.65; margin: 0; }
+.pass-how p span { color: #ff956f; font-weight: 900; }
+.pass-how button, .pass-shop-discovery button { align-self: flex-start; border: 1px solid #6f7776; background: #2d3738; color: #f6f2ed; min-height: 39px; padding: 9px 13px; margin-top: 14px; font-size: 11px; font-weight: 900; }
+.pass-how button:hover, .pass-shop-discovery button:hover { border-color: #f7ab78; background: #354244; }
+.pass-shop-discovery { display: grid; grid-template-columns: 166px 1fr; gap: 14px; align-items: center; padding: 14px; }
+.pass-shop-art { display: grid; grid-template-rows: repeat(3,52px); overflow: hidden; align-items: center; background: radial-gradient(ellipse at 50% 55%,#8f655034,transparent 80%); }
+.pass-shop-art img { width: 100%; height: 66px; object-fit: contain; filter: drop-shadow(0 6px 3px #000a); }
+.pass-shop-art img:nth-child(1) { transform: translate(5px,9px); }
+.pass-shop-art img:nth-child(2) { transform: translate(-7px,0); }
+.pass-shop-art img:nth-child(3) { transform: translate(9px,-8px); }
+.pass-disclaimer { margin: 20px 4px 0; padding: 12px 0; color: #a4b0ad; border-top: 1px solid #3d4648; font-size: 11px; line-height: 1.7; }
+@media (max-width: 980px) {
+  .pass-overview { grid-template-columns: 1fr minmax(255px,.7fr); }
+  .pass-tier-list { gap: 8px; }
+  .season-pass .season-tier.pass-tier { padding: 11px 9px; }
+  .pass-tier-status { font-size: 8px; }
+  .pass-shop-discovery { grid-template-columns: 116px 1fr; }
+}
+@media (max-width: 760px) {
+  .season-pass { padding: 18px 0 32px; }
+  .pass-overview { grid-template-columns: 1fr; }
+  .pass-progress-card { padding: 20px; }
+  .pass-next-card { display: grid; grid-template-columns: 1fr 210px; grid-template-rows: auto auto; }
+  .pass-next-top { grid-column: 1/-1; }
+  .pass-next-card .pass-reward-art-featured { grid-column: 2; grid-row: 2; height: 147px; }
+  .pass-next-card .pass-reward-art-featured img { height: 147px; }
+  .pass-next-bottom { grid-column: 1; grid-row: 2; padding: 11px 0 19px 20px; }
+  .pass-tier-list { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+  .pass-bottom { grid-template-columns: 1fr; }
+  .pass-shop-discovery { grid-template-columns: 148px 1fr; }
+}
+@media (max-width: 470px) {
+  .pass-heading { align-items: flex-start; flex-direction: column; gap: 13px; }
+  .pass-heading h1 { font-size: 43px; }
+  .pass-heading p { font-size: 11px; }
+  .pass-season-badge { width: 100%; flex: unset; min-height: 55px; display: grid; grid-template-columns: 1fr auto; align-items: center; padding: 9px 14px; gap: 3px; }
+  .pass-season-badge strong { grid-column: 2; grid-row: 1 / span 2; font-size: 28px; }
+  .pass-season-badge > span:last-child { grid-column: 1; }
+  .pass-progress-card h2 { font-size: 25px; }
+  .pass-progress-numbers strong { font-size: 30px; }
+  .pass-main-actions button { width: 100%; }
+  .pass-stats > div { padding: 0 9px; }
+  .pass-stats strong { font-size: 23px; }
+  .pass-stats span { font-size: 8px; }
+  .pass-next-card { grid-template-columns: 1fr 139px; }
+  .pass-next-card .pass-reward-art-featured { padding: 0 5px; height: 139px; }
+  .pass-next-card .pass-reward-art-featured img { height: 135px; }
+  .pass-next-bottom { padding-left: 12px; }
+  .pass-next-bottom h2 { font-size: 23px; }
+  .pass-next-bottom p { font-size: 10px; }
+  .pass-next-top { padding: 12px 12px 2px; }
+  .pass-tier-list { gap: 8px; }
+  .season-pass .season-tier.pass-tier { padding: 11px 8px; }
+  .pass-tier-status { font-size: 8px; }
+  .pass-reward-art-card { height: 83px; }
+  .pass-reward-art-card img { height: 83px; }
+  .pass-tier-details h3 { font-size: 12px; }
+  .pass-tier-number { font-size: 18px; }
+  .pass-reward-kind { font-size: 8px; }
+  .pass-shop-discovery { grid-template-columns: 100px 1fr; gap: 9px; }
+  .pass-shop-art { grid-template-rows: repeat(3,47px); }
+  .pass-shop-art img { height: 59px; }
+  .pass-how, .pass-shop-discovery { padding: 14px; }
+  .pass-how h2, .pass-shop-discovery h2 { font-size: 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .season-pass .pass-reward-art img, .pass-progress-track > span { animation: none !important; transition: none !important; }
+}
