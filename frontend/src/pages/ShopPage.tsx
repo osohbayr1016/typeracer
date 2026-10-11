@@ -1,6 +1,6 @@
 import './ShopPage.css';
-import { useState } from 'react';
-import { RARITIES, type Rarity } from './cars';
+import { useEffect, useState } from 'react';
+import { CARS, RARITIES, type Rarity, type Skin } from './cars';
 import { SHOP, NEW_CAR_COLLECTION, isOwned, isLevelUnlocked, playerLevel, shopRotation,
   type CosmeticKind, type Profile, type Cosmetic } from '../progression';
 
@@ -21,6 +21,13 @@ function classFor(item: Cosmetic) {
 export function ShopPage({ profile, onBuy, onEquip, onRace }: Props) {
   const [tab, setTab] = useState<'all' | CosmeticKind>('all');
   const [rarity, setRarity] = useState<Rarity | 'all'>('all');
+  const [preview, setPreview] = useState<Cosmetic | null>(null);
+  useEffect(() => {
+    if (!preview) return;
+    function onEscape(event: KeyboardEvent) { if (event.key === 'Escape') setPreview(null); }
+    window.addEventListener('keydown', onEscape);
+    return () => window.removeEventListener('keydown', onEscape);
+  }, [preview]);
   const level = playerLevel(profile.xp);
   const rotation = shopRotation();
   const carsOwned = NEW_CAR_COLLECTION.filter(item => isOwned(profile, 'car', item.id)).length;
@@ -67,7 +74,7 @@ export function ShopPage({ profile, onBuy, onEquip, onRace }: Props) {
           <h2>{rotation.featured[0].name}</h2>
           <p>{rotation.featured[0].description} · {rotation.featured[0].rarity}</p>
           <span className="shop-feature-meta">ТҮВШИН {rotation.featured[0].minLevel} · ◈ {rotation.featured[0].price.toLocaleString('mn-MN')}</span>
-          <button type="button" onClick={() => openCollection(rotation.featured[0])}>ЦУГЛУУЛГААС ҮЗЭХ →</button>
+          <button type="button" onClick={() => setPreview(rotation.featured[0])}>МАШИНЫГ ТОМООР ҮЗЭХ ↗</button>
         </div>
         <div className="shop-car-art shop-featured-car"><span className="car-aura" aria-hidden="true"/>
           <img src={rotation.featured[0].preview} alt={rotation.featured[0].name}/></div>
@@ -76,7 +83,7 @@ export function ShopPage({ profile, onBuy, onEquip, onRace }: Props) {
         <div className="shop-daily-head"><h2 id="daily-items">ӨНӨӨДРИЙН СОНГОЛТ</h2><span>Өдөр бүр шинэчлэгдэнэ</span></div>
         <div className="shop-daily-list">
           {rotation.daily.map(item => <button key={item.id} type="button" className={'shop-daily-item '+classFor(item)}
-            onClick={() => openCollection(item)}>
+            onClick={() => setPreview(item)}>
             <span className="shop-car-art"><span className="car-aura" aria-hidden="true"/><img src={item.preview} alt=""/></span>
             <span className="shop-daily-name"><strong>{item.name}</strong><small>{item.rarity} · ТҮВШИН {item.minLevel}</small></span>
             <span aria-hidden="true">↗</span>
@@ -121,10 +128,16 @@ export function ShopPage({ profile, onBuy, onEquip, onRace }: Props) {
           <div className="item-card-header"><span className="item-rarity"><span className="rarity-gem" aria-hidden="true"/> {item.rarity}</span>
             <span>{item.kind === 'car' ? 'МАШИН' : item.kind === 'trail' ? 'МӨР' : item.kind === 'sticker' ? 'ТЭМДЭГ' : 'ЦОЛ'}</span></div>
           <div className={'item-art '+(item.kind === 'car' ? 'shop-car-art' : 'item-symbol')}>
-            {item.kind === 'car' ? <><span className="car-aura" aria-hidden="true"/><img src={item.preview} alt={item.name} loading="lazy"/></> :
-              <span>{item.preview}</span>}
+            {item.kind === 'car' ? <>
+              <span className="car-aura" aria-hidden="true"/>
+              <img src={item.preview} alt={item.name} loading="lazy"/>
+              <button type="button" className="shop-inspect-button" aria-label={item.name + ' машиныг томоор харах'}
+                onClick={() => setPreview(item)}>ТОМООР ҮЗЭХ ↗</button>
+            </> : <span>{item.preview}</span>}
           </div>
           <h2>{item.name}</h2>
+          {item.kind === 'car' && CARS[item.id as Skin]?.modelType &&
+            <span className="shop-vehicle-type">{CARS[item.id as Skin].modelType}</span>}
           <p>{item.description}</p>
           <div className="shop-item-meta">
             <span>{acquired ? '✓ ЦУГЛУУЛСАН' : locked ? '🔒 ТҮВШИН ' + minLevel + ' ХЭРЭГТЭЙ' : '✓ ТҮВШИН ' + minLevel + ' НЭЭЛТТЭЙ'}</span>
@@ -138,6 +151,42 @@ export function ShopPage({ profile, onBuy, onEquip, onRace }: Props) {
         </article>;
       })}
     </div>
+    {preview && <div className="shop-preview-overlay" role="presentation"
+        onMouseDown={(event) => { if (event.target === event.currentTarget) setPreview(null); }}>
+      <section role="dialog" aria-modal="true" aria-label={preview.name + ' машины дэлгэрэнгүй'}
+        className={'shop-preview-dialog '+classFor(preview)} data-testid="shop-car-preview">
+        <div className="shop-preview-head">
+          <span className="shop-eyebrow">МАШИНЫ ДЭЛГЭРЭНГҮЙ</span>
+          <button type="button" className="shop-preview-close" aria-label="Хаах" autoFocus
+            onClick={() => setPreview(null)}>✕</button>
+        </div>
+        <div className="shop-preview-stage shop-car-art">
+          <span className="car-aura" aria-hidden="true"/>
+          <img src={preview.preview} alt={preview.name}/>
+        </div>
+        <div className="shop-preview-info">
+          <div><span className="shop-preview-rarity"><span className="rarity-gem" aria-hidden="true"/> {preview.rarity}</span>
+            <h2>{preview.name}</h2>
+            <span className="shop-vehicle-type">{CARS[preview.id as Skin]?.modelType ?? 'Гоёлын машин'}</span>
+            <p>{preview.description}</p>
+            <p>Энэ машин уралдааны хурд, шагналыг өөрчлөхгүй. Зөвхөн таны гараж, уралдаанд харагдана.</p>
+          </div>
+          <div className="shop-preview-purchase">
+            <span>НЭЭХ ТҮВШИН {preview.minLevel ?? 1} · ТАНЫ ТҮВШИН {level}</span>
+            <strong>{isOwned(profile,preview.kind,preview.id) ? 'ТАНЫ МАШИН' : '◈ ' + preview.price.toLocaleString('mn-MN')}</strong>
+            <button type="button" onClick={() => action(preview)}
+              disabled={equipped(profile,preview) || (!isOwned(profile,preview.kind,preview.id) &&
+                (!isLevelUnlocked(profile,preview) || profile.coins < preview.price))}>
+              {actionText(preview)}
+            </button>
+            {!isOwned(profile,preview.kind,preview.id) && (!isLevelUnlocked(profile,preview) || profile.coins < preview.price) &&
+              <button type="button" className="shop-preview-race" onClick={() => { setPreview(null); onRace(); }}>
+                УРАЛДАЖ XP, ЗООС ОЛОХ →
+              </button>}
+          </div>
+        </div>
+      </section>
+    </div>}
     <p className="reward-disclaimer">
       Бүх шинэ машин гоёлын зориулалттай: бичих хурд, байр, шагналыг нэмэхгүй. Түвшин XP-ээс хамаарна.
       Худалдан авсан машин энэ төхөөрөмжийн гаражид хадгалагдах бөгөөд одоогоор серверийн баталгаатай данс биш.

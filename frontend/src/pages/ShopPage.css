@@ -157,3 +157,64 @@
   .rarity-shop .shop-collectible .item-art img { height:115px; max-height:115px; }
   .rarity-shop .shop-featured-car img { height:126px; }
 }
+
+/* Accessible image inspection. Vehicle silhouette—not an unreadable badge—is the hero. */
+.rarity-shop .shop-collectible .item-art { height:175px; margin-bottom:10px; }
+.rarity-shop .shop-collectible .item-art img { max-height:167px; height:167px; width:100%; object-fit:contain; }
+.rarity-shop .shop-inspect-button { position:absolute; bottom:8px; right:7px; z-index:5;
+  border:1px solid #97aaa9; border-radius:3px; background:#121a1bea; color:#f4f6f1;
+  font-size:10px; font-weight:900; letter-spacing:.4px; min-height:34px; padding:7px 10px; cursor:pointer; }
+.rarity-shop .shop-inspect-button:hover,.rarity-shop .shop-inspect-button:focus-visible {
+  background:#e56c51; border-color:#ffd0a0; color:white; }
+.rarity-shop .shop-car-art img { pointer-events:none; }
+.shop-preview-overlay { position:fixed; inset:0; z-index:1000; display:flex; align-items:center;
+  justify-content:center; background:#04090de8; padding:16px; backdrop-filter:blur(9px); }
+.shop-preview-dialog { width:min(94vw,770px); max-height:calc(100dvh - 32px); overflow-y:auto;
+  color:#f3f5f1; border:1px solid #5a6568; border-top:4px solid var(--rare-accent,#e78a63);
+  background:#1e282b; box-shadow:0 23px 95px #000c; }
+.shop-preview-head { display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:14px 18px 0; }
+.shop-preview-close { min-width:42px; min-height:42px; border:1px solid #667575; background:#303d40;
+  color:white; font-weight:900; cursor:pointer; }
+.shop-preview-close:hover { background:#a9473b; }
+.shop-preview-stage { position:relative; isolation:isolate; display:grid; place-items:center;
+  min-height:220px; padding:10px 26px; background:radial-gradient(ellipse at center,var(--rare-glow,#35524b),transparent 68%); overflow:hidden; }
+.shop-preview-stage img { position:relative; width:100%; max-height:235px; object-fit:contain; z-index:2;
+  filter:drop-shadow(0 15px 9px #000d); }
+.shop-preview-stage .car-aura { position:absolute; inset:25% 12%; border-radius:50%; background:var(--rare-glow,#456);
+  filter:blur(45px); opacity:.8; pointer-events:none; }
+.shop-preview-info { display:grid; grid-template-columns:minmax(0,1fr) 215px; gap:22px;
+  padding:15px 23px 23px; border-top:1px solid #485556; }
+.shop-preview-rarity { color:var(--rare-accent,#fac); font-weight:900; font-size:12px; display:flex; align-items:center; gap:7px; }
+.shop-preview-info h2 { font:900 35px/1.13 var(--font-display); color:#fff7ee; margin:11px 0; }
+.shop-preview-info p { font-size:12px; line-height:1.65; color:#b8c8c6; margin:8px 0; }
+.shop-preview-purchase { display:flex; flex-direction:column; justify-content:center; gap:10px;
+  border-left:1px solid #485758; padding-left:20px; }
+.shop-preview-purchase > span { font-size:10px; color:#bdd0c9; line-height:1.4; font-weight:800; }
+.shop-preview-purchase strong { font:900 32px/1.1 var(--font-display); color:#ffdc99; }
+.shop-preview-purchase button { padding:11px 12px; min-height:43px; font-size:11px; font-weight:900;
+  border:1px solid #f8ad86; background:#e86d50; color:white; cursor:pointer; }
+.shop-preview-purchase button:disabled { cursor:not-allowed; color:#a9b8b7; border-color:#54615f; background:#3b494b; }
+.shop-preview-purchase .shop-preview-race { border-color:#899a9a; color:#fff1dd; background:#303d40; }
+@media(max-width:650px) {
+ .rarity-shop .shop-collectible .item-art { height:122px; }
+ .rarity-shop .shop-collectible .item-art img { height:115px; max-height:115px; }
+ .rarity-shop .shop-inspect-button { right:2px; bottom:0; min-height:28px; padding:4px 5px; font-size:9px; }
+ .shop-preview-overlay { padding:7px; }
+ .shop-preview-dialog { width:100%; max-height:calc(100dvh - 14px); }
+ .shop-preview-head { padding:9px 11px 0; }
+ .shop-preview-stage { min-height:150px; padding:6px 9px; }
+ .shop-preview-stage img { max-height:165px; }
+ .shop-preview-info { grid-template-columns:1fr; gap:9px; padding:13px 15px 18px; }
+ .shop-preview-info h2 { font-size:29px; }
+ .shop-preview-purchase { border:0; border-top:1px solid #485758; padding:12px 0 0; }
+}
+@media(prefers-reduced-motion:reduce) {
+ .shop-preview-stage img, .shop-preview-stage .car-aura { animation:none!important; transition:none!important; }
+}
+
+/* A descriptive vehicle class is meaningful; "special effect" alone isn't. */
+.shop-vehicle-type { display:inline-block; align-self:flex-start; margin:2px 0 7px; padding:4px 7px;
+  border:1px solid #647171; border-left:3px solid var(--rare-accent,#f4b077);
+  color:#e0e8e6; background:#2d3638; font-size:10px; font-weight:850; letter-spacing:.12px; }
+.shop-preview-info .shop-vehicle-type { margin:4px 0 7px; font-size:11px; }
