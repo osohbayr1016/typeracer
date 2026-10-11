@@ -1,3 +1,15 @@
+## 2026-10-11 — Premium car artwork across all rarity tiers
+
+**Confirmed issue:** The 18 collection car IDs had separate SVG files but the drawings shared similar flat, template-like proportions. The user requested different premium vehicle silhouettes and a higher-quality Nitro Type-inspired collector experience. The previous batch of photorealistic generated images remained separate from GitHub rather than being shipped as web assets.
+
+**Change scope:** On branch `feat/all-rarity-premium-car-art`, replace the 18 existing collection SVG assets in `frontend/public/cars/` with distinct self-contained sculpted SVG designs (original car body geometry, gloss/glass, wheel/rim details, gradients and increasingly elaborate high-rarity decoration). Preserve 18 car IDs, exact shop catalog, rarity/level/price/ownership rules, existing private/public multiplayer allowlists and favorite saved car references. Improve rarity tab price/XP labels and card presentation. Add E2E checks for each SVG loading successfully, being nontrivial and containing unique main vehicle geometry.
+
+**Release gate:** Verify GitHub CI typecheck, unit, build, Chromium plus live staging public/private WebSockets. Do not claim the high-res generated PNG files are hosted in GitHub: the **shipped website artwork is original vectorized interpretation**; high-res imagegen renders are separately available for further refinement. No production deploy or destructive changes.
+
+**Outstanding risks:** Cosmetic localStorage economy is untrusted, true photo-level asset replacement still requires binary GitHub uploads and explicit art review, animation effects remain cosmetic and reduced-motion preferences honored. Prioritize critical gameplay bugs before future art updates.
+
+---
+
 ## 2026-10-11 — Free Battle Pass UX rework with integrated rarity Shop
 
 **Baseline:** shop rarity PR #19 is already merged on `main` (six tiers, 18 new original SVG skins, all permanent in the catalog). No duplicate skins added. Its latest main-branch CI and Cloudflare staging were green at the start of this session.
