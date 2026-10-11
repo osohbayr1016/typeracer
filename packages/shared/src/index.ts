@@ -11,6 +11,7 @@ export type Racer = {
   completedAt: number | null;
   // Guest-room appearance only; not proof of ownership or a verified leaderboard identity.
   car?: string; trail?: string; sticker?: string; title?: string;
+  bot?: boolean;
 };
 export type RoomSnapshot = {
   type: 'state';
@@ -19,6 +20,9 @@ export type RoomSnapshot = {
   players: Racer[];
   startAt: number | null;
   durationMs: number;
+  mode?: 'quick';
+  matchId?: string;
+  queueEndsAt?: number | null;
 };
 export const ROOM_CAPACITY = 6;
 export const RACE_DURATION_MS = 90_000;
