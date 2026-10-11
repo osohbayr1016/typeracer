@@ -113,6 +113,6 @@ export const QuickTypingPanel = memo(function QuickTypingPanel({
       <div><b>{wpm}</b><small>ҮГ/МИН</small></div>
       <div><b>{accuracy}%</b><small>НАРИЙВЧЛАЛ</small></div>
       <div><b>{(seconds / 1000).toFixed(1)}s</b><small>ХУГАЦАА</small></div>
-    </div> : <p className="quick-ready-hint">Бүх уралдагч гараанд цугламагц 3 секунд тоолоод уралдаан эхэлнэ.</p>}
+    </div> : <p className="quick-ready-hint">Уралдааны үгээ урьдчилж хараарай. Гараа эхлэхэд бичих талбар идэвхжинэ.</p>}
   </section>;
 });

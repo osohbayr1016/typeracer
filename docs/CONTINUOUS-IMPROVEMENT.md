@@ -2,6 +2,18 @@
 
 Purpose: a short factual log for the next hourly cycle. Update only after checking the repository's current state and GitHub Actions; do not assume this document is current.
 
+## 2026-10-11 — Public race fits one screen; five-player limit and clear race start
+
+**User-reported issue / confirmed code diagnosis:** Public match was set to 10 lanes (`backend/src/quick.ts`), 10 large car rows competed with the typing passage for viewport space, and the UI showed a numeric waiting timer as well as a separate 3-second start countdown. At typical laptop sizes the passage/input could be below the fold. Nitro Type's regular track commonly uses five racers.
+
+**Scoped fix:** Public quick matches now contain exactly 5 total human/bot racers. The original unique Mongolian bot roster remains; up to 4 bots join one at a time, or real humans take slots. When the final slot fills, a single 3-2-1 start countdown begins. Waiting status instead displays 1/5–5/5 and a plain label, not another timer. A dedicated compact five-lane track with small 69px desktop/52px mobile vehicle graphics sits above the high-contrast typing passage and input. The oversized title and prize card no longer consume race screen height. Local instant typing feedback and server-validated placement are preserved; private custom rooms remain unchanged.
+
+**Acceptance gate:** PR verification must pass TypeScript, unit, frontend/Worker build and Chromium E2E, including explicit no-scroll input bounds at 1366×768 and 390×844. After merge, staging must pass both public five-lane and private-room live WebSocket smoke tests. Do not claim manual physical-device QA or measured frame rates unless performed.
+
+**Unchanged risks:** guest-local wallet, `verified:false` race results, no robust reconnect/hibernating DO, no measured p95 latency. Mobile IME and low-height devices should still receive manual QA. Next action after verification: test real-phone Cyrillic keyboard usability and track per-keystroke client-to-server acknowledgement, then improve disconnect handling.
+
+---
+
 ## 2026-10-11 — Race responsiveness and progressive lobby (user-requested)
 
 **Confirmed functional problem:** Public quick race `QuickRacePage.tsx` advanced typing highlights only from the server's 50ms-batched WebSocket snapshot, making each keystroke feel delayed. Text was hidden until after the 5s queue and 3s countdown. Bots were inserted together only when the timer ended. The 4–5 player queue looked artificial.

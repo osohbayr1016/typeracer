@@ -26,10 +26,10 @@ type QuickRace = {
  */
 export const QUICK_QUEUE_MS = 5_000;
 export const QUICK_COUNTDOWN_MS = 3_000;
-export const QUICK_LANES = 10;
-export const QUICK_MAX_HUMANS = 10;
-export const QUICK_PRIZES = [120, 95, 75, 55, 40, 35, 30, 25, 20, 15] as const;
-export const QUICK_BOT_JOIN_MS = 400;
+export const QUICK_LANES = 5;
+export const QUICK_MAX_HUMANS = 5;
+export const QUICK_PRIZES = [120, 95, 75, 55, 40] as const;
+export const QUICK_BOT_JOIN_MS = 650;
 
 /** Original Mongolian guest bot roster. Bots are identified as bots in every snapshot.
  * Starting at an offset varies the lineup across consecutive races, without duplicate names.
@@ -69,7 +69,7 @@ export function quickPlacement(player: Racer, opponents: Racer[]): number {
       (p.completedAt === player.completedAt && p.id < player.id))).length;
 }
 export function quickPrize(place: number, finished: boolean): number {
-  return finished ? QUICK_PRIZES[place - 1] ?? 30 : 0;
+  return finished ? QUICK_PRIZES[place - 1] ?? 0 : 0;
 }
 
 export class QuickMatchmaker {
@@ -130,7 +130,7 @@ export class QuickMatchmaker {
     return race;
   }
 
-  private joinBot(race: QuickRace): void {
+  private joinBot(race: QuickRace, autoStart = true): void {
     if (race.phase !== 'waiting' || race.humans.size === 0) return;
     if (race.humans.size + race.bots.length >= QUICK_LANES) return;
     const slot = race.botSequence++;
@@ -142,6 +142,9 @@ export class QuickMatchmaker {
       ready: true, pace: preset.pace
     });
     this.broadcast(race);
+    // Once the five-player grid is full, move straight to the ONLY visible
+    // countdown. Do not keep a separate "search timeout" running on screen.
+    if (autoStart && race.humans.size + race.bots.length === QUICK_LANES) this.startCountdown(race);
   }
 
   private startCountdown(race: QuickRace): void {
@@ -154,7 +157,7 @@ export class QuickMatchmaker {
     race.botJoinTimer = null;
     // All competitors are present before the 3-second countdown begins.
     // Remaining slots may occur if the event loop was briefly suspended.
-    while (race.humans.size + race.bots.length < QUICK_LANES) this.joinBot(race);
+    while (race.humans.size + race.bots.length < QUICK_LANES) this.joinBot(race, false);
     race.phase = 'countdown';
     race.startAt = Date.now() + QUICK_COUNTDOWN_MS;
     this.broadcast(race);

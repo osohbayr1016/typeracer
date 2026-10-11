@@ -160,10 +160,10 @@ try {
   const botRacers = firstQuickRace.players.filter(player => player.bot === true);
   assert(humanRacers.some(player => player.name === quickAliceName));
   assert(humanRacers.some(player => player.name === quickBobName));
-  assert.equal(firstQuickRace.players.length, 10, 'Public race must have ten humans/bots');
+  assert.equal(firstQuickRace.players.length, 5, 'Public race must have five humans/bots');
   assert(botRacers.every(player => player.id.startsWith('bot-')), 'Bots must be identified explicitly');
-  if (humanRacers.length < 10) {
-    assert.equal(botRacers.length, 10 - humanRacers.length, 'Missing racer slots must be bot-filled');
+  if (humanRacers.length < 5) {
+    assert.equal(botRacers.length, 5 - humanRacers.length, 'Missing racer slots must be bot-filled');
   }
   assert.equal(new Set(botRacers.map(player => player.name)).size, botRacers.length,
     'Every generated bot must have a distinct name');

@@ -23,20 +23,20 @@ export function PlayPage({ best, carIcon, carName, onPlay, onMultiplayer, onGara
         <div className="play-solo-kicker"><span className="play-option-index">01</span><span>ОНЛАЙН УРАЛДААН</span>
           <span className="play-feature-pill">ШУУД ТОГЛОХ</span></div>
         <h2 id="play-live-title">УРАЛДААНД<br/>ОРОХ</h2>
-        <p className="play-solo-description">Бодит хүмүүсийг хайж байх зуур 8–9 өвөрмөц нэртэй бот нэг нэгээрээ нэгдэнэ. 10 уралдагч бүрдмэгц гарааны тоолол эхэлнэ.</p>
+        <p className="play-solo-description">Нийт 5 уралдагч оролцоно. Хүн хүрэлцэхгүй бол бот нэг нэгээрээ нэгдэж, тав дахь оролцогч ирмэгц 3 секундын гараа эхэлнэ.</p>
         <div className="play-solo-steps"><span><b>1</b> Тоглогч хайх</span><span className="play-step-arrow">→</span>
           <span><b>2</b> Уралдах</span><span className="play-step-arrow">→</span><span><b>3</b> Зоос авах</span></div>
         <button type="button" className="play-start-button" onClick={onPlay}>
           <span className="play-start-symbol" aria-hidden="true">▶</span><span>УРАЛДААНД ОРОХ</span>
           <span className="play-start-arrow" aria-hidden="true">→</span>
         </button>
-        <p className="play-after-button">10 уралдагч · 5 секунд matchmaking · 3 секундын гараа · Тоглоомын зоос</p>
+        <p className="play-after-button">5 уралдагч · Найз биш бодит өрсөлдөгчид + бот · Нэг гарааны тоолол</p>
         <div className="play-quick-payout"><span>БАРИАНЫ ШАГНАЛ</span>
-          <strong>1-р байр ◈120</strong><strong>2-р байр ◈95</strong><strong>3-р байр ◈75</strong><small>4–10-р байр ◈55–15</small>
+          <strong>1-р байр ◈120</strong><strong>2-р байр ◈95</strong><strong>3-р байр ◈75</strong><small>4–5-р байр ◈55–40</small>
         </div>
       </div>
       <div className="play-preview" aria-label="Тоглогчид болон боттой уралдааны замын жишээ">
-        <div className="play-preview-topline"><strong>ТАНЫ УРАЛДААН</strong><span>10 УРАЛДАГЧ</span></div>
+        <div className="play-preview-topline"><strong>ТАНЫ УРАЛДААН</strong><span>5 УРАЛДАГЧ</span></div>
         <div className="play-preview-road">
           <div className="play-preview-lane play-preview-lane-you">
             <div className="play-preview-lane-label"><strong>01</strong><span>ТА</span></div>
