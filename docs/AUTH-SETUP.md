@@ -1,3 +1,7 @@
+## Required HTTPS redirect origin (fail closed)
+
+Set `OAUTH_REDIRECT_ORIGIN` to the exact externally reachable HTTPS origin (scheme and host, optional non-default port; no path, query, fragment, credentials or HTTP). The request's effective origin must match it exactly. No OAuth redirect may be constructed from the request Host as a fallback; mismatched, missing or malformed settings disable `/api/auth/providers` and prevent `/api/auth/:provider/start` and `callback` from contacting provider identity services. Both provider credentials **and** a matching redirect origin are required for enabled login buttons. `backend/src/oauth-origin.test.ts` exercises the actual Hono provider/start/callback routes with success and denied-origin cases, plus strict URL parsing. Do not deploy social login if an origin or provider credentials are missing.
+
 # Google / Facebook OAuth — staging setup
 
 Google/Facebook login uses **real OAuth authorization-code flow**, not local fake accounts. The backend performs code-to-access-token exchange over HTTPS, fetches the authenticated provider's user ID, validates a 5-minute CSRF state bound to the original HttpOnly guest session in Durable Object SQLite, links identity to a server player ID, rotates the HttpOnly session, and redirects to /profile. Login remains DISABLED when credentials are not configured. No provider secrets belong in Git, public frontend bundles, URLs, localStorage or GitHub PRs.
