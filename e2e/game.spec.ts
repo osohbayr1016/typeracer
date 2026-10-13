@@ -184,7 +184,7 @@ test('solo opponents are labelled practice pace ghosts, garage progression is no
   await expect(page.getByText('ЗОРИЛТОТ ХУРД · БОДИТ ТОГЛОГЧ БИШ')).toHaveCount(2);
   await page.goto('/garage');
   await expect(page.getByRole('button', { name: /Ногоон оч/ })).toBeDisabled();
-  await expect(page.getByRole('button', { name: /^Сүүдэр(?:\s|$)/ })).toBeDisabled();
+  await expect(page.locator('.garage-page-grid .garage-car-tile').filter({has:page.locator('.garage-tile-footer b').getByText('Сүүдэр',{exact:true})})).toBeDisabled();
   await expect(page.locator('.garage-page-grid .garage-car-tile')).toHaveCount(35);
 });
 
