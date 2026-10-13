@@ -1,4 +1,4 @@
-export type Skin = 'mint' | 'sunset' | 'purple' | 'lime' | 'phantom' | 'steppe' | 'thunder' | 'midnight' | 'khan' | 'dawn' | 'cosmic' | 'falcon' | 'nomad' | 'rover' | 'sunflare' | 'dune' | 'cobalt' | 'glacier' | 'fox' | 'streak' | 'ghost' | 'onyx' | 'meteor' | 'temple' | 'nebula' | 'eagle' | 'royal' | 'aurora-x' | 'dragon';
+export type Skin = 'mint' | 'sunset' | 'purple' | 'lime' | 'phantom' | 'steppe' | 'thunder' | 'midnight' | 'khan' | 'dawn' | 'cosmic' | 'falcon' | 'nomad' | 'rover' | 'sunflare' | 'dune' | 'cobalt' | 'glacier' | 'fox' | 'streak' | 'ghost' | 'onyx' | 'meteor' | 'temple' | 'nebula' | 'eagle' | 'royal' | 'aurora-x' | 'dragon' | 'side-common-graphite' | 'side-uncommon-cobalt' | 'side-rare-lightning' | 'side-epic-violet' | 'side-mythic-emerald' | 'side-legend-cyber';
 export const RARITIES = [
   { id: 'Энгийн', code: 'common', level: 1, color: '#aab9c4', description: 'Анхны гарааны хүлгүүд' },
   { id: 'Сайжруулсан', code: 'uncommon', level: 3, color: '#7cdea4', description: 'Шинэ хэв маяг, илүү тод өнгө' },
@@ -38,7 +38,13 @@ export const CARS: Record<Skin, CarSkin> = {
   'eagle': { color: '#b9a457', label: 'Далавчит бүргэд', icon: '/cars/eagle.webp', unlockAt: 0, rarity: 'Туульс', effect: 'halo', modelType: 'Бүргэд хээтэй спорт машин' },
   'royal': { color: '#36cebc', label: 'Тэнгэрийн титэм', icon: '/cars/royal.webp', unlockAt: 0, rarity: 'Домогт', effect: 'royal', modelType: 'Цагаан алтан гиперкар' },
   'aurora-x': { color: '#67d4c3', label: 'Туйлын туяа', icon: '/cars/aurora-x.webp', unlockAt: 0, rarity: 'Домогт', effect: 'cosmos', modelType: 'Туйлын туяатай гиперкар' },
-  'dragon': { color: '#db6258', label: 'Лууны дөл', icon: '/cars/dragon.webp', unlockAt: 0, rarity: 'Домогт', effect: 'flare', modelType: 'Лууны дөлтэй гиперкар' }
+  'dragon': { color: '#db6258', label: 'Лууны дөл', icon: '/cars/dragon.webp', unlockAt: 0, rarity: 'Домогт', effect: 'flare', modelType: 'Лууны дөлтэй гиперкар' },
+  'side-common-graphite': { color: '#3c4249', label: 'Графит Спринт', icon: '/cars/side-common-graphite.webp', unlockAt: 0, rarity: 'Энгийн', effect: 'breeze', modelType: 'Хар ралли хэтчбек · 2D хажуу харагдац' },
+  'side-uncommon-cobalt': { color: '#286cff', label: 'Кобальт Спринт', icon: '/cars/side-uncommon-cobalt.webp', unlockAt: 0, rarity: 'Сайжруулсан', effect: 'pulse', modelType: 'Цэнхэр спорт купе · 2D хажуу харагдац' },
+  'side-rare-lightning': { color: '#145deb', label: 'Цахилгаан GT', icon: '/cars/side-rare-lightning.webp', unlockAt: 0, rarity: 'Ховор', effect: 'spark', modelType: 'Уралдааны купе · 2D хажуу харагдац' },
+  'side-epic-violet': { color: '#a52bdc', label: 'Ягаан Сүүдэр', icon: '/cars/side-epic-violet.webp', unlockAt: 0, rarity: 'Онцгой', effect: 'shadow', modelType: 'Өргөн биетэй GT · 2D хажуу харагдац' },
+  'side-mythic-emerald': { color: '#14a46f', label: 'Маргад Феникс', icon: '/cars/side-mythic-emerald.webp', unlockAt: 0, rarity: 'Туульс', effect: 'halo', modelType: 'Маргад гиперкар · 2D хажуу харагдац' },
+  'side-legend-cyber': { color: '#aeeafb', label: 'Кибер Тэнгэр', icon: '/cars/side-legend-cyber.webp', unlockAt: 0, rarity: 'Домогт', effect: 'cosmos', modelType: 'Цагаан кибер гиперкар · 2D хажуу харагдац' }
 };
 export const carKeys = Object.keys(CARS) as Skin[];
 
