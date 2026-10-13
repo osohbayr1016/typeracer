@@ -2,6 +2,25 @@
 
 This guide governs original TypeRacer Mongolia cosmetics, including future hourly scheduled improvement runs. No Nitro Type artwork, trademarks, or source files may be reused. Content must be earned by **in-game virtual coins**, with no paid loot boxes or purchases.
 
+## 2026-10-13 — Six generated side-view rarity cars (additive, 2D)
+
+The owner requested six **new** shop cars, one in each rarity tier, based on the side-profile PNG illustrations generated in this ChatGPT conversation. None of the existing 29 vehicle IDs, original 18 shop collectibles or 58 user-provided WebP files were replaced. These new game-asset illustrations are separate from the earlier owner-uploaded artwork.
+
+| Rarity | New car ID | Mongolian name | Min. level | Virtual coins |
+|---|---|---|---:|---:|
+| Энгийн | `side-common-graphite` | Графит Спринт | 2 | 425 |
+| Сайжруулсан | `side-uncommon-cobalt` | Кобальт Спринт | 5 | 800 |
+| Ховор | `side-rare-lightning` | Цахилгаан GT | 9 | 1,250 |
+| Онцгой | `side-epic-violet` | Ягаан Сүүдэр | 15 | 1,900 |
+| Туульс | `side-mythic-emerald` | Маргад Феникс | 24 | 3,100 |
+| Домогт | `side-legend-cyber` | Кибер Тэнгэр | 36 | 5,400 |
+
+For each ID there are two original, right-facing, transparent-alpha **WebP** assets: `frontend/public/cars/<id>.webp` (640×256 px shop/garage) and `frontend/public/cars/race/<id>.webp` (360×144 px public/private race). Images are real committed binary Git blobs, not encoded text URLs. The 12 binaries total about 221 KiB. Existing API/room/quickplay allowlists are extended without weakening player-provided identity validation. All six items use existing one-time purchase, owned/equip and XP-level protections; they grant no performance advantage, no real-money charge, no loot box and no retroactive changes to inventory or earned coins. The complete tier collection is now **24 level-gated cars (4 per tier)**, alongside three separately listed legacy cars, and the garage contains **35 cars** including starters/rewards. Six rarity tiers remain unchanged.
+
+**Required verification before merge:** CI typecheck/unit/build, Chromium E2E for transparent WebP asset serving, distinct hashes, mobile filter/preview, purchases with insufficient XP or coins, duplicate purchase prevention, garage persistence, new skin rendering in live public matchmaking, and no mobile horizontal overflow. Follow the existing main-push **staging-only** publish and public/private WebSocket smoke sequence after safe merge. Live production is not authorized.
+
+---
+
 ## Six rarity tiers (original 18 car identities, new user-provided artwork)
 
 | Зэрэглэл | Level access | Initial car IDs | Coins |

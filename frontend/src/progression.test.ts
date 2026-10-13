@@ -44,19 +44,47 @@ describe('Mongolian device-local cosmetic economy', () => {
 
 
 describe('six rarity collections, level economy and featured rotation', () => {
-  it('has exactly six rarities with three unique original cars each', () => {
+  it('retains six rarities, three original cars and one new side-view car in each', () => {
     expect(COLLECTION_RARITIES).toHaveLength(6);
-    expect(NEW_CAR_COLLECTION).toHaveLength(18);
-    expect(new Set(NEW_CAR_COLLECTION.map(car => car.id)).size).toBe(18);
+    expect(NEW_CAR_COLLECTION).toHaveLength(24);
+    expect(new Set(NEW_CAR_COLLECTION.map(car => car.id)).size).toBe(24);
     for (const rarity of COLLECTION_RARITIES) {
-      const three = NEW_CAR_COLLECTION.filter(car => car.rarity === rarity.id);
-      expect(three).toHaveLength(3);
-      expect(three.every(car => car.preview === `/cars/${car.id}.webp`)).toBe(true);
-      expect(three.every(car => car.minLevel !== undefined && car.minLevel >= rarity.level)).toBe(true);
-      expect(three.every(car => car.price > 0 && !!car.effect)).toBe(true);
+      const four = NEW_CAR_COLLECTION.filter(car => car.rarity === rarity.id);
+      expect(four).toHaveLength(4);
+      expect(four.every(car => car.preview === `/cars/${car.id}.webp`)).toBe(true);
+      expect(four.every(car => car.minLevel !== undefined && car.minLevel >= rarity.level)).toBe(true);
+      expect(four.every(car => car.price > 0 && !!car.effect)).toBe(true);
     }
-    expect(SHOP.filter(car => car.kind === 'car').length).toBe(21);
+    expect(SHOP.filter(car => car.kind === 'car').length).toBe(27);
   });
+  it('adds six new original side-view rarity cars with correct assets, purchase gates, and equip identity', () => {
+    const expected = [
+      ['side-common-graphite', 'Энгийн', 425, 2],
+      ['side-uncommon-cobalt', 'Сайжруулсан', 800, 5],
+      ['side-rare-lightning', 'Ховор', 1250, 9],
+      ['side-epic-violet', 'Онцгой', 1900, 15],
+      ['side-mythic-emerald', 'Туульс', 3100, 24],
+      ['side-legend-cyber', 'Домогт', 5400, 36],
+    ] as const;
+    expect(new Set(expected.map(([id]) => id)).size).toBe(6);
+    for(const [id,rarity,price,level] of expected) {
+      const item = NEW_CAR_COLLECTION.find(i=>i.id===id);
+      expect(item).toBeDefined();
+      expect(item).toMatchObject({kind:'car',rarity,price,minLevel:level,preview:'/cars/'+id+'.webp'});
+      const before = {...starterProfile(),xp:(level-2)*300,coins:20_000};
+      expect(isLevelUnlocked(before,item!)).toBe(false);
+      expect(buyItem(before,'car',id)).toBe(before);
+      const lowCoins = {...before,xp:(level-1)*300,coins:price-1};
+      expect(buyItem(lowCoins,'car',id)).toBe(lowCoins);
+      const ready = {...before,xp:(level-1)*300};
+      const bought = buyItem(ready,'car',id);
+      expect(bought.coins).toBe(ready.coins-price);
+      expect(isOwned(bought,'car',id)).toBe(true);
+      expect(buyItem(bought,'car',id)).toBe(bought);
+      expect(equipItem(bought,'car',id).car).toBe(id);
+    }
+  });
+
   it('never bypasses level-gating with a large balance', () => {
     const newRacer = { ...starterProfile(), coins: 50_000 };
     const highTier = NEW_CAR_COLLECTION.find(item => item.id === 'dragon')!;
@@ -81,7 +109,7 @@ describe('six rarity collections, level economy and featured rotation', () => {
     expect(new Set(first.featured.map(item => item.id)).size).toBe(2);
     expect(new Set(first.daily.map(item => item.id)).size).toBe(3);
     expect(shopRotation(Date.parse('2026-10-12T08:00:00+08:00')).daily.map(i => i.id)).not.toEqual(first.daily.map(i => i.id));
-    expect(NEW_CAR_COLLECTION).toHaveLength(18);
+    expect(NEW_CAR_COLLECTION).toHaveLength(24);
   });
 });
 
