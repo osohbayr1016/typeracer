@@ -185,7 +185,7 @@ test('solo opponents are labelled practice pace ghosts, garage progression is no
   await page.goto('/garage');
   await expect(page.getByRole('button', { name: /Ногоон оч/ })).toBeDisabled();
   await expect(page.getByRole('button', { name: /Сүүдэр/ })).toBeDisabled();
-  await expect(page.locator('.garage-page-grid .garage-car-tile')).toHaveCount(29);
+  await expect(page.locator('.garage-page-grid .garage-car-tile')).toHaveCount(35);
 });
 
 test('Монгол дэлгүүр: зоосоор мөр авч, гаражид зүүж, шинэчлэхэд хадгална', async ({ page }) => {
@@ -234,7 +234,7 @@ test('six original starter and season vehicle PNG replacements load as WebP', as
     expect(bytes.toString('ascii',0,4)).toBe('RIFF');
     expect(bytes.toString('ascii',8,12)).toBe('WEBP');
   }
-  await expect(page.locator('.garage-page-grid .garage-car-tile')).toHaveCount(29);
+  await expect(page.locator('.garage-page-grid .garage-car-tile')).toHaveCount(35);
 });
 
 test('Ө Ү typography uses Cyrillic-safe display, body and typing fonts without clipping', async ({ page }) => {
@@ -434,12 +434,12 @@ test('rarity shop has six distinct tiers, 18 original vehicle assets and respons
     await page.setViewportSize({width,height:845});
     await page.goto('/shop');
     await expect(page.locator('.shop-rarity-tabs .rarity-filter')).toHaveCount(6);
-    await expect(page.locator('.shop-item-grid .shop-collectible')).toHaveCount(27);
+    await expect(page.locator('.shop-item-grid .shop-collectible')).toHaveCount(33);
     await expect(page.locator('.shop-daily-item')).toHaveCount(3);
     const dimensions = await page.evaluate(() => ({document:document.documentElement.scrollWidth, window:innerWidth}));
     expect(dimensions.document).toBeLessThanOrEqual(dimensions.window+1);
     await page.locator('.shop-rarity-tabs .rarity-legendary').click();
-    await expect(page.locator('.shop-item-grid .shop-collectible')).toHaveCount(3);
+    await expect(page.locator('.shop-item-grid .shop-collectible')).toHaveCount(4);
     await expect(page.locator('.shop-item-grid [data-item-id="royal"]')).toBeVisible();
     await expect(page.locator('.shop-item-grid [data-item-id="royal"] .item-action button')).toBeDisabled();
   }
@@ -504,7 +504,7 @@ test('battle pass presents next milestone, 8 readable rewards and original shop 
   }
   await page.getByRole('button', { name: /ДЭЛГҮҮР ҮЗЭХ/ }).click();
   await expect(page).toHaveURL(/\/shop$/);
-  await expect(page.locator('.shop-item-grid .shop-collectible')).toHaveCount(27);
+  await expect(page.locator('.shop-item-grid .shop-collectible')).toHaveCount(33);
   await expect(page.locator('[data-item-id="dragon"]')).toBeVisible();
 });
 
@@ -588,9 +588,70 @@ test('all 29 user-supplied vehicles serve distinct transparent full and compact 
   await expect(page.getByTestId('shop-tier-explanation')).toContainText('ЗООС');
   await expect(page.locator('.shop-rarity-tabs .rarity-filter')).toHaveCount(6);
   await page.locator('.shop-rarity-tabs .rarity-legendary').click();
-  await expect(page.locator('.shop-item-grid .shop-collectible')).toHaveCount(3);
+  await expect(page.locator('.shop-item-grid .shop-collectible')).toHaveCount(4);
   await expect.poll(()=>page.locator('.shop-item-grid img').evaluateAll(imgs=>
     imgs.every(img=>(img as HTMLImageElement).complete&&(img as HTMLImageElement).naturalWidth>0)),{timeout:7000}).toBe(true);
+});
+
+test('six generated right-facing side-view cars render, filter, purchase and race across all tiers', async ({page,request})=>{
+  const cars=[
+    ['side-common-graphite','common'],['side-uncommon-cobalt','uncommon'],
+    ['side-rare-lightning','rare'],['side-epic-violet','epic'],
+    ['side-mythic-emerald','mythic'],['side-legend-cyber','legendary']
+  ] as const;
+  const fullHashes=new Set<string>();
+  for(const [id] of cars){
+    const full=await request.get('/cars/'+id+'.webp');
+    const race=await request.get('/cars/race/'+id+'.webp');
+    expect(full.ok(),id+' shop asset').toBe(true);
+    expect(race.ok(),id+' race asset').toBe(true);
+    expect(full.headers()['content-type'],id).toContain('image/webp');
+    expect(race.headers()['content-type'],id).toContain('image/webp');
+    const fullData=await full.body(), raceData=await race.body();
+    expect(fullData.length,id).toBeGreaterThan(7000);
+    expect(fullData.length,id).toBeLessThan(50_000);
+    expect(raceData.length,id).toBeGreaterThan(3500);
+    expect(raceData.length,id).toBeLessThan(fullData.length);
+    expect(fullData.toString('ascii',0,4)).toBe('RIFF');
+    expect(fullData.toString('ascii',8,12)).toBe('WEBP');
+    expect(fullData.toString('ascii',12,16)).toBe('VP8X');
+    expect(fullData[20]&0x10,id+' alpha transparency').toBe(0x10);
+    fullHashes.add(createHash('sha256').update(fullData).digest('hex'));
+  }
+  expect(fullHashes.size).toBe(6);
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/shop');
+  await expect(page.locator('.shop-item-grid .shop-collectible')).toHaveCount(33);
+  for(const [id,rarity] of cars){
+    await page.locator('.shop-rarity-tabs .rarity-'+rarity).click();
+    await expect(page.locator('.shop-item-grid .shop-collectible')).toHaveCount(4);
+    const car=page.locator('[data-item-id="'+id+'"]');
+    await expect(car).toBeVisible();
+    await expect(car.locator('img')).toHaveAttribute('src','/cars/'+id+'.webp');
+    await car.locator('.shop-inspect-button').click();
+    const dialog=page.getByTestId('shop-car-preview');
+    await expect(dialog.locator('.shop-preview-stage img')).toHaveAttribute('src','/cars/'+id+'.webp');
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+  }
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+  await page.evaluate(()=>localStorage.setItem('racer.profile.v1',JSON.stringify({xp:10500,coins:8000,owned:[]})));
+  await page.reload();
+  await page.locator('.shop-rarity-tabs .rarity-legendary').click();
+  const newLegend=page.locator('[data-item-id="side-legend-cyber"]');
+  await expect(newLegend.locator('.item-action button')).toBeEnabled();
+  await newLegend.locator('.item-action button').click();
+  await expect(newLegend.locator('.item-action')).toContainText('ТАНЫХ');
+  await expect(page.locator('.coin-counter')).toContainText('2,600');
+  await page.goto('/garage');
+  await page.getByRole('button',{name:/Кибер Тэнгэр/}).click();
+  await expect(page.locator('.garage-feature h2')).toContainText('Кибер Тэнгэр');
+  await expect(page.locator('.garage-preview-car img')).toHaveAttribute('src','/cars/side-legend-cyber.webp');
+  await page.reload();
+  await expect(page.locator('.garage-feature h2')).toContainText('Кибер Тэнгэр');
+  await page.goto('/quick-race');
+  await expect(page.locator('.quick-lane.me .quick-road img')).toHaveAttribute(
+    'src','/cars/race/side-legend-cyber.webp',{timeout:13000});
 });
 
 test('shop car viewer makes each shape easy to inspect, closes with Escape, and keeps level rules', async ({ page }) => {
