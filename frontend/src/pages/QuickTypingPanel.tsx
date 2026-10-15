@@ -23,6 +23,7 @@ export const QuickTypingPanel = memo(function QuickTypingPanel({
 }: Props) {
   const letters = useMemo(() => characters(text), [text]);
   const inputRef = useRef<HTMLInputElement>(null);
+  const phraseRef = useRef<HTMLDivElement>(null);
   const localRef = useRef<LocalProgress>({ ...INITIAL_LOCAL_PROGRESS });
   const [local, setLocal] = useState<LocalProgress>(INITIAL_LOCAL_PROGRESS);
   const [now, setNow] = useState(Date.now());
@@ -71,6 +72,17 @@ export const QuickTypingPanel = memo(function QuickTypingPanel({
   }
 
   const shown = Math.max(serverProgress, local.progress);
+  useEffect(() => {
+    const phrase = phraseRef.current;
+    const cursor = phrase?.children[shown] as HTMLElement | undefined;
+    if (!phrase || !cursor) return;
+    // Scroll only the bounded passage, never the page or the Android keyboard.
+    const line = cursor.getBoundingClientRect();
+    const box = phrase.getBoundingClientRect();
+    if (line.bottom > box.bottom || line.top < box.top) {
+      phrase.scrollTop += line.top - box.top;
+    }
+  }, [shown]);
   const strokes = Math.max(serverStrokes, local.strokes);
   const mistakes = Math.max(serverMistakes, local.mistakes);
   const seconds = startedAt ? Math.max(1, now - startedAt) : 1;
@@ -83,7 +95,7 @@ export const QuickTypingPanel = memo(function QuickTypingPanel({
       <strong>{enabled ? 'ОДОО БИЧЭЭРЭЙ' : 'УРАЛДААНЫ ТЕКСТ · УНШИЖ БЭЛДЭЭРЭЙ'}</strong>
       <span>{shown} / {letters.length} тэмдэгт</span>
     </div>
-    <div className="quick-phrase" role="group" aria-label="Бичих текст" onClick={() => { if (enabled) inputRef.current?.focus(); }}>
+    <div ref={phraseRef} className="quick-phrase" role="group" aria-label="Бичих текст" onClick={() => { if (enabled) inputRef.current?.focus(); }}>
       {letters.map((letter, i) => <span key={i}
         className={i < shown ? 'typed' : i === shown ? (local.wrong && enabled ? 'incorrect' : 'cursor') : undefined}>
         {letter === ' ' ? '\u00a0' : letter}
