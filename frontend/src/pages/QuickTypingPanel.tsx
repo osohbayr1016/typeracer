@@ -1,11 +1,15 @@
 import { memo, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { accuracyPercent, characters, wordsPerMinute } from '@typeracer/shared';
 import { applyLocalKey, INITIAL_LOCAL_PROGRESS, type LocalProgress } from './typingSync';
+import { readRaceClock, type ServerClock } from './useRaceStart';
 
 
 type Props = {
   text: string;
   enabled: boolean;
+  available: boolean;
+  canAcceptKey: () => boolean;
+  clock: ServerClock | null;
   serverProgress: number;
   serverStrokes: number;
   serverMistakes: number;
@@ -19,18 +23,22 @@ type Props = {
  * Mount with key={matchId} to reset local state between races.
  */
 export const QuickTypingPanel = memo(function QuickTypingPanel({
-  text, enabled, serverProgress, serverStrokes, serverMistakes, startedAt, sendKey
+  text, enabled, available, canAcceptKey, clock, serverProgress, serverStrokes, serverMistakes, startedAt, sendKey
 }: Props) {
   const letters = useMemo(() => characters(text), [text]);
   const inputRef = useRef<HTMLInputElement>(null);
   const phraseRef = useRef<HTMLDivElement>(null);
+  const compositionBeforeStart = useRef(false);
   const localRef = useRef<LocalProgress>({ ...INITIAL_LOCAL_PROGRESS });
   const [local, setLocal] = useState<LocalProgress>(INITIAL_LOCAL_PROGRESS);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => readRaceClock(clock));
 
   useEffect(() => {
     if (!enabled) return;
-    inputRef.current?.focus({ preventScroll: true });
+    // Touch browsers need a user tap to open the keyboard. Keep an already
+    // focused preparation input mounted/focused when the light turns green.
+    if (document.activeElement !== inputRef.current && !window.matchMedia('(pointer: coarse)').matches)
+      inputRef.current?.focus({ preventScroll: true });
   }, [enabled]);
 
   // Only the server can move the confirmed finish line. If a snapshot is ahead
@@ -50,14 +58,15 @@ export const QuickTypingPanel = memo(function QuickTypingPanel({
 
   useEffect(() => {
     if (!enabled) return;
-    const id = window.setInterval(() => setNow(Date.now()), 250);
+    setNow(readRaceClock(clock));
+    const id = window.setInterval(() => setNow(readRaceClock(clock)), 250);
     return () => window.clearInterval(id);
-  }, [enabled]);
+  }, [enabled, clock]);
 
   function acceptInput(value: string) {
     // Pasting, dropping multi-character strings and disconnected sends cannot move the caret.
     const previous = localRef.current;
-    const next = applyLocalKey(previous, text, value, enabled, sendKey);
+    const next = applyLocalKey(previous, text, value, canAcceptKey(), sendKey);
     if (next === previous) return;
     localRef.current = next;
     setLocal(next);
@@ -95,7 +104,7 @@ export const QuickTypingPanel = memo(function QuickTypingPanel({
       <strong>{enabled ? 'ОДОО БИЧЭЭРЭЙ' : 'УРАЛДААНЫ ТЕКСТ · УНШИЖ БЭЛДЭЭРЭЙ'}</strong>
       <span>{shown} / {letters.length} тэмдэгт</span>
     </div>
-    <div ref={phraseRef} className="quick-phrase" role="group" aria-label="Бичих текст" onClick={() => { if (enabled) inputRef.current?.focus(); }}>
+    <div ref={phraseRef} className="quick-phrase" role="group" aria-label="Бичих текст" onClick={() => { if (available) inputRef.current?.focus(); }}>
       {letters.map((letter, i) => <span key={i}
         className={i < shown ? 'typed' : i === shown ? (local.wrong && enabled ? 'incorrect' : 'cursor') : undefined}>
         {letter === ' ' ? '\u00a0' : letter}
@@ -103,18 +112,21 @@ export const QuickTypingPanel = memo(function QuickTypingPanel({
     </div>
     <input ref={inputRef} className="quick-type-input" aria-label="Шууд уралдааны бичих талбар"
       autoCapitalize="off" autoComplete="off" autoCorrect="off" spellCheck={false}
-      inputMode="text" disabled={!enabled} onChange={onInput}
+      inputMode="text" disabled={!available} data-race-enabled={enabled} onChange={onInput}
+      aria-describedby="quick-keyboard-hint"
+      onCompositionStart={() => { compositionBeforeStart.current = !canAcceptKey(); }}
       onCompositionEnd={event => {
         const value = event.currentTarget.value;
         event.currentTarget.value = '';
-        acceptInput(value);
+        if (!compositionBeforeStart.current) acceptInput(value);
+        compositionBeforeStart.current = false;
       }}
       onPaste={event => event.preventDefault()} onDrop={event => event.preventDefault()}
-      placeholder={enabled ? 'Энд бичиж эхлээрэй...' : 'Гараа эхлэхээр энд бичнэ...'} />
+      placeholder={enabled ? 'Энд бичиж эхлээрэй...' : 'Энд дарж keyboard-оо бэлдээрэй'} />
     {enabled ? <div className="quick-metrics">
       <div><b>{wpm}</b><small>ҮГ/МИН</small></div>
       <div><b>{accuracy}%</b><small>НАРИЙВЧЛАЛ</small></div>
       <div><b>{(seconds / 1000).toFixed(1)}s</b><small>ХУГАЦАА</small></div>
-    </div> : <p className="quick-ready-hint">Уралдааны үгээ урьдчилж хараарай. Гараа эхлэхэд бичих талбар идэвхжинэ.</p>}
+    </div> : <p className="quick-ready-hint" id="quick-keyboard-hint">Энд дарж keyboard-оо нээгээрэй. Ногоон гэрэл асахаас өмнөх бичилт тооцогдохгүй.</p>}
   </section>;
 });

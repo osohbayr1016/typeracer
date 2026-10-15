@@ -25,9 +25,13 @@ export type RoomSnapshot = {
   mode?: 'quick';
   matchId?: string;
   queueEndsAt?: number | null;
+  /** Timestamp when this snapshot was produced; clients must not trust their wall clock. */
+  serverNow?: number;
 };
 export const ROOM_CAPACITY = 6;
 export const RACE_DURATION_MS = 90_000;
+export const START_LIGHT_MS = 1_000;
+export const START_COUNTDOWN_MS = START_LIGHT_MS * 2;
 
 /** Practice corpus: original Mongolian phrases (no scraped copyrighted texts). */
 export const PROMPTS: Record<Language, Prompt[]> = {

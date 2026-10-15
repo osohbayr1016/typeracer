@@ -6,15 +6,15 @@ test('start lights do not enable typing until the server starts the race', async
   const track = await page.locator('.quick-track').boundingBox();
   expect(geometry).not.toBeNull();expect(track).not.toBeNull();
   expect(Math.abs((geometry!.x+geometry!.width/2)-(track!.x+track!.width/2))).toBeLessThan(7);
-  await expect(page.locator('.quick-type-input')).toBeDisabled();
+  await expect(page.locator('.quick-type-input')).toHaveAttribute('data-race-enabled', 'false');
   await expect(page.getByTestId('quick-phase')).toHaveAttribute('data-phase','racing',{timeout:10000});
-  await expect(page.locator('.quick-type-input')).toBeEditable();
+  await expect(page.locator('.quick-type-input')).toHaveAttribute('data-race-enabled', 'true');
 });
 
 test('server-synced car reaches the checkered finish marker instead of stopping at 71 percent', async ({ page }) => {
   await page.goto('/quick-race');
   const input = page.getByRole('textbox',{name:'Шууд уралдааны бичих талбар'});
-  await expect(input).toBeEditable({timeout:14000});
+  await expect(input).toHaveAttribute('data-race-enabled', 'true', {timeout:14000});
   const prompt = (await page.locator('.quick-phrase').innerText()).replace(/\u00a0/g,' ').trim();
   // Stay one character short so the live track remains mounted for geometry QA.
   await input.pressSequentially(prompt.slice(0,-1),{delay:44});
@@ -97,11 +97,11 @@ test('main Play starts live matchmaking, adds bots and awards a finished match',
   await expect(page).toHaveURL(/\/quick-race$/);
   await expect(page.getByTestId('quick-race')).toBeVisible();
   await expect(page.locator('.quick-phrase')).toBeVisible();
-  await expect(page.locator('.quick-type-input')).toBeDisabled();
+  await expect(page.locator('.quick-type-input')).toHaveAttribute('data-race-enabled', 'false');
   await expect(page.locator('.quick-lane')).toHaveCount(5, { timeout: 12000 });
   await expect(page.locator('.quick-lane').filter({ hasText: 'БОТ' })).toHaveCount(4);
   const input = page.getByRole('textbox', { name: 'Шууд уралдааны бичих талбар' });
-  await expect(input).toBeEditable({ timeout: 13000 });
+  await expect(input).toHaveAttribute('data-race-enabled', 'true', { timeout: 13000 });
   const prompt = (await page.locator('.quick-phrase').innerText()).replace(/\u00a0/g, ' ').trim();
   expect(prompt).toMatch(/[ӨөҮү]/);
   await input.pressSequentially(prompt, { delay: 44 });
@@ -142,7 +142,7 @@ test('two real browsers create a waiting lobby, join, ready and race live', asyn
       .toHaveAttribute('src', '/cars/race/mint.webp');
 
     const input = creator.getByRole('textbox', { name: 'Онлайн уралдааны бичих хэсэг' });
-    await expect(input).toBeEditable({ timeout: 12_000 });
+    await expect(input).toHaveAttribute('data-race-enabled', 'true', { timeout: 12_000 });
     const prompt = (await creator.locator('.online-type .phrase').innerText()).replace(/\u00a0/g, ' ').trim();
     await input.pressSequentially(prompt.slice(0, 5), { delay: 10 });
     await expect(creator.locator('.online-type .typing-label')).toContainText('5 /');
@@ -210,7 +210,7 @@ test('finishing one public race earns XP but cannot instantly unlock the battle 
   await page.goto('/play');
   await page.locator('.play-choice-primary').click();
   const input = page.getByRole('textbox', { name: 'Шууд уралдааны бичих талбар' });
-  await expect(input).toBeEditable({ timeout: 13000 });
+  await expect(input).toHaveAttribute('data-race-enabled', 'true', { timeout: 13000 });
   const prompt = (await page.locator('.quick-phrase').innerText()).replace(/\u00a0/g,' ').trim();
   await input.pressSequentially(prompt, { delay: 44 });
   await expect(page.locator('.qr-results')).toBeVisible({timeout:15000});
@@ -354,7 +354,7 @@ test('two humans share public queue, see real players plus bots, and receive ser
     await expect(first.locator('.quick-lane').filter({hasText:'БОТ'})).toHaveCount(3);
     await expect(first.locator('.quick-lane').filter({hasText:'ТОГЛОГЧ'})).toHaveCount(2);
     const input = first.getByRole('textbox',{name:'Шууд уралдааны бичих талбар'});
-    await expect(input).toBeEditable({timeout:12000});
+    await expect(input).toHaveAttribute('data-race-enabled', 'true', {timeout:12000});
     const prompt=(await first.locator('.quick-phrase').innerText()).replace(/\u00a0/g,' ').trim();
     await input.pressSequentially(prompt.slice(0,5),{delay:45});
     await expect(second.locator('.quick-lane').filter({hasText:'ТОГЛОГЧ'}).first()).toContainText(/\d+%/, {timeout:5000});
@@ -377,12 +377,12 @@ test('four distinct bots join, with ONE start countdown after matchmaking', asyn
   await expect(page.getByTestId('quick-phase')).toHaveAttribute('data-phase', 'countdown', { timeout: 11000 });
   await expect(page.getByTestId('race-start-lights')).toBeVisible();
   await expect(page.getByTestId('race-start-lights')).toHaveAttribute('data-signal', /red|yellow/);
-  await expect(page.locator('.quick-type-input')).toBeDisabled();
+  await expect(page.locator('.quick-type-input')).toHaveAttribute('data-race-enabled', 'false');
   await expect(page.getByTestId('race-start-lights')).toHaveAttribute('data-signal', 'yellow', {timeout: 3500});
   await expect(page.locator('.quick-type-panel.prepare .quick-phrase')).toBeVisible();
-  await expect(page.locator('.quick-type-input')).toBeDisabled();
+  await expect(page.locator('.quick-type-input')).toHaveAttribute('data-race-enabled', 'false');
   await expect(page.getByTestId('quick-phase')).toHaveAttribute('data-phase', 'racing', { timeout: 13000 });
-  await expect(page.locator('.quick-type-input')).toBeEditable();
+  await expect(page.locator('.quick-type-input')).toHaveAttribute('data-race-enabled', 'true');
 });
 
 test('all five racer positions and typing text fit desktop and phone without page scrolling', async ({ page }) => {
@@ -419,7 +419,7 @@ test('short Android screens keep readable text and input above the roads', async
   try {
     await page.goto('/quick-race');
     await expect(page.locator('.quick-lane')).toHaveCount(5, { timeout: 11000 });
-    await expect(page.locator('.quick-type-input')).toBeEditable({ timeout: 14000 });
+    await expect(page.locator('.quick-type-input')).toHaveAttribute('data-race-enabled', 'true', { timeout: 14000 });
     for (const size of [{ width: 320, height: 568 }, { width: 360, height: 640 },
       { width: 412, height: 732 }, { width: 360, height: 380 }]) {
       await page.setViewportSize(size);
@@ -453,7 +453,7 @@ test('short Android screens keep readable text and input above the roads', async
 test('typing caret updates locally and highlights mistakes without blocking input', async ({ page }) => {
   await page.goto('/quick-race');
   const input = page.getByRole('textbox', { name: 'Шууд уралдааны бичих талбар' });
-  await expect(input).toBeEditable({ timeout: 14000 });
+  await expect(input).toHaveAttribute('data-race-enabled', 'true', { timeout: 14000 });
   const phrase = page.locator('.quick-phrase');
   const first = (await phrase.innerText()).replace(/\u00a0/g, ' ')[0];
   await input.pressSequentially(first, { delay: 0 });
@@ -685,7 +685,7 @@ test('closed and throwing public WebSockets cannot create phantom local typing',
   });
   await page.goto('/quick-race');
   const input = page.getByRole('textbox', { name: 'Шууд уралдааны бичих талбар' });
-  await expect(input).toBeEditable({ timeout: 13_000 });
+  await expect(input).toHaveAttribute('data-race-enabled', 'true', { timeout: 13_000 });
   const letter = (await page.locator('.quick-phrase').innerText()).replace(/\u00a0/g, ' ')[0];
   await page.evaluate(() => {
     const socket = (window as typeof window & { __activeQuickSocket?: WebSocket }).__activeQuickSocket;
@@ -729,7 +729,7 @@ test('Durable Object resumes the same public race and confirmed typing after soc
   });
   await page.goto('/quick-race');
   const input = page.getByRole('textbox', { name: 'Шууд уралдааны бичих талбар' });
-  await expect(input).toBeEditable({ timeout: 13_000 });
+  await expect(input).toHaveAttribute('data-race-enabled', 'true', { timeout: 13_000 });
   const letter = (await page.locator('.quick-phrase').innerText()).replace(/\u00a0/g, ' ')[0];
   await input.fill(letter);
   await expect(page.locator('.quick-type-head span')).toContainText(/^1\s*\//);
@@ -822,7 +822,7 @@ test('profile nickname persists and profile, stats, friends, leaderboard are rea
 test('completed quickplay opens post-race standings and claims daily goals only once', async ({ page }) => {
   await page.goto('/quick-race');
   const input = page.getByRole('textbox',{name:'Шууд уралдааны бичих талбар'});
-  await expect(input).toBeEditable({timeout:13000});
+  await expect(input).toHaveAttribute('data-race-enabled', 'true', {timeout:13000});
   const prompt = (await page.locator('.quick-phrase').innerText()).replace(/\u00a0/g,' ').trim();
   await input.pressSequentially(prompt,{delay:44});
   await expect(page).toHaveURL(/\/quick-results$/,{timeout:15000});
@@ -860,7 +860,7 @@ test('mobile post-race styles and social pages avoid horizontal overflow', async
 test('guest racing contributes authenticated-by-cookie server points to ALL players leaderboard, never bots', async ({ page, request }) => {
   await page.goto('/quick-race');
   const input=page.getByRole('textbox',{name:'Шууд уралдааны бичих талбар'});
-  await expect(input).toBeEditable({timeout:14000});
+  await expect(input).toHaveAttribute('data-race-enabled', 'true', {timeout:14000});
   const prompt=(await page.locator('.quick-phrase').innerText()).replace(/\u00a0/g,' ').trim();
   await input.pressSequentially(prompt,{delay:82});
   await expect(page).toHaveURL(/\/quick-results$/,{timeout:15000});

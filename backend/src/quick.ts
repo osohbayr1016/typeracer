@@ -1,5 +1,5 @@
 import {
-  choosePrompt, characters, RACE_DURATION_MS, wordsPerMinute,
+  choosePrompt, characters, RACE_DURATION_MS, START_COUNTDOWN_MS, wordsPerMinute,
   type Prompt, type Racer, type RoomSnapshot
 } from '@typeracer/shared';
 import { acceptKeystroke, safePlayerName } from './logic';
@@ -34,7 +34,7 @@ type QuickRace = {
  * No wallet or account is authoritative until a persistent authenticated ledger exists.
  */
 export const QUICK_QUEUE_MS = 5_000;
-export const QUICK_COUNTDOWN_MS = 3_000;
+export const QUICK_COUNTDOWN_MS = START_COUNTDOWN_MS;
 export const QUICK_LANES = 5;
 export const QUICK_MAX_HUMANS = 5;
 /** Transparent non-pay-to-win place coins: 18–30 per finished quick race.
@@ -205,21 +205,22 @@ export class QuickMatchmaker {
     if (race.botJoinTimer) clearInterval(race.botJoinTimer);
     race.deadline = null;
     race.botJoinTimer = null;
-    // All competitors are present before the 3-second countdown begins.
+    // Red and yellow each last one second before the shared green deadline.
     // Remaining slots may occur if the event loop was briefly suspended.
     while (race.humans.size + race.bots.length < QUICK_LANES) this.joinBot(race, false);
     race.phase = 'countdown';
     race.startAt = Date.now() + QUICK_COUNTDOWN_MS;
     this.broadcast(race);
-    race.countdownTimer = setTimeout(() => {
-      if (race.phase !== 'countdown' || race.humans.size === 0) {
-        this.dispose(race); return;
-      }
-      race.phase = 'racing';
-      this.broadcast(race);
-      race.tick = setInterval(() => this.tickBots(race), 180);
-      race.deadline = setTimeout(() => this.finish(race), RACE_DURATION_MS);
-    }, QUICK_COUNTDOWN_MS);
+    race.countdownTimer = setTimeout(() => this.beginRace(race), QUICK_COUNTDOWN_MS);
+  }
+
+  private beginRace(race: QuickRace): void {
+    if (race.phase !== 'countdown' || race.startAt === null || Date.now() < race.startAt) return;
+    if (race.humans.size === 0) { this.dispose(race); return; }
+    race.phase = 'racing';
+    this.broadcast(race);
+    race.tick = setInterval(() => this.tickBots(race), 100);
+    race.deadline = setTimeout(() => this.finish(race), Math.max(0, race.startAt + RACE_DURATION_MS - Date.now()));
   }
 
   private tickBots(race: QuickRace): void {
@@ -227,24 +228,29 @@ export class QuickMatchmaker {
     const now = Date.now();
     const size = characters(race.prompt.text).length;
     const elapsed = Math.max(0, now - race.startAt);
+    let changed = false;
     for (const bot of race.bots) {
       if (bot.completedAt !== null) continue;
       const target = Math.min(size, Math.floor(elapsed / 60_000 * bot.pace * 5));
+      if (target !== bot.progress) changed = true;
       bot.progress = Math.max(bot.progress, target);
       bot.strokes = bot.progress;
       if (bot.progress === size) bot.completedAt = now;
     }
-    this.queueBroadcast(race);
+    if (changed) this.queueBroadcast(race);
   }
 
   private receive(socket: WebSocket, raw: unknown): void {
     const entry = this.sockets.get(socket);
     if (!entry || typeof raw !== 'string' || raw.length > 160) return;
     const { race, human } = entry;
+    // A delayed event-loop timer must not discard the first key at the green deadline.
+    if (race.phase === 'countdown') this.beginRace(race);
     if (race.phase !== 'racing' || race.startAt === null || Date.now() < race.startAt ||
         human.completedAt !== null) return;
     let message: { type?: string; key?: unknown };
     try { message = JSON.parse(raw); } catch { return; }
+    if (!message || typeof message !== 'object') return;
     if (message.type !== 'key') return;
     const now = Date.now();
     if (now - human.windowStart >= 1_000) { human.windowStart = now; human.windowCount = 0; }
@@ -303,7 +309,7 @@ export class QuickMatchmaker {
 
   private receiveSnapshot(race: QuickRace): RoomSnapshot {
     return {
-      type: 'state', mode: 'quick', matchId: race.id,
+      type: 'state', mode: 'quick', matchId: race.id, serverNow: Date.now(),
       phase: race.phase, queueEndsAt: race.phase === 'waiting' ? race.queueEndsAt : null,
       startAt: race.startAt, durationMs: RACE_DURATION_MS, prompt: race.prompt,
       players: [...race.humans, ...race.bots].map(

@@ -58,6 +58,24 @@ beforeEach(() => {
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('Durable Object live quick race reconnect', () => {
+  it('rejects early keys but accepts the first green key even before the countdown timer callback runs', async () => {
+    const matchmaker = new QuickMatchmaker();
+    const first = await connect(matchmaker);
+    vi.advanceTimersByTime(2600);
+    const state = first.socket.sent.filter(message => message.type === 'state').at(-1)!;
+    expect(state.phase).toBe('countdown');
+    const startAt = Number(state.startAt);
+    const key = (state.prompt as { text: string }).text[0];
+    vi.setSystemTime(startAt - 1);
+    first.socket.receive({ type: 'key', key });
+    vi.setSystemTime(startAt);
+    first.socket.receive({ type: 'key', key });
+    vi.advanceTimersByTime(55);
+    const latest = first.socket.sent.filter(message => message.type === 'state').at(-1)!;
+    expect(latest.phase).toBe('racing');
+    expect((latest.players as Array<{ id: string; progress: number; strokes: number }>)
+      .find(p => p.id === first.welcome.id)).toMatchObject({ progress: 1, strokes: 1 });
+  });
   it('preserves racer ID, match ID, Mongolian progress and cosmetics across a reconnect', async () => {
     const doMatch = new QuickMatchmaker();
     const first = await connect(doMatch);
