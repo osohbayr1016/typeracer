@@ -58,6 +58,17 @@ beforeEach(() => {
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('Durable Object live quick race reconnect', () => {
+  it('reschedules an early countdown timer instead of leaving the lobby stuck', async () => {
+    const first = await connect(new QuickMatchmaker());
+    vi.advanceTimersByTime(2600);
+    const startAt = Number(first.socket.sent.filter(m => m.type === 'state').at(-1)!.startAt);
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(startAt - 1);
+    vi.advanceTimersByTime(2000);
+    expect(first.socket.sent.filter(m => m.type === 'state').at(-1)!.phase).toBe('countdown');
+    clock.mockRestore();
+    vi.advanceTimersByTime(2);
+    expect(first.socket.sent.filter(m => m.type === 'state').at(-1)!.phase).toBe('racing');
+  });
   it('rejects early keys but accepts the first green key even before the countdown timer callback runs', async () => {
     const matchmaker = new QuickMatchmaker();
     const first = await connect(matchmaker);

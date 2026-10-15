@@ -215,7 +215,13 @@ export class QuickMatchmaker {
   }
 
   private beginRace(race: QuickRace): void {
-    if (race.phase !== 'countdown' || race.startAt === null || Date.now() < race.startAt) return;
+    if (race.phase !== 'countdown' || race.startAt === null) return;
+    const remaining = race.startAt - Date.now();
+    if (remaining > 0) {
+      if (race.countdownTimer) clearTimeout(race.countdownTimer);
+      race.countdownTimer = setTimeout(() => this.beginRace(race), remaining);
+      return;
+    }
     if (race.humans.size === 0) { this.dispose(race); return; }
     race.phase = 'racing';
     this.broadcast(race);

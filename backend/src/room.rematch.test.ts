@@ -31,6 +31,17 @@ async function roomWithTwoPlayers() {
   return { room, first: sockets[0], second: sockets[1] };
 }
 describe('same-room rematch', () => {
+  it('starts custom matches when the first timer callback is slightly early', async () => {
+    const { first, second } = await roomWithTwoPlayers();
+    first.receive({ type: 'ready' }); second.receive({ type: 'ready' });
+    const startAt = first.state().startAt!;
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(startAt - 1);
+    vi.advanceTimersByTime(START_COUNTDOWN_MS);
+    expect(first.state().phase).toBe('countdown');
+    clock.mockRestore();
+    vi.advanceTimersByTime(2);
+    expect(first.state().phase).toBe('racing');
+  });
   it('keeps players and cosmetics, resets results, changes text, and requires opponent readiness', async () => {
     const { first, second } = await roomWithTwoPlayers();
     const original = first.state();

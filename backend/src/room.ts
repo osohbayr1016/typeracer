@@ -241,7 +241,13 @@ export class RaceRoom {
     if ([...this.sockets.values()].every(p => p.completedAt !== null)) this.finish();
   }
   private beginRace(): void {
-    if (this.phase !== 'countdown' || this.startAt === null || Date.now() < this.startAt) return;
+    if (this.phase !== 'countdown' || this.startAt === null) return;
+    const remaining = this.startAt - Date.now();
+    if (remaining > 0) {
+      if (this.timer) clearTimeout(this.timer);
+      this.timer = setTimeout(() => this.beginRace(), remaining);
+      return;
+    }
     this.phase = 'racing';
     this.broadcast();
     this.timer = setTimeout(() => this.finish(), Math.max(0, this.startAt + RACE_DURATION_MS - Date.now()));
