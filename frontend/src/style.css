@@ -137,6 +137,15 @@ a { color: inherit; }
 .letter.correct { color: #122916; background: #c4e8ab; }
 .letter.incorrect { color: #992819; background: #f4c4b9; text-decoration: underline; }
 .letter.cursor { color: #222; background: #fff0c6; box-shadow: inset -3px 0 var(--orange); }
+/* Mobile reading comes before decorative roads in solo and friend races too. */
+@media(max-width:700px) {
+  .race-panel, .room-active { display: flex; flex-direction: column; }
+  .race-panel > .typing-area, .room-active > .online-type { order: -1; }
+  .typing-area .letter, .online-type .letter { color: #46534d; }
+  .typing-area .letter.correct, .online-type .letter.correct { color: #122916; }
+  .typing-area .letter.incorrect, .online-type .letter.incorrect { color: #992819; }
+  .typing-area .letter.cursor, .online-type .letter.cursor { color: #222; }
+}
 .typing-input-row { display: flex; gap: 20px; align-items: center; }
 .typing-input { border: 1px solid #666b6c; background: #f2f1e9; color: #202627; height: 46px; width: 100%; min-width: 0;
   border-radius: 5px; font-size: 15px; outline: none; padding: 10px 15px; }

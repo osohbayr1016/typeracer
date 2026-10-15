@@ -401,11 +401,53 @@ test('all five racer positions and typing text fit desktop and phone without pag
         maxCarWidth: Math.max(...cars), scrollWidth: document.documentElement.scrollWidth, innerWidth, innerHeight };
     });
     expect(v.roadTop).toBeGreaterThan(0);
-    expect(v.roadBottom).toBeLessThan(v.promptTop);
+    if (viewport.width > 700) expect(v.roadBottom).toBeLessThan(v.promptTop);
+    else expect(v.inputBottom).toBeLessThan(v.roadTop);
     expect(v.inputBottom, JSON.stringify(viewport)).toBeLessThanOrEqual(v.innerHeight + 2);
     expect(v.scrollWidth).toBeLessThanOrEqual(v.innerWidth + 1);
     expect(v.maxCarWidth).toBeLessThanOrEqual(75);
   }
+});
+
+test('short Android screens keep readable text and input above the roads', async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 360, height: 640 }, isMobile: true, hasTouch: true,
+    deviceScaleFactor: 3,
+    userAgent: 'Mozilla/5.0 (Linux; Android 12; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36'
+  });
+  const page = await context.newPage();
+  try {
+    await page.goto('/quick-race');
+    await expect(page.locator('.quick-lane')).toHaveCount(5, { timeout: 11000 });
+    await expect(page.locator('.quick-type-input')).toBeEditable({ timeout: 14000 });
+    for (const size of [{ width: 320, height: 568 }, { width: 360, height: 640 },
+      { width: 412, height: 732 }, { width: 360, height: 380 }]) {
+      await page.setViewportSize(size);
+      const bounds = await page.evaluate(() => {
+        const input = document.querySelector('.quick-type-input')!.getBoundingClientRect();
+        const prompt = document.querySelector('.quick-phrase')!.getBoundingClientRect();
+        const road = document.querySelector('.quick-track')!.getBoundingClientRect();
+        const dock = document.querySelector('.premium-mobile-nav')!.getBoundingClientRect();
+        return { inputBottom: input.bottom, promptTop: prompt.top, promptHeight: prompt.height,
+          roadTop: road.top, roadHeight: road.height, dockTop: dock.top,
+          overflow: document.documentElement.scrollWidth - innerWidth };
+      });
+      expect(bounds.promptTop, JSON.stringify(size)).toBeGreaterThanOrEqual(0);
+      expect(bounds.promptHeight).toBeGreaterThan(40);
+      expect(bounds.inputBottom, JSON.stringify(size)).toBeLessThanOrEqual(bounds.dockTop);
+      expect(bounds.inputBottom).toBeLessThan(bounds.roadTop);
+      expect(bounds.roadHeight).toBeLessThan(210);
+      expect(bounds.overflow).toBeLessThanOrEqual(1);
+    }
+    const text = (await page.locator('.quick-phrase').innerText()).replace(/\u00a0/g, ' ');
+    await page.locator('.quick-type-input').pressSequentially(text.slice(0, -1), { delay: 45 });
+    const cursorVisible = await page.locator('.quick-phrase').evaluate(el => {
+      const cursor = el.querySelector('.cursor')!.getBoundingClientRect();
+      const box = el.getBoundingClientRect();
+      return cursor.top >= box.top - 1 && cursor.bottom <= box.bottom + 1;
+    });
+    expect(cursorVisible).toBe(true);
+  } finally { await context.close(); }
 });
 
 test('typing caret updates locally and highlights mistakes without blocking input', async ({ page }) => {
