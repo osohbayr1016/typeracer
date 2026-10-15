@@ -1,11 +1,11 @@
 import {
-  choosePrompt, characters, ROOM_CAPACITY, RACE_DURATION_MS,
+  choosePrompt, characters, ROOM_CAPACITY, RACE_DURATION_MS, START_COUNTDOWN_MS, PROMPTS,
   type Racer, type RoomSnapshot, wordsPerMinute
 } from '@typeracer/shared';
 import { acceptKeystroke, safePlayerName } from './logic';
 import { QuickMatchmaker } from './quick';
 
-type Message = { type: 'ready' } | { type: 'key'; key: string };
+type Message = { type: 'ready' } | { type: 'key'; key: string } | { type: 'rematch'; matchId: string };
 type Player = Racer & { socket: WebSocket; windowStart: number; windowCount: number };
 type Phase = RoomSnapshot['phase'];
 const CAR_IDS = ['mint','sunset','purple','lime','phantom','steppe','thunder','midnight','khan','dawn','cosmic', 'falcon', 'nomad', 'rover', 'sunflare', 'dune', 'cobalt', 'glacier', 'fox', 'streak', 'ghost', 'onyx', 'meteor', 'temple', 'nebula', 'eagle', 'royal', 'aurora-x', 'dragon'] as const;
@@ -25,6 +25,7 @@ export class RaceRoom {
   private prompt = choosePrompt('mn');
   private phase: Phase = 'waiting';
   private startAt: number | null = null;
+  private matchId = crypto.randomUUID();
   private timer: ReturnType<typeof setTimeout> | null = null;
   private pendingBroadcast: ReturnType<typeof setTimeout> | null = null;
 
@@ -155,7 +156,7 @@ export class RaceRoom {
 
   private snapshot(): RoomSnapshot {
     return {
-      type: 'state', phase: this.phase, prompt: this.prompt,
+      type: 'state', phase: this.phase, prompt: this.prompt, matchId: this.matchId, serverNow: Date.now(),
       players: [...this.sockets.values()].map(({ id, name, progress, mistakes, strokes, ready, completedAt, car, trail, sticker, title }) =>
         ({ id, name, progress, mistakes, strokes, ready, completedAt, car, trail, sticker, title })),
       startAt: this.startAt, durationMs: RACE_DURATION_MS
@@ -197,21 +198,34 @@ export class RaceRoom {
     if (typeof data !== 'string' || data.length > 160) return;
     let message: Message;
     try { message = JSON.parse(data) as Message; } catch { return; }
-    if (message.type === 'ready' && this.phase === 'waiting') {
-      player.ready = true;
-      if (this.sockets.size >= 2 && [...this.sockets.values()].every(p => p.ready)) {
-        this.phase = 'countdown';
-        this.startAt = Date.now() + 3_000;
-        this.timer = setTimeout(() => {
-          if (this.phase !== 'countdown') return;
-          this.phase = 'racing';
-          this.broadcast();
-          this.timer = setTimeout(() => this.finish(), RACE_DURATION_MS);
-        }, 3_000);
+    if (!message || typeof message !== 'object') return;
+    if (message.type === 'rematch') {
+      if (this.phase !== 'finished' || message.matchId !== this.matchId) return;
+      const prompts = PROMPTS.mn.filter(prompt => prompt.id !== this.prompt.id);
+      this.prompt = prompts[Math.floor(Math.random() * prompts.length)] ?? choosePrompt('mn');
+      this.matchId = crypto.randomUUID();
+      this.phase = 'waiting';
+      this.startAt = null;
+      for (const racer of this.sockets.values()) {
+        racer.ready = racer === player;
+        racer.progress = racer.mistakes = racer.strokes = 0;
+        racer.completedAt = null;
+        racer.windowStart = racer.windowCount = 0;
       }
       this.broadcast();
       return;
     }
+    if (message.type === 'ready' && this.phase === 'waiting') {
+      player.ready = true;
+      if (this.sockets.size >= 2 && [...this.sockets.values()].every(p => p.ready)) {
+        this.phase = 'countdown';
+        this.startAt = Date.now() + START_COUNTDOWN_MS;
+        this.timer = setTimeout(() => this.beginRace(), START_COUNTDOWN_MS);
+      }
+      this.broadcast();
+      return;
+    }
+    if (message.type === 'key' && this.phase === 'countdown') this.beginRace();
     if (message.type !== 'key' || this.phase !== 'racing' || player.completedAt !== null ||
         this.startAt === null || Date.now() < this.startAt) return;
     const now = Date.now();
@@ -225,6 +239,12 @@ export class RaceRoom {
     if (player.progress === characters(this.prompt.text).length) player.completedAt = now;
     this.queueBroadcast();
     if ([...this.sockets.values()].every(p => p.completedAt !== null)) this.finish();
+  }
+  private beginRace(): void {
+    if (this.phase !== 'countdown' || this.startAt === null || Date.now() < this.startAt) return;
+    this.phase = 'racing';
+    this.broadcast();
+    this.timer = setTimeout(() => this.finish(), Math.max(0, this.startAt + RACE_DURATION_MS - Date.now()));
   }
   private finish(): void {
     if (this.phase === 'finished') return;

@@ -14,6 +14,7 @@ import { SeasonPage } from './pages/SeasonPage';
 import { loadProfile, saveProfile, raceReward, awardQuickRace, buyItem, claimReward, claimAvailableRewards, equipItem,
   TITLE_NAMES, STICKER_SYMBOLS, claimDailyQuest, type DailyQuestId, type CosmeticKind, type Cosmetic } from './progression';
 import { CARS, raceCarIcon, type Skin } from './pages/cars';
+import { readRaceClock, useRaceStart, type ServerClock } from './pages/useRaceStart';
 import {
   accuracyPercent, characters, choosePrompt, normalizeText, progressPercent,
   PROMPTS, wordsPerMinute, type Language, type Prompt, type RoomSnapshot
@@ -102,6 +103,10 @@ export function App() {
   const [status, setStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const [error, setError] = useState('');
   const [snapshot, setSnapshot] = useState<RoomSnapshot | null>(null);
+  const [onlineClock, setOnlineClock] = useState<ServerClock | null>(null);
+  const onlineSnapshotRef = useRef<RoomSnapshot | null>(null);
+  const onlineCompositionBeforeStart = useRef(false);
+  const { canType: onlineCanType } = useRaceStart(snapshot?.phase, snapshot?.startAt, onlineClock);
   const [myId, setMyId] = useState('');
   const [raceResult, setRaceResult] = useState<number | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
@@ -131,11 +136,12 @@ export function App() {
   useEffect(() => saveProfile(profile), [profile]);
   const myPlayer = snapshot?.players.find(p => p.id === myId);
   const onlineWpm = myPlayer && snapshot?.startAt
-    ? wordsPerMinute(myPlayer.progress, Math.max(1, (myPlayer.completedAt ?? now) - snapshot.startAt)) : 0;
+    ? wordsPerMinute(myPlayer.progress, Math.max(1, (myPlayer.completedAt ?? readRaceClock(onlineClock)) - snapshot.startAt)) : 0;
   const onlineAccuracy = myPlayer ? accuracyPercent(Math.max(0, myPlayer.strokes - myPlayer.mistakes), myPlayer.strokes) : 100;
   useEffect(() => {
-    if (page === 'multiplayerRace' && snapshot?.phase === 'racing') onlineInputRef.current?.focus();
-  }, [page, snapshot?.phase]);
+    if (page === 'multiplayerRace' && onlineCanType && !window.matchMedia('(pointer: coarse)').matches)
+      onlineInputRef.current?.focus({ preventScroll: true });
+  }, [page, onlineCanType]);
   useEffect(() => {
     if (page !== 'results' || finishedAt === null) return;
     const onKey = (event: KeyboardEvent) => {
@@ -190,6 +196,7 @@ export function App() {
   function disconnect() {
     socketRef.current?.close(); socketRef.current = null;
     setStatus('disconnected'); setSnapshot(null); setCode(''); setMyId(''); setRaceResult(null);
+    onlineSnapshotRef.current = null; setOnlineClock(null);
   }
   function connectRoom(roomCode: string) {
     const clean = roomCode.trim().toUpperCase();
@@ -208,7 +215,16 @@ export function App() {
       try {
         const value = JSON.parse(event.data) as RoomSnapshot | { type: 'welcome'; id: string } | { type: 'result'; wpm: number };
         if (value.type === 'welcome') setMyId(value.id);
-        if (value.type === 'state') setSnapshot(value);
+        if (value.type === 'state') {
+          if (!onlineSnapshotRef.current || value.startAt !== onlineSnapshotRef.current.startAt)
+            setOnlineClock({ serverNow: value.serverNow ?? Date.now(), receivedAt: performance.now() });
+          if (value.matchId !== onlineSnapshotRef.current?.matchId) {
+            setRaceResult(null);
+            if (onlineInputRef.current) onlineInputRef.current.value = '';
+          }
+          onlineSnapshotRef.current = value;
+          setSnapshot(value);
+        }
         if (value.type === 'result') setRaceResult(value.wpm);
       } catch { setError('Серверийн хариу ойлгомжгүй байна.'); }
     };
@@ -226,7 +242,7 @@ export function App() {
   }
   function submitOnlineInput(event: ChangeEvent<HTMLInputElement>) {
     const element = event.currentTarget;
-    if (snapshot?.phase !== 'racing' || !socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
+    if (!onlineCanType || !socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
       element.value = ''; return;
     }
     if ((event.nativeEvent as InputEvent).isComposing) return;
@@ -455,7 +471,7 @@ export function App() {
               })}
             </div>}
             {snapshot.phase === 'waiting' && <div className="ready-area">
-              <p>Бүх тоглогч бэлэн болмогц 3 секундын дараа уралдаан эхэлнэ.</p>
+              <p>Бүх тоглогч бэлэн болмогц 2 секундын дараа уралдаан эхэлнэ.</p>
               <button className="primary-button" onClick={ready} disabled={myPlayer?.ready || snapshot.players.length < 2}>{myPlayer?.ready ? '✓ БЭЛЭН' : snapshot.players.length < 2 ? 'НАЙЗАА ХҮЛЭЭЖ БАЙНА' : '✓ БЭЛЭН →'}</button>
             </div>}
             {(snapshot.phase === 'countdown' || snapshot.phase === 'racing' || snapshot.phase === 'finished') &&
@@ -463,16 +479,20 @@ export function App() {
                 <div className="typing-label"><span>{snapshot.phase === 'countdown' ? 'БЭЛДЭЭРЭЙ…' : 'ДООРХ ТЕКСТИЙГ БИЧНЭ ҮҮ'}</span><span>{myPlayer?.progress || 0} / {characters(snapshot.prompt.text).length}</span></div>
                 <PhraseView prompt={snapshot.prompt} typed="" progress={myPlayer?.progress || 0}/>
                 <input ref={onlineInputRef} className="typing-input" aria-label="Онлайн уралдааны бичих хэсэг"
-                  placeholder={snapshot.phase === 'racing' ? 'Энд бичнэ үү...' : 'Эхлэхийг хүлээнэ үү'}
-                  readOnly={snapshot.phase !== 'racing'} onPaste={e => e.preventDefault()} onChange={submitOnlineInput}
-                  onCompositionEnd={e => { const element = e.currentTarget; const value = characters(element.value); element.value = ''; if (snapshot.phase === 'racing') for (const key of value.slice(0,8)) socketRef.current?.send(JSON.stringify({ type: 'key', key })); }}/>
+                  data-race-enabled={onlineCanType}
+                  placeholder={onlineCanType ? 'Энд бичнэ үү...' : 'Энд дарж keyboard-оо бэлдээрэй'}
+                  readOnly={snapshot.phase === 'finished'} onPaste={e => e.preventDefault()} onChange={submitOnlineInput}
+                  onCompositionStart={() => { onlineCompositionBeforeStart.current = !onlineCanType; }}
+                  onCompositionEnd={e => { const element = e.currentTarget; const value = characters(element.value); element.value = ''; if (onlineCanType && !onlineCompositionBeforeStart.current) for (const key of value.slice(0,8)) socketRef.current?.send(JSON.stringify({ type: 'key', key })); onlineCompositionBeforeStart.current = false; }}/>
               </div>}
             {(snapshot.phase === 'racing' || snapshot.phase === 'finished') && <div className="race-stats">
               <div><strong>{onlineWpm}</strong><span>WPM</span></div>
               <div><strong>{onlineAccuracy}<small>%</small></strong><span>Нарийвчлал</span></div>
               <div><strong>{myPlayer ? progressPercent(myPlayer.progress, snapshot.prompt.text) : 0}<small>%</small></strong><span>Замын явц</span></div>
             </div>}
-            {snapshot.phase === 'finished' && <div className="finish-banner" role="status"><strong>Уралдаан дууслаа{raceResult !== null ? ' · ' + raceResult + ' WPM' : ''}</strong><button className="primary-button" onClick={() => { disconnect(); navigate('multiplayer'); }}>ШИНЭ ӨРӨӨ →</button></div>}
+            {snapshot.phase === 'finished' && <div className="finish-banner" role="status"><strong>Уралдаан дууслаа{raceResult !== null ? ' · ' + raceResult + ' WPM' : ''}</strong>
+              <button className="primary-button" onClick={() => socketRef.current?.send(JSON.stringify({ type: 'rematch', matchId: snapshot.matchId }))}>↻ ДАХИН ТОГЛОХ</button>
+              <button className="secondary-button" onClick={() => { disconnect(); navigate('multiplayer'); }}>ШИНЭ ӨРӨӨ →</button></div>}
             <button className="leave-link" onClick={() => { disconnect(); navigate('multiplayer'); }}>← Өрөөнөөс гарах</button>
           </div>}
           {!!error && <p className="error-note" role="alert">{error}</p>}
