@@ -471,7 +471,7 @@ export function App() {
               })}
             </div>}
             {snapshot.phase === 'waiting' && <div className="ready-area">
-              <p>Бүх тоглогч бэлэн болмогц 3 секундын дараа уралдаан эхэлнэ.</p>
+              <p>Бүх тоглогч бэлэн болмогц 2 секундын дараа уралдаан эхэлнэ.</p>
               <button className="primary-button" onClick={ready} disabled={myPlayer?.ready || snapshot.players.length < 2}>{myPlayer?.ready ? '✓ БЭЛЭН' : snapshot.players.length < 2 ? 'НАЙЗАА ХҮЛЭЭЖ БАЙНА' : '✓ БЭЛЭН →'}</button>
             </div>}
             {(snapshot.phase === 'countdown' || snapshot.phase === 'racing' || snapshot.phase === 'finished') &&
