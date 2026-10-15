@@ -74,7 +74,8 @@
   color: #535f5c; font-size: 10px; font-weight: 850; letter-spacing: .2px; }
 .quick-type-head span { color: #677571; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .quick-page .quick-phrase { font: 500 clamp(17px,1.65vw,22px)/1.55 "Roboto Mono","DejaVu Sans Mono",monospace;
-  margin: 9px 0 12px; color: #75807b; overflow-wrap: anywhere; cursor: text; letter-spacing: -.02em; }
+  margin: 9px 0 12px; color: #75807b; overflow-wrap: normal; word-break: normal;
+  white-space: pre-wrap; hyphens: none; cursor: text; letter-spacing: -.02em; }
 .quick-phrase span.typed { color: #1b3226; background: #d4edcf; }
 .quick-phrase span.cursor { color: #17241c; box-shadow: inset 3px 0 #e64c37; background: #fffcf0; }
 .quick-phrase span.incorrect { color: #9e2a24; background: #f8cbc2;

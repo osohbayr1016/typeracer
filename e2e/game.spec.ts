@@ -450,6 +450,42 @@ test('short Android screens keep readable text and input above the roads', async
   } finally { await context.close(); }
 });
 
+test('public and solo passages wrap complete words rather than individual Cyrillic letters', async ({ page }) => {
+  await page.routeWebSocket('**/api/quickplay/ws*', socket => {
+    socket.send(JSON.stringify({ type: 'welcome', id: 'wrap-player' }));
+    socket.send(JSON.stringify({ type: 'state', mode: 'quick', matchId: 'wrap-test', phase: 'waiting',
+      startAt: null, durationMs: 90000,
+      prompt: { id: 'wrap-prompt', language: 'mn', text: 'Хичээх хэрэгтэй. Хичээх бүрд мэдлэгээ хөгжүүлнэ. Өдөр бүр хичээх нь чухал.' },
+      players: [{ id: 'wrap-player', name: 'Тест', progress: 0, strokes: 0, mistakes: 0, ready: true, completedAt: null }] }));
+  });
+  for (const [path, selector] of [['/quick-race', '.quick-phrase'], ['/race', '.phrase']]) {
+    await page.goto(path);
+    const phrase = page.locator(selector);
+    await expect(phrase).toBeVisible();
+    for (const width of [320, 360, 390, 768]) {
+      await page.setViewportSize({ width, height: 844 });
+      const layout = await phrase.evaluate(el => {
+        const words: number[][] = [];
+        let tops: number[] = [];
+        for (const letter of Array.from(el.children)) {
+          if (/\s/u.test(letter.textContent || '')) {
+            if (tops.length) words.push(tops);
+            tops = [];
+          } else tops.push(letter.getBoundingClientRect().top);
+        }
+        if (tops.length) words.push(tops);
+        return { text: el.textContent, words, width: el.clientWidth, scrollWidth: el.scrollWidth };
+      });
+      expect(layout.text).not.toContain('\u00a0');
+      expect(layout.words.length).toBeGreaterThan(5);
+      for (const word of layout.words)
+        expect(Math.max(...word) - Math.min(...word), path + ' at ' + width).toBeLessThan(1);
+      expect(layout.scrollWidth, path + ' at ' + width).toBeLessThanOrEqual(layout.width + 1);
+      if (width === 320) expect(new Set(layout.words.map(word => Math.round(word[0]))).size).toBeGreaterThan(1);
+    }
+  }
+});
+
 test('typing caret updates locally and highlights mistakes without blocking input', async ({ page }) => {
   await page.goto('/quick-race');
   const input = page.getByRole('textbox', { name: 'Шууд уралдааны бичих талбар' });

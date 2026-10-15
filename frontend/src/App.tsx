@@ -50,7 +50,7 @@ function PhraseView({ prompt, typed, progress = null }: {
         : index < done.length
           ? done[index] === letter ? 'letter correct' : 'letter incorrect'
           : index === done.length ? 'letter cursor' : 'letter';
-      return <span key={index} className={className}>{letter === ' ' ? '\u00a0' : letter}</span>;
+      return <span key={index} className={className}>{letter}</span>;
     })}
   </div>;
 }

@@ -107,7 +107,7 @@ export const QuickTypingPanel = memo(function QuickTypingPanel({
     <div ref={phraseRef} className="quick-phrase" role="group" aria-label="Бичих текст" onClick={() => { if (available) inputRef.current?.focus(); }}>
       {letters.map((letter, i) => <span key={i}
         className={i < shown ? 'typed' : i === shown ? (local.wrong && enabled ? 'incorrect' : 'cursor') : undefined}>
-        {letter === ' ' ? '\u00a0' : letter}
+        {letter}
       </span>)}
     </div>
     <input ref={inputRef} className="quick-type-input" aria-label="Шууд уралдааны бичих талбар"
