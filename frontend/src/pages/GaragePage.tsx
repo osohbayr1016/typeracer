@@ -80,6 +80,6 @@ export function GaragePage({ profile, onEquip, onPlay, onShop, onSeason }: Props
       <button className="secondary-button" onClick={onShop}>◈ ДЭЛГҮҮРЭЭС АВАХ →</button>
       <button className="secondary-button" onClick={onSeason}>★ УЛИРЛЫН ШАГНАЛ →</button>
     </div>
-    <p className="help-note">Авсан зүйлс хөтөчид хадгалагдана. Хэрэглэгчийн бүртгэлтэй серверийн бараа материал хараахан байхгүй.</p>
+    <p className="help-note">Цэнэглэсэн зоосоор авсан гоёл болон Дэмжигчийн багц таны бүртгэлд хадгалагдана. Уралдаж олсон зүйлс энэ хөтөчид хадгалагдана.</p>
   </div>;
 }

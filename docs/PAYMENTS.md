@@ -1,6 +1,6 @@
 # Wire / QPay payment test
 
-Open `/coins` or click the coin balance in the header. The initial package is deliberately small: **10 coins for 100 MNT**, a real payment. Package amounts live in `packages/shared/src/payments.ts`; MNT is a whole-tögrög integer, with no ×100 conversion.
+Open `/coins` or click the coin balance in the header. Regular coin packs and the one-time Supporter bundle are available; the **10 coins for 100 MNT** connection test remains in a collapsed section. See [commerce and racing release](MONETIZATION-AND-RACING.md) for prices and recovery requirements. Package amounts live in `packages/shared/src/payments.ts`; MNT is a whole-tögrög integer, with no ×100 conversion.
 
 ## Deployed configuration
 
@@ -17,7 +17,7 @@ The return page and subsequent wallet refreshes read the PaymentIntent from Wire
 
 Purchased coins have a server-held balance. They are separate from the existing device-local race-earned coins. In the shop, items affordable with purchased coins have an explicit purchased-coin button. Debits and ownership are stored server-side at the shared catalog price. The existing practice XP, level gates and earned cosmetic inventory remain a browser-local beta, and are not suitable for prizes or transferable monetary assets. Do not describe this as a fully server-authoritative game economy.
 
-Guest buyers must keep their first-party session cookie. Link Google/Facebook in Profile before clearing browser data or logging out to retain access on another device. There is no transfer or cash-out feature.
+Ordinary buyers must link Google/Facebook or save their one-time recovery code before checkout. Recovery restores paid purchases on another device. The small connection test can still use a guest session. There is no transfer or cash-out feature.
 
 ## Optional webhook
 
@@ -33,6 +33,6 @@ To enable this optional path, register the deployed `/api/webhooks/wire` URL in 
 4. Return to the site and confirm **10 purchased coins**. Refresh and confirm the balance stays 10.
 5. A canceled or unpaid checkout must show zero new coins. Simulated/forged `success` return URLs must not grant coins.
 
-Automated SQLite/API tests cover package tampering, retry after timeout, idempotent fulfilment, mismatched payment amounts/currency, cancel, foreign accounts, debit replay/overspending, signed webhook verification and wallet recovery. Browser tests cover the coin entry point, clear missing-config UI and an unpaid return path. Unit mocks do not prove that a real bank payment settled.
+Automated SQLite/API and native Worker tests cover recovery, supporter grants, account merges, sequenced input, package tampering, retry after timeout, idempotent fulfilment, mismatched payment amounts/currency, cancel, foreign accounts, debit replay/overspending, signed webhook verification and wallet recovery. Browser tests cover the coin entry point, clear missing-config UI and an unpaid return path. Unit mocks do not prove that a real bank payment settled.
 
 Reference: https://docs.wire.mn/en/docs/quickstart

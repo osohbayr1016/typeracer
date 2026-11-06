@@ -209,3 +209,6 @@
   .quick-page[data-keyboard-open='true'] .quick-phrase { max-height: 53px; }
   .app-shell:has(.quick-page[data-keyboard-open='true']) .premium-mobile-nav { display: none; }
 }
+.quick-road{--quick-car-size:69px}.quick-car-sprite{position:absolute;left:0;top:0;width:var(--quick-car-size);height:100%;transition:transform 150ms linear;will-change:transform}.quick-road .quick-car-sprite img{width:100%;transition:none}.quick-lane.me .quick-car-position,.quick-lane.me .quick-car-sprite,.quick-lane.me .quick-road-progress{transition-duration:65ms}.quick-paid-trail{position:absolute;left:-30px;top:60%;width:65px;height:5px;background:linear-gradient(90deg,transparent,#ffd96c);box-shadow:0 0 12px #ffce5a88}.quick-paid-sticker{position:absolute;right:8px;top:0;z-index:3;font-size:14px;color:#ffe192;text-shadow:0 1px 4px #000}.quick-sync-note{font-size:11px;color:#f5c980;margin:4px 0}.quick-car-sprite img{pointer-events:none}
+@media(max-width:760px){.quick-road{--quick-car-size:52px}}
+@media(prefers-reduced-motion:reduce){.quick-car-sprite,.quick-lane.me .quick-car-position,.quick-lane.me .quick-car-sprite,.quick-lane.me .quick-road-progress{transition:none;will-change:auto}}

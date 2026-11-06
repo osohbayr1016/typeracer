@@ -30,10 +30,12 @@ jobs:
         run: npm run build
       - name: Validate Worker bundle
         run: npm run build:worker -w backend
+      - name: Verify commerce and reliable input in native Worker runtime
+        run: npm run test:runtime
       - name: Check staging smoke-test script syntax
         run: node --check scripts/smoke.mjs
       - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps --only-shell chromium
       - name: Browser E2E (public matchmaking and private WebSocket)
         run: npm run test:e2e
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties } from 'react';
 import { CoinsPage } from './pages/CoinsPage';
-import { emptyWallet, paymentApi, paymentSession } from './payments';
+import { emptyWallet, paymentApi, paymentSession, withPaidInventory } from './payments';
 import type { PaidWallet } from '@typeracer/shared';
 import { HomePage } from './pages/HomePage';
 import { SiteNavigation } from './SiteNavigation';
@@ -97,14 +97,20 @@ export function App() {
   const [quickOutcome, setQuickOutcome] = useState<QuickRaceOutcome | null>(null);
   const [paidWallet, setPaidWallet] = useState<PaidWallet>(emptyWallet);
   const [paidBusy, setPaidBusy] = useState(false);
+  const [accountRevision, setAccountRevision] = useState(0);
+  useEffect(() => {
+    const changed = () => { setPaidWallet(emptyWallet()); setAccountRevision(value => value + 1); };
+    window.addEventListener('racer-account-changed', changed);
+    return () => window.removeEventListener('racer-account-changed', changed);
+  }, []);
   const [paidError, setPaidError] = useState('');
-  const displayProfile = { ...profile, owned: [...new Set([...profile.owned, ...paidWallet.owned])] };
+  const displayProfile = withPaidInventory(profile, paidWallet);
   useEffect(() => {
     let alive = true;
     void paymentSession().then(() => paymentApi<PaidWallet>('wallet'))
       .then(wallet => { if (alive) setPaidWallet(wallet); }).catch(() => {});
     return () => { alive = false; };
-  }, [page]);
+  }, [page, accountRevision]);
   const xp = profile.xp;
   const skin = profile.car;
   const inputRef = useRef<HTMLInputElement>(null);
@@ -202,7 +208,7 @@ export function App() {
     updateTypingValue(event.target.value);
   }
   function handleEquip(kind: CosmeticKind, id: string) {
-    setProfile(p => equipItem({ ...p, owned: [...new Set([...p.owned, ...paidWallet.owned])] }, kind, id));
+    setProfile(p => equipItem(withPaidInventory(p, paidWallet), kind, id));
   }
   async function handlePaidBuy(item: Cosmetic) {
     if (paidBusy) return;
@@ -334,7 +340,7 @@ export function App() {
     <SiteNavigation page={page} nickname={nickname} level={level} coins={profile.coins + paidWallet.balance}
       onNavigate={destination => navigate(destination)}/>
     <main className="shell main">
-      {page === 'coins' && <CoinsPage wallet={paidWallet} onWallet={setPaidWallet} onShop={() => navigate('shop')}/>}
+      {page === 'coins' && <CoinsPage wallet={paidWallet} onWallet={setPaidWallet} onShop={() => navigate('shop')} onGarage={() => navigate('garage')}/>}
       {page === 'home' && <HomePage onPlay={() => navigate('play')}
         onMultiplayer={() => navigate('friends')}/>}
       {page === 'play' && <PlayPage best={best} carIcon={raceCarIcon(skin)} carName={CARS[skin].label}
@@ -357,7 +363,7 @@ export function App() {
         onAgain={() => { setQuickOutcome(null); navigate('quickRace'); }}
         onHome={() => navigate('home')} onGarage={() => navigate('garage')}
         onSeason={() => navigate('season')} onClaimQuest={handleQuestClaim} onClaimSeason={handleClaimAll}/>}
-      {page === 'quickRace' && <QuickRacePage nickname={nickname} car={skin} profile={profile}
+      {page === 'quickRace' && <QuickRacePage nickname={nickname} car={skin} profile={displayProfile}
         onBack={() => navigate('play')} onGarage={() => navigate('garage')}
         onFinish={outcome => { setQuickOutcome(outcome); navigate('quickResults'); }}
         onReward={(result: QuickResult) => {

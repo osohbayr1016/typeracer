@@ -1,3 +1,5 @@
+import { RACE_DURATION_MS, characters } from '@typeracer/shared';
+import { QUICK_BOT_ROSTER } from './quick';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { QuickMatchmaker, QUICK_RECONNECT_GRACE_MS } from './quick';
 
@@ -34,9 +36,9 @@ class FakeResponse {
   status: number;
   constructor(_body: unknown, options: {status: number}) { this.status = options.status; }
 }
-async function connect(matchmaker: QuickMatchmaker, token?: string) {
+async function connect(matchmaker: QuickMatchmaker, token?: string, modern = false) {
   const suffix = token ? '?resume=' + encodeURIComponent(token) : '';
-  const response = await matchmaker.fetch(new Request('https://room.internal/quickplay' + suffix, {
+  const response = await matchmaker.fetch(new Request('https://room.internal/quickplay' + (modern ? '?input=2' + (token ? '&resume=' + encodeURIComponent(token) : '') : suffix), {
     headers: { Upgrade: 'websocket' }
   }));
   expect(response.status).toBe(101);
@@ -136,4 +138,50 @@ describe('Durable Object live quick race reconnect', () => {
     const expired = await connect(doMatch, String(first.welcome.resumeToken));
     expect(expired.welcome.id).not.toBe(first.welcome.id);
   });
+  it('acknowledges contiguous keys once, repairs gaps, and preserves the sequence on reconnect', async () => {
+    const matchmaker=new QuickMatchmaker();const first=await connect(matchmaker,undefined,true);
+    expect(first.welcome.inputVersion).toBe(2);vi.advanceTimersByTime(6000);
+    const state=first.socket.sent.filter(message=>message.type==='state').at(-1)!;
+    const keys=characters((state.prompt as {text:string}).text);const matchId=state.matchId;
+    first.socket.receive({type:'key',key:keys[0],seq:1,matchId});
+    first.socket.receive({type:'key',key:keys[0],seq:1,matchId});
+    first.socket.receive({type:'key',key:keys[2],seq:3,matchId});
+    first.socket.receive({type:'key',key:keys[1],seq:2,matchId});vi.advanceTimersByTime(55);
+    const latest=first.socket.sent.filter(message=>message.type==='state').at(-1)!;
+    expect((latest.players as Array<Record<string,unknown>>).find(p=>p.id===first.welcome.id))
+      .toMatchObject({progress:2,strokes:2,mistakes:0,inputSeq:2});
+    first.socket.close();const next=await connect(matchmaker,String(first.welcome.resumeToken),true);
+    next.socket.receive({type:'key',key:keys[2],seq:3,matchId});vi.advanceTimersByTime(55);
+    const recovered=next.socket.sent.filter(message=>message.type==='state').at(-1)!;
+    expect((recovered.players as Array<Record<string,unknown>>).find(p=>p.id===first.welcome.id))
+      .toMatchObject({progress:3,strokes:3,inputSeq:3});
+  });
+  it('recovers a rate-limited key instead of permanently losing it or its accuracy', async()=>{
+    const matchmaker=new QuickMatchmaker();const first=await connect(matchmaker,undefined,true);vi.advanceTimersByTime(6000);
+    const state=first.socket.sent.filter(m=>m.type==='state').at(-1)!;
+    const keys=characters((state.prompt as {text:string}).text);
+    for(let i=0;i<36;i++)first.socket.receive({type:'key',key:keys[i],seq:i+1,matchId:state.matchId});
+    expect(first.socket.sent.filter(m=>m.type==='input-ack').at(-1)).toMatchObject({seq:35,progress:35,strokes:35});
+    vi.advanceTimersByTime(1001);first.socket.receive({type:'key',key:keys[35],seq:36,matchId:state.matchId});vi.advanceTimersByTime(55);
+    const latest=first.socket.sent.filter(m=>m.type==='state').at(-1)!;
+    expect((latest.players as Array<Record<string,unknown>>).find(p=>p.id===first.welcome.id))
+      .toMatchObject({progress:36,strokes:36,mistakes:0,inputSeq:36});
+  });
+  it('enforces the race deadline even when its timer callback is delayed',async()=>{
+    const first=await connect(new QuickMatchmaker(),undefined,true);vi.advanceTimersByTime(6000);
+    const state=first.socket.sent.filter(m=>m.type==='state').at(-1)!;
+    vi.setSystemTime(Number(state.startAt)+RACE_DURATION_MS+2000);
+    first.socket.receive({type:'key',key:(state.prompt as {text:string}).text[0],seq:1,matchId:state.matchId});
+    expect(first.socket.sent.filter(m=>m.type==='quick-result').at(-1)).toMatchObject({place:null,elapsedMs:RACE_DURATION_MS,wpm:0});
+  });
+  it('times bot finishes from their exact pace rather than the next simulation tick',async()=>{
+    const first=await connect(new QuickMatchmaker());vi.advanceTimersByTime(60000);
+    const state=first.socket.sent.filter(m=>m.type==='state').at(-1)!;
+    const size=characters((state.prompt as {text:string}).text).length;
+    for(const bot of (state.players as Array<{bot:boolean;name:string;completedAt:number}>).filter(p=>p.bot)){
+      const pace=QUICK_BOT_ROSTER.find(p=>p.name===bot.name)!.pace;
+      expect(bot.completedAt).toBe(Number(state.startAt)+Math.ceil(size/(pace*5)*60000));
+    }
+  });
+
 });

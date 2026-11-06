@@ -2,9 +2,9 @@ import { SHOP, type CosmeticKind, type Cosmetic } from '@typeracer/shared';
 export { SHOP, type CosmeticKind, type Cosmetic } from '@typeracer/shared';
 import { CARS, RARITIES, type Skin } from './pages/cars';
 
-export type Trail = 'none' | 'ember' | 'steppe' | 'ice' | 'aurora';
-export type Title = 'rookie' | 'swift' | 'khan' | 'legend';
-export type Sticker = 'none' | 'horse' | 'bolt' | 'star';
+export type Trail = 'none' | 'ember' | 'steppe' | 'ice' | 'aurora' | 'gold';
+export type Title = 'rookie' | 'swift' | 'khan' | 'legend' | 'supporter';
+export type Sticker = 'none' | 'horse' | 'bolt' | 'star' | 'crown';
 /** A deterministic daily and weekly spotlight; items never disappear from the full catalog. */
 export const NEW_CAR_COLLECTION = SHOP.filter(item => item.kind === 'car' && item.minLevel !== undefined);
 export function playerLevel(xp: number): number {
@@ -27,6 +27,9 @@ export function shopRotation(at = Date.now()) {
 export const COLLECTION_RARITIES = RARITIES;
 
 export const ITEMS: Cosmetic[] = [
+  { id: 'gold', kind: 'trail', name: 'Алтан мөр', description: 'Дэмжигчийн алтан гэрлийн мөр', price: 0, rarity: 'Домогт', preview: '✦' },
+  { id: 'supporter', kind: 'title', name: 'Дэмжигч', description: 'Тоглоомыг дэмжсэн уралдагчийн цол', price: 0, rarity: 'Домогт', preview: 'ДЭМЖИГЧ' },
+  { id: 'crown', kind: 'sticker', name: 'Алтан титэм', description: 'Дэмжигчийн онцгой тэмдэг', price: 0, rarity: 'Домогт', preview: '♛' },
   ...SHOP,
   { id: 'khan', kind: 'car', name: 'Хааны хүлэг', description: 'Улирлын онцгой машин', price: 0, rarity: 'Домогт', preview: '/cars/khan.webp' },
   { id: 'dawn', kind: 'car', name: 'Үүрийн гэгээ', description: 'Нар мандах үеийн хүлэг', price: 0, rarity: 'Ховор', preview: '/cars/dawn.webp' },
@@ -129,9 +132,9 @@ export function loadProfile(): Profile {
       history: Array.isArray(x.history) ? x.history.filter((v): v is RaceHistory => !!v && typeof v.wpm === 'number').slice(0, 30) : [],
       questClaims: Array.isArray(x.questClaims) ? x.questClaims.filter((v): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}:(first-finish|precision|speed)$/.test(v)).slice(-120) : [],
       car: x.car && x.car in CARS ? x.car : initial.car,
-      trail: x.trail && ['none','ember','steppe','ice','aurora'].includes(x.trail) ? x.trail : initial.trail,
-      title: x.title && ['rookie','swift','khan','legend'].includes(x.title) ? x.title : initial.title,
-      sticker: x.sticker && ['none','horse','bolt','star'].includes(x.sticker) ? x.sticker : initial.sticker
+      trail: x.trail && ['none','ember','steppe','ice','aurora','gold'].includes(x.trail) ? x.trail : initial.trail,
+      title: x.title && ['rookie','swift','khan','legend','supporter'].includes(x.title) ? x.title : initial.title,
+      sticker: x.sticker && ['none','horse','bolt','star','crown'].includes(x.sticker) ? x.sticker : initial.sticker
     };
     if (!owned(profile, 'car', profile.car)) profile.car = 'sunset';
     if (!owned(profile, 'trail', profile.trail)) profile.trail = 'none';
@@ -192,14 +195,14 @@ export function claimAvailableRewards(profile: Profile, at = Date.now()): Profil
 export function equipItem(p: Profile, kind: CosmeticKind, id: string): Profile {
   if (!owned(p, kind, id)) return p;
   if (kind === 'car' && id in CARS) return { ...p, car: id as Skin };
-  if (kind === 'trail' && ['none','ember','steppe','ice','aurora'].includes(id)) return { ...p, trail: id as Trail };
-  if (kind === 'title' && ['rookie','swift','khan','legend'].includes(id)) return { ...p, title: id as Title };
-  if (kind === 'sticker' && ['none','horse','bolt','star'].includes(id)) return { ...p, sticker: id as Sticker };
+  if (kind === 'trail' && ['none','ember','steppe','ice','aurora','gold'].includes(id)) return { ...p, trail: id as Trail };
+  if (kind === 'title' && ['rookie','swift','khan','legend','supporter'].includes(id)) return { ...p, title: id as Title };
+  if (kind === 'sticker' && ['none','horse','bolt','star','crown'].includes(id)) return { ...p, sticker: id as Sticker };
   return p;
 }
-export const TRAIL_NAMES: Record<Trail,string> = { none: 'Мөргүй', ember: 'Галын мөр', steppe: 'Салхин мөр', ice: 'Мөсөн мөр', aurora: 'Туяан мөр' };
-export const TITLE_NAMES: Record<Title,string> = { rookie: 'Шинэ уралдагч', swift: 'Түргэн хуруу', khan: 'Талын хаан', legend: 'Бичгийн мастер' };
-export const STICKER_SYMBOLS: Record<Sticker,string> = { none: '', horse: '♞', bolt: 'ϟ', star: '✦' };
+export const TRAIL_NAMES: Record<Trail,string> = { gold: 'Алтан мөр', none: 'Мөргүй', ember: 'Галын мөр', steppe: 'Салхин мөр', ice: 'Мөсөн мөр', aurora: 'Туяан мөр' };
+export const TITLE_NAMES: Record<Title,string> = { rookie: 'Шинэ уралдагч', swift: 'Түргэн хуруу', khan: 'Талын хаан', legend: 'Бичгийн мастер', supporter: 'Дэмжигч' };
+export const STICKER_SYMBOLS: Record<Sticker,string> = { none: '', horse: '♞', bolt: 'ϟ', star: '✦', crown: '♛' };
 
 /** Guest-only missions are calculated from recorded completed quick races; there
  * are no fabricated lifetime milestones or paid/random rewards.

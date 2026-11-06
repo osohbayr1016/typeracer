@@ -1,3 +1,4 @@
+export * from './typing';
 export * from './catalog';
 export * from './payments';
 export type Language = 'mn' | 'en';
@@ -16,6 +17,9 @@ export type Racer = {
   bot?: boolean;
   /** Public Durable Object reports temporary disconnects without removing a race slot. */
   connected?: boolean;
+  /** Highest contiguous input sequence accepted by the server. */
+  inputSeq?: number;
+  inputWrong?: boolean;
 };
 export type RoomSnapshot = {
   type: 'state';

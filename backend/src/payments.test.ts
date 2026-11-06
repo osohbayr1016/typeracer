@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DatabaseSync } from 'node:sqlite';
+import { COIN_PACKS } from '@typeracer/shared';
 import { PaymentService, verifyWireSignature } from './payments';
 import { RaceRankingStore } from './rankings';
 
@@ -10,7 +11,7 @@ async function fixture(configured = true, useRuntimeFetch = false) {
   const sql = { exec(query: string, ...values: Array<string | number | null>) {
     if (/^CREATE /i.test(query.trim())) { db.exec(query); return { toArray: () => [] }; }
     const statement = db.prepare(query);
-    if (/^SELECT /i.test(query.trim())) return { toArray: () => statement.all(...values) };
+    if (/^(SELECT |PRAGMA )/i.test(query.trim())) return { toArray: () => statement.all(...values) };
     statement.run(...values); return { toArray: () => [] };
   } } as unknown as SqlStorage;
   const rank = new RaceRankingStore(sql);
@@ -40,7 +41,7 @@ async function fixture(configured = true, useRuntimeFetch = false) {
     headers: { Cookie: cookie(token), 'X-Payment-Origin': 'https://game.example', 'Content-Type': 'application/json' },
     ...(body ? { method: 'POST', body: JSON.stringify(body) } : {})
   }));
-  return { db, rank, account, upstream, service, request, secret,
+  return { db, sql, rank, account, upstream, service, request, secret,
     setState: (value: string) => { state = value; db.exec('UPDATE payment_orders SET checked_at=0'); },
     setAmount: (value: number) => { amount = value; }, setCurrency: (value: string) => { currency = value; } };
 }
@@ -133,4 +134,59 @@ describe('Wire checkout and durable paid coins', () => {
     expect((await webhook(await signature(body, f.secret))).status).toBe(200);
     expect(f.service.wallet(String(f.account.player.id)).balance).toBe(10);
   });
+  it('requires durable account protection for normal packs and uses server prices',async()=>{
+    const f=await fixture();const body={packId:'coins-200',requestId:crypto.randomUUID(),amount:1,coins:999999};
+    expect((await f.request('checkout',body)).status).toBe(403);expect(f.upstream).not.toHaveBeenCalled();
+    await f.rank.createRecovery(cookie(f.account.newToken!));
+    expect((await f.request('checkout',body)).status).toBe(200);
+    expect(JSON.parse(String(f.upstream.mock.calls[0][1]!.body))).toMatchObject({amount:1000});
+    expect(f.db.prepare('SELECT coins,amount FROM payment_orders').get()).toMatchObject({coins:200,amount:1000});
+  });
+  it('grants a one-time supporter bundle exactly once and reuses an open checkout across tabs',async()=>{
+    const f=await fixture();await f.rank.createRecovery(cookie(f.account.newToken!));f.setAmount(9900);
+    const first=await (await f.request('checkout',{packId:'supporter',requestId:crypto.randomUUID()})).json() as {orderId:string};
+    const duplicate=await (await f.request('checkout',{packId:'supporter',requestId:crypto.randomUUID()})).json() as {orderId:string};
+    expect(duplicate.orderId).toBe(first.orderId);
+    expect(f.upstream.mock.calls.filter(([url,init])=>String(url).endsWith('/payment_intents')&&init?.method==='POST')).toHaveLength(1);
+    f.setState('succeeded');
+    const wallet=await (await f.request('wallet')).json();
+    expect(wallet).toMatchObject({balance:2000,supporter:true,owned:['trail:gold','sticker:crown','title:supporter']});
+    expect((await f.request('checkout',{packId:'supporter',requestId:crypto.randomUUID()})).status).toBe(409);
+    expect(await (await f.request('orders/'+first.orderId)).json()).toMatchObject({credited:true,grants:['trail:gold','sticker:crown','title:supporter']});
+  });
+  it('keeps the original pending quote when the catalog price changes',async()=>{
+    const f=await fixture();const body=input();f.upstream.mockRejectedValueOnce(new Error('timeout'));
+    expect((await f.request('checkout',body)).status).toBe(502);
+    const pack=COIN_PACKS.find(p=>p.id==='test-10')!;const original=pack.amount;
+    try{pack.amount=200;expect((await f.request('checkout',body)).status).toBe(200);
+      expect(JSON.parse(String(f.upstream.mock.calls[1][1]!.body))).toMatchObject({amount:100});
+    }finally{pack.amount=original;}
+  });
+  it('stores only a hash of the recovery code and restores paid inventory after session loss',async()=>{
+    const f=await fixture();const saved=await f.rank.createRecovery(cookie(f.account.newToken!));
+    expect(saved?.code).toMatch(/^trr_[a-f0-9]{48}$/);
+    expect((await f.rank.createRecovery(cookie(f.account.newToken!)))?.exists).toBe(true);
+    expect(JSON.stringify(f.db.prepare('SELECT * FROM leaderboard_recovery').all())).not.toContain(saved!.code!);
+    await f.request('checkout',input());f.setState('succeeded');await f.request('wallet');
+    await f.rank.logout(cookie(f.account.newToken!));
+    const restored=await f.rank.restoreRecovery(saved!.code!);
+    expect(restored?.player.id).toBe(f.account.player.id);
+    expect(await (await f.request('wallet',undefined,restored!.newToken)).json()).toMatchObject({balance:10});
+    expect(await f.rank.restoreRecovery('trr_'+'0'.repeat(48))).toBeNull();
+  });
+  it('merges guest purchases and the recovery code into an existing OAuth account',async()=>{
+    const f=await fixture();const target=await f.rank.session(null);const state1=crypto.randomUUID();
+    await f.rank.startOAuth(cookie(target.newToken!),'google',state1);
+    const login=await f.rank.completeOAuth(cookie(target.newToken!),'google',state1,'google-same-owner','Owner');
+    const saved=await f.rank.createRecovery(cookie(f.account.newToken!));
+    await f.request('checkout',input());f.setState('succeeded');await f.request('wallet');
+    const state2=crypto.randomUUID();await f.rank.startOAuth(cookie(f.account.newToken!),'google',state2);
+    const merged=await f.rank.completeOAuth(cookie(f.account.newToken!),'google',state2,'google-same-owner','Owner');
+    f.service.mergeAccount(merged!.previousPlayerId,String(merged!.player.id));
+    expect(merged!.player.id).toBe(login!.player.id);
+    expect(await (await f.request('wallet',undefined,merged!.newToken)).json()).toMatchObject({balance:10});
+    expect((await f.rank.restoreRecovery(saved!.code!))?.player.id).toBe(login!.player.id);
+    expect(f.service.wallet(String(f.account.player.id)).balance).toBe(0);
+  });
+
 });
