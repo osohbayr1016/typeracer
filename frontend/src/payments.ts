@@ -1,6 +1,8 @@
 import type { PaidWallet } from '@typeracer/shared';
 const API = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 const messages: Record<string, string> = {
+  wire_authentication_failed: 'Wire API key хүчингүй байна. Эзэмшигч тохиргоогоо шалгана уу.',
+  wire_invalid_response: 'Wire-ээс хариу авч чадсангүй. Түр хүлээгээд дахин оролдоно уу.',
   payments_not_configured: 'Төлбөрийн холболт хараахан бэлэн болоогүй байна.',
   connector_required: 'Төлбөрийн сувгийг Wire дээр идэвхжүүлэх шаардлагатай.',
   settlement_account_required: 'Wire дээр орлого хүлээн авах дансаа холбоно уу.',

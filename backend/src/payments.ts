@@ -33,8 +33,9 @@ export async function verifyWireSignature(body: string, header: string, secret: 
 
 /** Uses the existing SQLite coordinator; no D1 binding or destructive migration. */
 export class PaymentService {
+  // Workerd brand-checks fetch receivers; an arrow keeps the global call unbound.
   constructor(private sql: SqlStorage, private rank: RaceRankingStore, private env: PaymentEnv,
-    private upstream: typeof fetch = fetch) {
+    private upstream: typeof fetch = (input, init) => fetch(input, init)) {
     sql.exec(`CREATE TABLE IF NOT EXISTS payment_orders (
       id TEXT PRIMARY KEY, player_id TEXT NOT NULL, request_id TEXT NOT NULL,
       pack_id TEXT NOT NULL, amount INTEGER NOT NULL, coins INTEGER NOT NULL,
@@ -54,9 +55,14 @@ export class PaymentService {
         ...(key ? { 'Idempotency-Key': key } : {}) },
       ...(body ? { body: JSON.stringify(body) } : {})
     });
-    const value = await response.json() as Record<string, unknown>;
+    let value: Record<string, unknown>;
+    try { value = await response.json() as Record<string, unknown>; }
+    catch { throw new PaymentError('wire_invalid_response'); }
     if (!response.ok) {
       const code = (value.error as {code?: string} | undefined)?.code;
+      console.warn('Wire request rejected', { path, status: response.status,
+        code: typeof code === 'string' && /^[a-z_]+$/.test(code) ? code : 'unknown' });
+      if (response.status === 401) throw new PaymentError('wire_authentication_failed');
       const allowed = ['connector_required', 'settlement_account_required', 'operator_unavailable',
         'operator_not_allowed', 'test_mode_unavailable', 'rate_limit_exceeded'];
       throw new PaymentError(code && allowed.includes(code) ? code : 'wire_unavailable');
@@ -179,6 +185,9 @@ export class PaymentService {
       }
       return Response.json({ error: 'not_found' }, { status: 404 });
     } catch (error) {
+      console.warn('Payment request failed', { path: new URL(request.url).pathname,
+        code: error instanceof PaymentError ? error.code : 'payment_unavailable',
+        name: error instanceof Error ? error.name : 'Unknown' });
       return Response.json({ error: error instanceof PaymentError ? error.code : 'payment_unavailable' },
         { status: error instanceof PaymentError ? error.status : 502 });
     }

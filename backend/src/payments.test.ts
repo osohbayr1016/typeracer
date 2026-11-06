@@ -5,7 +5,7 @@ import { RaceRankingStore } from './rankings';
 
 const databases: DatabaseSync[] = [];
 const cookie = (token: string) => 'tr_guest=' + token;
-async function fixture(configured = true) {
+async function fixture(configured = true, useRuntimeFetch = false) {
   const db = new DatabaseSync(':memory:'); databases.push(db);
   const sql = { exec(query: string, ...values: Array<string | number | null>) {
     if (/^CREATE /i.test(query.trim())) { db.exec(query); return { toArray: () => [] }; }
@@ -29,9 +29,13 @@ async function fixture(configured = true) {
     if (path.endsWith('/checkout/sessions')) return Response.json({ url: 'https://pay.wire.mn/c/cs_test123' });
     return Response.json({ id: 'pi_test123', status: state, amount, currency, metadata: { order_id: orderId } });
   });
+  if (useRuntimeFetch) vi.stubGlobal('fetch', function(this: unknown, url: RequestInfo | URL, init?: RequestInit) {
+    if (this !== undefined && this !== globalThis) throw new TypeError('Illegal invocation');
+    return upstream(url, init);
+  });
   const secret = 'whsec_fixture';
   const service = new PaymentService(sql, rank,
-    { WIRE_API_KEY: configured ? 'sk_live_fixture' : undefined, WIRE_WEBHOOK_SECRET: secret }, upstream as typeof fetch);
+    { WIRE_API_KEY: configured ? 'sk_live_fixture' : undefined, WIRE_WEBHOOK_SECRET: secret }, useRuntimeFetch ? undefined : upstream as typeof fetch);
   const request = (path: string, body?: object, token = account.newToken!) => service.fetch(new Request('https://room.internal/payments/' + path, {
     headers: { Cookie: cookie(token), 'X-Payment-Origin': 'https://game.example', 'Content-Type': 'application/json' },
     ...(body ? { method: 'POST', body: JSON.stringify(body) } : {})
@@ -46,9 +50,14 @@ async function signature(body: string, secret: string, timestamp = Math.floor(Da
   const value = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(timestamp + '.' + body));
   return 't=' + timestamp + ',v1=' + [...new Uint8Array(value)].map(v => v.toString(16).padStart(2, '0')).join('');
 }
-afterEach(() => { for (const db of databases.splice(0)) db.close(); });
+afterEach(() => { vi.unstubAllGlobals(); for (const db of databases.splice(0)) db.close(); });
 
 describe('Wire checkout and durable paid coins', () => {
+  it('uses a global fetch receiver compatible with the Workers runtime', async () => {
+    const f = await fixture(true, true);
+    expect((await f.request('checkout', input())).status).toBe(200);
+    expect(f.upstream).toHaveBeenCalledTimes(2);
+  });
   it('reports missing configuration and refuses checkout without making an upstream request', async () => {
     const f = await fixture(false);
     expect(await (await f.request('config')).json()).toMatchObject({ ready: false });
