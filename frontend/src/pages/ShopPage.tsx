@@ -4,7 +4,7 @@ import { CARS, RARITIES, type Rarity, type Skin } from './cars';
 import { SHOP, NEW_CAR_COLLECTION, isOwned, isLevelUnlocked, playerLevel, shopRotation,
   type CosmeticKind, type Profile, type Cosmetic } from '../progression';
 
-type Props = { profile: Profile; onBuy: (item: Cosmetic) => void; onEquip: (item: Cosmetic) => void; onRace: () => void };
+type Props = { profile: Profile; onBuy: (item: Cosmetic) => void; onEquip: (item: Cosmetic) => void; onRace: () => void; paidCoins?: number; paidBusy?: boolean; paidError?: string; onPaidBuy?: (item: Cosmetic) => void; onTopUp?: () => void };
 const tabs: { id: 'all' | CosmeticKind; label: string }[] = [
   { id: 'all', label: 'Бүх зүйл' }, { id: 'car', label: 'Машин' }, { id: 'trail', label: 'Мөр' },
   { id: 'title', label: 'Цол' }, { id: 'sticker', label: 'Тэмдэг' }
@@ -18,7 +18,7 @@ function classFor(item: Cosmetic) {
   const rarity = RARITIES.find(r => r.id === item.rarity);
   return 'rarity-' + (rarity?.code ?? 'common') + ' effect-' + (item.effect || 'none');
 }
-export function ShopPage({ profile, onBuy, onEquip, onRace }: Props) {
+export function ShopPage({ profile, onBuy, onEquip, onRace, paidCoins = 0, paidBusy = false, paidError, onPaidBuy, onTopUp }: Props) {
   const [tab, setTab] = useState<'all' | CosmeticKind>('all');
   const [rarity, setRarity] = useState<Rarity | 'all'>('all');
   const [preview, setPreview] = useState<Cosmetic | null>(null);
@@ -59,6 +59,7 @@ export function ShopPage({ profile, onBuy, onEquip, onRace }: Props) {
       </div>
       <div className="shop-wallet">
         <div className="coin-counter"><span>МИНИЙ ЗООС</span><strong>◈ {profile.coins.toLocaleString('mn-MN')}</strong></div>
+        <div className="paid-shop-balance">Цэнэглэсэн: ◈ {paidCoins} <button type="button" onClick={onTopUp}>+ Цэнэглэх</button></div>
         <div className="shop-collection-progress">
           <span>ТҮВШИН {level} · ЦУГЛУУЛГА {carsOwned}/{totalCars}</span>
           <div className="shop-meter" role="progressbar" aria-valuemin={0} aria-valuemax={totalCars} aria-valuenow={carsOwned} aria-label="Шинэ машин цуглуулсан тоо">
@@ -91,7 +92,7 @@ export function ShopPage({ profile, onBuy, onEquip, onRace }: Props) {
         </div>
       </section>
     </div>
-    <p className="shop-spotlight-note">Онцлох бараа солигдсон ч машинууд бүрэн каталогт байнга үлдэнэ. Санамсаргүй хайрцаг, бодит мөнгө байхгүй.</p>
+    <p className="shop-spotlight-note">Онцлох бараа солигдсон ч машинууд бүрэн каталогт байнга үлдэнэ. Санамсаргүй хайрцаг байхгүй. Цэнэглэсэн зоосоор авах товч тусдаа байна.</p>
 
     <div id="shop-catalog" className="shop-catalog-head"><div><span className="section-kicker">ТАНЫ ГАРАЖИД НЭМЭХ</span>
       <h2>БҮХ ЦУГЛУУЛГА <small>{items.length} зүйл</small></h2></div>
@@ -117,6 +118,7 @@ export function ShopPage({ profile, onBuy, onEquip, onRace }: Props) {
       <span><strong>МИНИЙ ТҮВШИН: {level}</strong> · Машины зэрэглэл өндөр байх тусам үнэ болон нээх түвшин өснө.</span>
       <span><strong>◈ {profile.coins.toLocaleString('mn-MN')} ЗООС</strong> · Түвшин хүрсэн машиныг худалдаж аваад гараждаа сонгоорой.</span>
     </div>}
+    {paidError && <p role="alert" className="error-note">{paidError}</p>}
     <div className="item-grid shop-item-grid">
       {items.map(item => {
         const acquired = isOwned(profile,item.kind,item.id);
@@ -148,6 +150,8 @@ export function ShopPage({ profile, onBuy, onEquip, onRace }: Props) {
             <button disabled={selected || locked || (!acquired && profile.coins < item.price)}
               onClick={() => action(item)}>{actionText(item)}</button>
           </div>
+          {!acquired && !locked && onPaidBuy && paidCoins >= item.price && <button type="button" className="paid-buy"
+            disabled={paidBusy} onClick={() => onPaidBuy(item)}>ЦЭНЭГЛЭСЭН ◈ {item.price} ЗООСООР АВАХ</button>}
         </article>;
       })}
     </div>
@@ -189,7 +193,7 @@ export function ShopPage({ profile, onBuy, onEquip, onRace }: Props) {
     </div>}
     <p className="reward-disclaimer">
       Бүх шинэ машин гоёлын зориулалттай: бичих хурд, байр, шагналыг нэмэхгүй. Түвшин XP-ээс хамаарна.
-      Худалдан авсан машин энэ төхөөрөмжийн гаражид хадгалагдах бөгөөд одоогоор серверийн баталгаатай данс биш.
+      Уралдаж олсон зоос энэ төхөөрөмжид хадгалагдана. Цэнэглэсэн зоос болон түүгээр авсан зүйлс таны бүртгэлд хадгалагдана.
       <button onClick={onRace}>Зоос болон XP цуглуулах →</button>
     </p>
   </div>;
