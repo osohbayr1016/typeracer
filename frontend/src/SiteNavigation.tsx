@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 /** Keep navigation usable without cluttering every page with all destinations. */
 export type NavDestination =
   | 'home' | 'play' | 'friends' | 'leaderboard' | 'garage'
-  | 'shop' | 'season' | 'teams' | 'stats' | 'profile';
+  | 'coins' | 'shop' | 'season' | 'teams' | 'stats' | 'profile';
 
 type Props = {
   page: string;
@@ -77,9 +77,9 @@ export function SiteNavigation({page,nickname,level,coins,onNavigate}:Props) {
           {moreButton(false)}
         </nav>
         <div className="premium-user-tools">
-          <span className="premium-wallet" aria-label={coins+' зоос'}><span aria-hidden="true">◈</span>
-            <strong>{coins.toLocaleString('mn-MN')}</strong>
-          </span>
+          <button type="button" className="premium-wallet" aria-label={coins+' зоос · Зоос цэнэглэх'} onClick={()=>navigate('coins')}><span aria-hidden="true">◈</span>
+            <strong>{coins.toLocaleString('mn-MN')}</strong><span aria-hidden="true">+</span>
+          </button>
           <button className="profile-chip premium-profile" type="button" onClick={()=>navigate('profile')}
             aria-label="Миний профайл" aria-current={page==='profile'?'page':undefined}>
             <span className="profile-avatar premium-avatar" aria-hidden="true">●</span>

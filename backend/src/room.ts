@@ -4,6 +4,7 @@ import {
 } from '@typeracer/shared';
 import { acceptKeystroke, safePlayerName } from './logic';
 import { QuickMatchmaker } from './quick';
+import { PaymentService, type PaymentEnv } from './payments';
 
 type Message = { type: 'ready' } | { type: 'key'; key: string } | { type: 'rematch'; matchId: string };
 type Player = Racer & { socket: WebSocket; windowStart: number; windowCount: number };
@@ -29,10 +30,15 @@ export class RaceRoom {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private pendingBroadcast: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(private readonly state: DurableObjectState, _env: unknown) {}
+  private payments: PaymentService | null = null;
+  constructor(private readonly state: DurableObjectState, private env: PaymentEnv) {}
 
   async fetch(request: Request): Promise<Response> {
     const path = new URL(request.url).pathname;
+    if (path.startsWith('/payments/')) {
+      this.payments ??= new PaymentService(this.state.storage.sql, this.quickService().rankings!, this.env);
+      return this.payments.fetch(request);
+    }
     if (path === '/quickplay') return this.quickService().fetch(request);
     if (path.startsWith('/ranking/') || path.startsWith('/oauth/') || path.startsWith('/account')) {
       const rank = this.quickService().rankings!;

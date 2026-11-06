@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties } from 'react';
+import { CoinsPage } from './pages/CoinsPage';
+import { emptyWallet, paymentApi, paymentSession } from './payments';
+import type { PaidWallet } from '@typeracer/shared';
 import { HomePage } from './pages/HomePage';
 import { SiteNavigation } from './SiteNavigation';
 import { QuickRacePage, type QuickResult } from './pages/QuickRacePage';
@@ -20,9 +23,9 @@ import {
   PROMPTS, wordsPerMinute, type Language, type Prompt, type RoomSnapshot
 } from '@typeracer/shared';
 
-type Page = 'home' | 'play' | 'quickRace' | 'quickResults' | 'profile' | 'leaderboard' | 'teams' | 'stats' | 'friends' | 'race' | 'garage' | 'results' | 'shop' | 'season' | 'multiplayer' | 'multiplayerRace';
+type Page = 'coins' | 'home' | 'play' | 'quickRace' | 'quickResults' | 'profile' | 'leaderboard' | 'teams' | 'stats' | 'friends' | 'race' | 'garage' | 'results' | 'shop' | 'season' | 'multiplayer' | 'multiplayerRace';
 const PAGE_URLS: Record<Page, string> = {
-  home: '/', play: '/play', quickRace: '/quick-race', quickResults: '/quick-results',
+  coins: '/coins', home: '/', play: '/play', quickRace: '/quick-race', quickResults: '/quick-results',
   profile: '/profile', leaderboard: '/leaderboard', teams: '/teams', stats: '/stats', friends: '/friends',
   race: '/race', garage: '/garage', results: '/results',
   shop: '/shop', season: '/season',
@@ -92,6 +95,16 @@ export function App() {
   const [best, setBest] = useState(() => storedNumber('racer.best'));
   const [profile, setProfile] = useState(loadProfile);
   const [quickOutcome, setQuickOutcome] = useState<QuickRaceOutcome | null>(null);
+  const [paidWallet, setPaidWallet] = useState<PaidWallet>(emptyWallet);
+  const [paidBusy, setPaidBusy] = useState(false);
+  const [paidError, setPaidError] = useState('');
+  const displayProfile = { ...profile, owned: [...new Set([...profile.owned, ...paidWallet.owned])] };
+  useEffect(() => {
+    let alive = true;
+    void paymentSession().then(() => paymentApi<PaidWallet>('wallet'))
+      .then(wallet => { if (alive) setPaidWallet(wallet); }).catch(() => {});
+    return () => { alive = false; };
+  }, [page]);
   const xp = profile.xp;
   const skin = profile.car;
   const inputRef = useRef<HTMLInputElement>(null);
@@ -188,7 +201,18 @@ export function App() {
     if ((event.nativeEvent as InputEvent).isComposing) return;
     updateTypingValue(event.target.value);
   }
-  function handleEquip(kind: CosmeticKind, id: string) { setProfile(p => equipItem(p, kind, id)); }
+  function handleEquip(kind: CosmeticKind, id: string) {
+    setProfile(p => equipItem({ ...p, owned: [...new Set([...p.owned, ...paidWallet.owned])] }, kind, id));
+  }
+  async function handlePaidBuy(item: Cosmetic) {
+    if (paidBusy) return;
+    setPaidBusy(true); setPaidError('');
+    try {
+      await paymentSession();
+      setPaidWallet(await paymentApi<PaidWallet>('items', { itemKey: item.kind + ':' + item.id }));
+    } catch (error) { setPaidError((error as Error).message); }
+    finally { setPaidBusy(false); }
+  }
   function handleBuy(item: Cosmetic) { setProfile(p => buyItem(p, item.kind, item.id)); }
   function handleClaim(tier: number) { setProfile(p => claimReward(p, tier)); }
   function handleClaimAll() { setProfile(p => claimAvailableRewards(p)); }
@@ -307,9 +331,10 @@ export function App() {
   }
 
   return <div className="app-shell" style={{ '--accent': CARS[skin].color } as CSSProperties}>
-    <SiteNavigation page={page} nickname={nickname} level={level} coins={profile.coins}
+    <SiteNavigation page={page} nickname={nickname} level={level} coins={profile.coins + paidWallet.balance}
       onNavigate={destination => navigate(destination)}/>
     <main className="shell main">
+      {page === 'coins' && <CoinsPage wallet={paidWallet} onWallet={setPaidWallet} onShop={() => navigate('shop')}/>}
       {page === 'home' && <HomePage onPlay={() => navigate('play')}
         onMultiplayer={() => navigate('friends')}/>}
       {page === 'play' && <PlayPage best={best} carIcon={raceCarIcon(skin)} carName={CARS[skin].label}
@@ -342,9 +367,10 @@ export function App() {
             try { localStorage.setItem('racer.best', String(result.wpm)); } catch { /* storage disabled */ }
           }
         }}/>} 
-      {page === 'garage' && <GaragePage profile={profile} onEquip={handleEquip} onPlay={() => navigate('play')}
+      {page === 'garage' && <GaragePage profile={displayProfile} onEquip={handleEquip} onPlay={() => navigate('play')}
         onShop={() => navigate('shop')} onSeason={() => navigate('season')}/>}
-      {page === 'shop' && <ShopPage profile={profile} onBuy={handleBuy}
+      {page === 'shop' && <ShopPage profile={displayProfile} onBuy={handleBuy}
+        paidCoins={paidWallet.balance} paidBusy={paidBusy} paidError={paidError} onPaidBuy={item => void handlePaidBuy(item)} onTopUp={() => navigate('coins')}
         onEquip={item => handleEquip(item.kind, item.id)} onRace={() => navigate('play')}/>}
       {page === 'season' && <SeasonPage profile={profile} onClaim={handleClaim} onClaimAll={handleClaimAll}
         onRace={() => navigate('play')} onShop={() => navigate('shop')}/>}

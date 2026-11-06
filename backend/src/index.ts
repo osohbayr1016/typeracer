@@ -3,10 +3,11 @@ import { cors } from 'hono/cors';
 import { PROMPTS, ROOM_CAPACITY } from '@typeracer/shared';
 import { validRoomCode } from './logic';
 import { originAllowed } from './origin';
+import type { PaymentEnv } from './payments';
 import { authorizeUrl, exchangeProviderIdentity, isOAuthProvider, providerReady, type OAuthEnv } from './oauth';
 export { RaceRoom } from './room';
 
-type Env = OAuthEnv & {
+type Env = OAuthEnv & PaymentEnv & {
   RACE_ROOMS: DurableObjectNamespace;
 };
 const app = new Hono<{ Bindings: Env }>();
@@ -44,6 +45,32 @@ const publicRanking = (c: {env:Env;req:{raw:Request}},path:string) => {
       duplex: 'half' } as RequestInit)
   );
 };
+const paymentProxy = (c: { env: Env; req: { raw: Request; url: string } }, path: string) => {
+  const ns = c.env.RACE_ROOMS;
+  const headers = new Headers(c.req.raw.headers);
+  headers.set('X-Payment-Origin', new URL(c.req.url).origin);
+  return ns.get(ns.idFromName('MONGOLIAN-QUICK-V1')).fetch('https://room.internal/payments/' + path, {
+    method: c.req.raw.method, headers,
+    body: ['GET','HEAD'].includes(c.req.raw.method) ? undefined : c.req.raw.body
+  });
+};
+app.get('/api/payments/config', c => paymentProxy(c, 'config'));
+app.get('/api/payments/wallet', c => paymentProxy(c, 'wallet'));
+const checkoutAttempts = new Map<string, { start: number; count: number }>();
+app.post('/api/payments/checkout', c => {
+  const ip = c.req.header('CF-Connecting-IP') || 'anonymous';
+  const now = Date.now();
+  if (checkoutAttempts.size > 2000) checkoutAttempts.clear();
+  const previous = checkoutAttempts.get(ip);
+  const attempt = !previous || now - previous.start > 60_000 ? { start: now, count: 1 } :
+    { start: previous.start, count: previous.count + 1 };
+  checkoutAttempts.set(ip, attempt);
+  if (attempt.count > 10) return c.json({ error: 'rate_limit_exceeded' }, 429);
+  return paymentProxy(c, 'checkout');
+});
+app.post('/api/payments/items', c => paymentProxy(c, 'items'));
+app.get('/api/payments/orders/:id', c => paymentProxy(c, 'orders/' + encodeURIComponent(c.req.param('id'))));
+app.post('/api/webhooks/wire', c => paymentProxy(c, 'webhook'));
 app.get('/api/account',c=>publicRanking(c,'/account?secure='+(new URL(c.req.url).protocol==='https:'?'1':'0')));
 app.get('/api/auth/providers',c=>c.json({
   google:providerReady(c.env,'google'),facebook:providerReady(c.env,'facebook')
