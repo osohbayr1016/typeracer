@@ -55,3 +55,20 @@ test('returning from checkout verifies an order instead of trusting the success 
   await expect(page.getByRole('status')).toHaveText('Төлбөрийн баталгаажуулалтыг хүлээж байна…');
   await expect(page.locator('.coins-balance strong')).toHaveText('◈ 0');
 });
+
+
+test('a purchased-coin buyer can buy and equip a car directly from its preview',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('racer.profile.v1',JSON.stringify({xp:0,coins:0,owned:[]})));
+  await page.route('**/api/payments/wallet',route=>route.fulfill({json:{balance:500,owned:[],recent:[],recoveryReady:true}}));
+  await page.route('**/api/payments/items',async route=>{
+    expect(route.request().postDataJSON()).toEqual({itemKey:'car:falcon'});
+    await route.fulfill({json:{balance:200,owned:['car:falcon'],recent:[],recoveryReady:true}});
+  });
+  await page.goto('/shop');
+  await page.getByRole('button',{name:'Шонхор GT машиныг томоор харах',exact:true}).click();
+  const preview=page.getByTestId('shop-car-preview');
+  await preview.getByRole('button',{name:'ЦЭНЭГЛЭСЭН ◈ 300 ЗООСООР АВАХ',exact:true}).click();
+  await expect(page.locator('.paid-shop-balance')).toContainText('200');
+  await preview.getByRole('button',{name:'Машинд суух / Зүүх',exact:true}).click();
+  await expect(preview.getByRole('button',{name:'✓ Сонгосон',exact:true})).toBeDisabled();
+});

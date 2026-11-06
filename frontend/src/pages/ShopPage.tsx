@@ -58,7 +58,7 @@ export function ShopPage({ profile, onBuy, onEquip, onRace, paidCoins = 0, paidB
         <p>6 зэрэглэл · {totalCars} анхны машин · хүлэг бүр өөрийн гэрлийн эффекттэй. Уралдаж XP, зоос цуглуулаад нээгээрэй.</p>
       </div>
       <div className="shop-wallet">
-        <div className="coin-counter"><span>МИНИЙ ЗООС</span><strong>◈ {profile.coins.toLocaleString('mn-MN')}</strong></div>
+        <div className="coin-counter"><span>УРАЛДАЖ ОЛСОН ЗООС</span><strong>◈ {profile.coins.toLocaleString('mn-MN')}</strong></div>
         <div className="paid-shop-balance">Цэнэглэсэн: ◈ {paidCoins} <button type="button" onClick={onTopUp}>+ Цэнэглэх</button></div>
         <div className="shop-collection-progress">
           <span>ТҮВШИН {level} · ЦУГЛУУЛГА {carsOwned}/{totalCars}</span>
@@ -183,6 +183,10 @@ export function ShopPage({ profile, onBuy, onEquip, onRace, paidCoins = 0, paidB
                 (!isLevelUnlocked(profile,preview) || profile.coins < preview.price))}>
               {actionText(preview)}
             </button>
+            {!isOwned(profile,preview.kind,preview.id) && isLevelUnlocked(profile,preview) && onPaidBuy && paidCoins >= preview.price &&
+              <button type="button" className="paid-buy" disabled={paidBusy} onClick={() => onPaidBuy(preview)}>
+                ЦЭНЭГЛЭСЭН ◈ {preview.price} ЗООСООР АВАХ
+              </button>}
             {!isOwned(profile,preview.kind,preview.id) && (!isLevelUnlocked(profile,preview) || profile.coins < preview.price) &&
               <button type="button" className="shop-preview-race" onClick={() => { setPreview(null); onRace(); }}>
                 УРАЛДАЖ XP, ЗООС ОЛОХ →
