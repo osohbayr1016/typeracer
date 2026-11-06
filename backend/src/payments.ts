@@ -161,6 +161,9 @@ export class PaymentService {
   /** Caller wraps this in the coordinator's synchronous SQLite transaction. */
   mergeAccount(from: string, to: string) {
     if (from === to) return;
+    // A browser can retain the same retry key across logout. Keep both receipts
+    // when those guest/account histories are later linked.
+    this.sql.exec("UPDATE payment_orders SET request_id='merged-' || id WHERE player_id=? AND request_id IN (SELECT request_id FROM payment_orders WHERE player_id=?)", from, to);
     this.sql.exec('UPDATE payment_orders SET player_id=? WHERE player_id=?', to, from);
     this.sql.exec('DELETE FROM payment_items WHERE player_id=? AND item_key IN (SELECT item_key FROM payment_items WHERE player_id=?)', from, to);
     this.sql.exec('UPDATE payment_items SET player_id=? WHERE player_id=?', to, from);

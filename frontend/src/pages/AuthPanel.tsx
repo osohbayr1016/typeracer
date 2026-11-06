@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import './AuthPanel.css';
 import { AccountProtection } from './AccountProtection';
+import { paymentSession } from '../payments';
 
 type Providers = {google:boolean;facebook:boolean};
 type Identity = {id:string;name:string;provider:string|null;guest:boolean;recoveryReady?:boolean;points:number;races:number};
@@ -21,6 +22,7 @@ export function AuthPanel(){
       try {
         // Session creation precedes OAuth start to prevent login-CSRF and
         // preserve progress when a guest links their first provider account.
+        await paymentSession();
         const account=await readJSON<{player:Identity}>('/api/account');
         const available=await readJSON<Providers>('/api/auth/providers');
         if(active){setIdentity(account.player);setProviders(available);}

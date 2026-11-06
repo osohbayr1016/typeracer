@@ -189,4 +189,14 @@ describe('Wire checkout and durable paid coins', () => {
     expect(f.service.wallet(String(f.account.player.id)).balance).toBe(0);
   });
 
+  it('retains both receipts when merged accounts used the same browser retry key',async()=>{
+    const f=await fixture();const request=input();await f.request('checkout',request);f.setState('succeeded');await f.request('wallet');
+    const target=await f.rank.session(null);
+    f.db.prepare('INSERT INTO payment_orders(id,player_id,request_id,pack_id,amount,coins,status,credited,created_at) VALUES(?,?,?,?,?,?,?,?,?)')
+      .run('older-target-order',String(target.player.id),request.requestId,'test-10',100,10,'succeeded',1,Date.now());
+    f.service.mergeAccount(String(f.account.player.id),String(target.player.id));
+    expect(f.service.wallet(String(target.player.id)).balance).toBe(20);
+    expect(f.db.prepare('SELECT COUNT(*) AS n FROM payment_orders WHERE player_id=?').get(String(target.player.id))?.n).toBe(2);
+  });
+
 });

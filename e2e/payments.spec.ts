@@ -33,6 +33,7 @@ test('recovery restores the same account in a separate browser session',async({b
   const first=await browser.newContext();const second=await browser.newContext();
   try{
     const owner=await first.newPage();await owner.goto('/profile');
+    await expect(owner.getByRole('button',{name:'СЭРГЭЭХ КОД ҮҮСГЭХ',exact:true})).toBeVisible();
     const before=await (await first.request.get('/api/account')).json();
     await owner.getByRole('button',{name:'СЭРГЭЭХ КОД ҮҮСГЭХ',exact:true}).click();
     const code=await owner.getByRole('textbox',{name:'Миний сэргээх код'}).inputValue();
