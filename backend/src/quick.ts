@@ -1,9 +1,10 @@
 import {
   choosePrompt, characters, RACE_DURATION_MS, START_COUNTDOWN_MS, wordsPerMinute,
-  type Prompt, type Racer, type RoomSnapshot
+  advanceTyping, typingKey, premiumCosmeticAllowed, type Prompt, type Racer, type RoomSnapshot
 } from '@typeracer/shared';
-import { acceptKeystroke, safePlayerName } from './logic';
+import { safePlayerName } from './logic';
 import { RaceRankingStore } from './rankings';
+import { purchasedInventory } from './payments';
 
 type QuickResult = {
   type: 'quick-result'; raceId: string; place: number | null; coins: number;
@@ -14,11 +15,11 @@ type QuickResult = {
 type Human = Racer & {
   socket: WebSocket | null; windowStart: number; windowCount: number; paid: boolean;
   resumeToken: string; disconnectTimer: ReturnType<typeof setTimeout> | null;
-  lastResult: QuickResult | null; accountId: string | null;
+  lastResult: QuickResult | null; accountId: string | null; inputVersion: 1 | 2; inputSeq: number; inputWrong: boolean;
 };
 type Bot = Racer & { bot: true; pace: number };
 type QuickRace = {
-  id: string; prompt: Prompt; phase: RoomSnapshot['phase'];
+  id: string; prompt: Prompt; letters: string[]; phase: RoomSnapshot['phase'];
   humans: Set<Human>; bots: Bot[]; startAt: number | null;
   queueEndsAt: number; deadline: ReturnType<typeof setTimeout> | null;
   countdownTimer: ReturnType<typeof setTimeout> | null;
@@ -70,8 +71,8 @@ export function quickBotForSlot(offset: number, slot: number) {
 
 
 const carIds = ['mint', 'sunset', 'purple', 'lime', 'phantom', 'steppe', 'thunder', 'midnight', 'khan', 'dawn', 'cosmic', 'falcon', 'nomad', 'rover', 'sunflare', 'dune', 'cobalt', 'glacier', 'fox', 'streak', 'ghost', 'onyx', 'meteor', 'temple', 'nebula', 'eagle', 'royal', 'aurora-x', 'dragon'];
-const trailIds = ['none','ember','steppe','ice','aurora'];
-const stickerIds = ['none','horse','bolt','star'];
+const trailIds = ['none','ember','steppe','ice','aurora','gold'];
+const stickerIds = ['none','horse','bolt','star','crown'];
 
 function allowed(input: string | null, options: string[], defaultValue: string): string {
   return input && options.includes(input) ? input : defaultValue;
@@ -87,7 +88,7 @@ export function quickPrize(place: number, finished: boolean): number {
 
 export class QuickMatchmaker {
   readonly rankings: RaceRankingStore | null;
-  constructor(storage?: DurableObjectStorage) {
+  constructor(private storage?: DurableObjectStorage) {
     this.rankings = storage ? new RaceRankingStore(storage.sql) : null;
   }
   private pending: QuickRace | null = null;
@@ -121,7 +122,7 @@ export class QuickMatchmaker {
       human.disconnectTimer = null;
       human.socket = server;
       this.attach(server, race, human);
-      this.send(server, { type: 'welcome', id: human.id, resumeToken: human.resumeToken, resumed: true });
+      this.send(server, { type: 'welcome', id: human.id, resumeToken: human.resumeToken, resumed: true, inputVersion: human.inputVersion });
       // Immediate authoritative snapshot: do not wait for the 50ms fan-out tick.
       this.send(server, this.receiveSnapshot(race));
       if (human.lastResult) this.send(server, human.lastResult);
@@ -130,13 +131,18 @@ export class QuickMatchmaker {
     }
 
     const account = await this.rankings?.fromCookie(request.headers.get('Cookie')) ?? null;
+    const inventory = this.storage && typeof account?.id === 'string' ? purchasedInventory(this.storage.sql, account.id) : [];
+    const cosmetic = (kind: string, value: string | null, choices: string[], fallback: string) =>
+      value && premiumCosmeticAllowed(kind, value, inventory) ? allowed(value, choices, fallback) : fallback;
     const human: Human = {
       id: crypto.randomUUID(), name: safePlayerName(url.searchParams.get('name') || ''),
       car: allowed(url.searchParams.get('car'), carIds, 'sunset'),
-      trail: allowed(url.searchParams.get('trail'), trailIds, 'none'),
-      sticker: allowed(url.searchParams.get('sticker'), stickerIds, 'none'),
+      trail: cosmetic('trail', url.searchParams.get('trail'), trailIds, 'none'),
+      sticker: cosmetic('sticker', url.searchParams.get('sticker'), stickerIds, 'none'),
+      title: cosmetic('title', url.searchParams.get('title'), ['rookie','swift','khan','legend','supporter'], 'rookie'),
       progress: 0, mistakes: 0, strokes: 0, completedAt: null,
       ready: true, socket: server, windowStart: 0, windowCount: 0, paid: false,
+      inputVersion: url.searchParams.get('input') === '2' ? 2 : 1, inputSeq: 0, inputWrong: false,
       resumeToken: crypto.randomUUID(), disconnectTimer: null, lastResult: null,
       accountId: typeof account?.id === 'string' ? account.id : null
     };
@@ -149,7 +155,7 @@ export class QuickMatchmaker {
     // Replace the last bot with an incoming real racer while matchmaking is open.
     while (race.humans.size + race.bots.length > QUICK_LANES) race.bots.pop();
     this.attach(server, race, human);
-    this.send(server, { type: 'welcome', id: human.id, resumeToken: human.resumeToken, resumed: false });
+    this.send(server, { type: 'welcome', id: human.id, resumeToken: human.resumeToken, resumed: false, inputVersion: human.inputVersion });
     this.broadcast(race);
     if (race.humans.size === QUICK_MAX_HUMANS) this.startCountdown(race);
     return new Response(null, { status: 101, webSocket: client });
@@ -164,8 +170,9 @@ export class QuickMatchmaker {
   }
 
   private newRace(): QuickRace {
+    const prompt = choosePrompt('mn');
     const race: QuickRace = {
-      id: crypto.randomUUID(), prompt: choosePrompt('mn'), phase: 'waiting',
+      id: crypto.randomUUID(), prompt, letters: characters(prompt.text), phase: 'waiting',
       humans: new Set(), bots: [], startAt: null,
       queueEndsAt: Date.now() + QUICK_QUEUE_MS,
       deadline: null, countdownTimer: null, tick: null, broadcastTimer: null,
@@ -232,8 +239,8 @@ export class QuickMatchmaker {
   private tickBots(race: QuickRace): void {
     if (race.phase !== 'racing' || race.startAt === null) return;
     const now = Date.now();
-    const size = characters(race.prompt.text).length;
-    const elapsed = Math.max(0, now - race.startAt);
+    const size = race.letters.length;
+    const elapsed = Math.max(0, Math.min(RACE_DURATION_MS, now - race.startAt));
     let changed = false;
     for (const bot of race.bots) {
       if (bot.completedAt !== null) continue;
@@ -241,7 +248,7 @@ export class QuickMatchmaker {
       if (target !== bot.progress) changed = true;
       bot.progress = Math.max(bot.progress, target);
       bot.strokes = bot.progress;
-      if (bot.progress === size) bot.completedAt = now;
+      if (bot.progress === size) bot.completedAt = race.startAt + Math.ceil(size / (bot.pace * 5) * 60_000);
     }
     if (changed) this.queueBroadcast(race);
   }
@@ -254,19 +261,26 @@ export class QuickMatchmaker {
     if (race.phase === 'countdown') this.beginRace(race);
     if (race.phase !== 'racing' || race.startAt === null || Date.now() < race.startAt ||
         human.completedAt !== null) return;
-    let message: { type?: string; key?: unknown };
+    let message: { type?: string; key?: unknown; seq?: unknown; matchId?: unknown };
     try { message = JSON.parse(raw); } catch { return; }
     if (!message || typeof message !== 'object') return;
-    if (message.type !== 'key') return;
+    if (message.type !== 'key' || typingKey(message.key) === null) return;
     const now = Date.now();
+    if (now >= race.startAt + RACE_DURATION_MS) { this.finish(race); return; }
+    const acknowledge = () => this.send(human.socket, { type: 'input-ack', matchId: race.id, seq: human.inputSeq,
+      progress: human.progress, strokes: human.strokes, mistakes: human.mistakes, wrong: human.inputWrong });
+    if (human.inputVersion === 2 && (message.matchId !== race.id || !Number.isSafeInteger(message.seq) ||
+        message.seq !== human.inputSeq + 1)) { acknowledge(); return; }
     if (now - human.windowStart >= 1_000) { human.windowStart = now; human.windowCount = 0; }
-    if (++human.windowCount > 35) return;
-    const result = acceptKeystroke(race.prompt.text, human.progress, human.mistakes, human.strokes, message.key);
+    if (++human.windowCount > 35) { if (human.inputVersion === 2) acknowledge(); return; }
+    const result = advanceTyping(race.letters, {progress:human.progress,strokes:human.strokes,mistakes:human.mistakes,wrong:false}, message.key);
     if (result.strokes === human.strokes) return;
+    if (human.inputVersion === 2) human.inputSeq = Number(message.seq);
+    human.inputWrong = result.wrong;
     human.progress = result.progress;
     human.mistakes = result.mistakes;
     human.strokes = result.strokes;
-    if (human.progress >= characters(race.prompt.text).length) {
+    if (human.progress >= race.letters.length) {
       human.completedAt = now;
       this.tickBots(race);
       this.awardFinish(race, human);
@@ -294,15 +308,16 @@ export class QuickMatchmaker {
 
   private finish(race: QuickRace): void {
     if (race.phase === 'finished') return;
-    race.phase = 'finished';
     if (race.startAt !== null) this.tickBots(race);
+    race.phase = 'finished';
+    const elapsed = Math.max(1, Math.min(RACE_DURATION_MS, Date.now() - (race.startAt ?? Date.now())));
     for (const human of race.humans) {
       if (human.completedAt !== null) this.awardFinish(race, human);
       else {
         human.lastResult = { type: 'quick-result', raceId: race.id, place: null, coins: 0,
-          wpm: wordsPerMinute(human.progress, Math.max(1, Date.now() - (race.startAt ?? Date.now()))),
+          wpm: wordsPerMinute(human.progress, elapsed),
           accuracy: human.strokes ? Math.round((human.strokes - human.mistakes) / human.strokes * 100) : 100,
-          elapsedMs: Date.now() - (race.startAt ?? Date.now()), verified: false, standings: this.receiveSnapshot(race).players };
+          elapsedMs: elapsed, verified: false, standings: this.receiveSnapshot(race).players };
         this.send(human.socket, human.lastResult);
       }
     }
@@ -319,8 +334,10 @@ export class QuickMatchmaker {
       phase: race.phase, queueEndsAt: race.phase === 'waiting' ? race.queueEndsAt : null,
       startAt: race.startAt, durationMs: RACE_DURATION_MS, prompt: race.prompt,
       players: [...race.humans, ...race.bots].map(
-        ({ id, name, car, trail, sticker, progress, mistakes, strokes, completedAt, ready, ...rest }) => ({
-          id, name, car, trail, sticker, progress, mistakes, strokes, completedAt, ready,
+        ({ id, name, car, trail, sticker, title, progress, mistakes, strokes, completedAt, ready, ...rest }) => ({
+          id, name, car, trail, sticker, title, progress, mistakes, strokes, completedAt, ready,
+          inputSeq: 'inputVersion' in rest && rest.inputVersion === 2 ? rest.inputSeq : undefined,
+          inputWrong: 'inputVersion' in rest && rest.inputVersion === 2 ? rest.inputWrong : undefined,
           bot: 'bot' in rest && rest.bot === true,
           connected: 'socket' in rest ? rest.socket !== null : true
         }))

@@ -1,8 +1,10 @@
 # TypeRacer Mongolia — playable staging beta
 
+**Commerce update:** Wire/QPay coin packs, a one-time cosmetic Supporter bundle, account recovery and reliable sequenced race input are implemented. See [monetization and racing](docs/MONETIZATION-AND-RACING.md) for the current offers, test commands and remaining beta boundaries.
+
 A Mongolian Cyrillic typing-race game, built with the same main stack as the author's `standoff-` project: **TypeScript, npm workspaces, React + Vite, Hono, Cloudflare Workers, Durable Objects and WebSockets**.
 
-**Status:** Solo, friend-room races and device-local cosmetic progression work in development. This is a **staging/unranked beta**, not yet a ranked, payment-ready, or production-secure competition platform. All game code is on **main**; no pull request or merge step is needed.
+**Status:** Solo, friend-room races and device-local cosmetic progression work in development. This is a **staging/unranked beta** with real Wire checkout and a protected paid wallet. The race-earned economy is still device-local; this is not yet a production-ranked or prize-money competition platform. All game code is on **main**; no pull request or merge step is needed.
 
 ## Features available now
 
@@ -11,10 +13,10 @@ A Mongolian Cyrillic typing-race game, built with the same main stack as the aut
 - Friend-only guest rooms, 2–6 players, 8-character invite code, Ready, countdown and real-time race progress.
 - Server-computed race progress, per-socket abuse limits and same-origin browser API protection.
 - Unit tests, TypeScript checks, Vite/Worker build, two Chromium E2E scenarios.
-- Shop and season routes are **not yet server-authoritative**; local browser progression can be manipulated and has no real-money value.
+- Race-earned shop/season progression is **not yet server-authoritative**. Purchased coins, supporter grants and paid debits use the server ledger; paid-exclusive race cosmetics are checked against receipts.
 - One Cloudflare Worker hosts **both the game website and /api endpoints**, so no separate Cloudflare Pages deployment or CORS environment variables are needed.
 
-**Not included:** account login, official leaderboards, ranked matches, tournament management, paid battle pass or verified purchase ledger, persisting trusted results, reconnect/resume, serious bot prevention, load testing, Cloudflare WAF rules, and production-grade monitoring.
+**Not included:** production ranked matches, prize tournaments, a paid battle pass, a server-owned earned economy, cross-instance race persistence, advanced bot detection, load certification and merchant refund/reporting automation. Account login/recovery, cookie-backed leaderboards, an in-process reconnect window and the paid purchase ledger are implemented.
 
 ## Try it locally
 
@@ -85,6 +87,7 @@ npm run typecheck
 npm test
 npm run build
 npm run build:worker -w backend
+npm run test:runtime
 npx playwright install chromium
 npm run test:e2e
 ```

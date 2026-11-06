@@ -63,6 +63,10 @@ export class RaceRankingStore {
     )`);
     this.sql.exec('CREATE INDEX IF NOT EXISTS leaderboard_sessions_player ON leaderboard_sessions(player_id)');
     this.sql.exec('CREATE INDEX IF NOT EXISTS leaderboard_sessions_expiry ON leaderboard_sessions(expires_at)');
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS leaderboard_recovery (
+      token_hash TEXT PRIMARY KEY, player_id TEXT NOT NULL, created_at INTEGER NOT NULL
+    )`);
+    this.sql.exec('CREATE INDEX IF NOT EXISTS leaderboard_recovery_player ON leaderboard_recovery(player_id)');
     // One-time, non-destructive reweighting. Historical 90+ point races must
     // not outrank fresh 20–30-point races merely because the formula changed.
     // Recompute from authoritative stored WPM/accuracy, retain every event.
@@ -130,8 +134,28 @@ export class RaceRankingStore {
       id:p.id, name:p.name, points:p.points, races:p.races, bestWpm:p.best_wpm,
       avgWpm: Number(p.races) ? Math.round(Number(p.total_wpm)/Number(p.races)) : 0,
       avgAccuracy: Number(p.races) ? Math.round(Number(p.total_accuracy)/Number(p.races)) : 0,
-      teamId:p.team_id, guest:!identity,provider:identity?.provider??null
+      teamId:p.team_id, guest:!identity,provider:identity?.provider??null,
+      recoveryReady:!!first(this.sql.exec('SELECT token_hash FROM leaderboard_recovery WHERE player_id=? LIMIT 1',p.id))
     };
+  }
+  async createRecovery(cookie: string | null): Promise<{code?: string; exists?: boolean} | null> {
+    const player = await this.fromCookie(cookie);
+    if (!player) return null;
+    if (first(this.sql.exec('SELECT token_hash FROM leaderboard_recovery WHERE player_id=? LIMIT 1', player.id))) return {exists:true};
+    const code = 'trr_' + [...crypto.getRandomValues(new Uint8Array(24))].map(byte => byte.toString(16).padStart(2,'0')).join('');
+    const hash = await sessionDigest(code);
+    // Check again after hashing: two tabs must not create competing recovery secrets.
+    if (first(this.sql.exec('SELECT token_hash FROM leaderboard_recovery WHERE player_id=? LIMIT 1', player.id))) return {exists:true};
+    this.sql.exec('INSERT INTO leaderboard_recovery(token_hash,player_id,created_at) VALUES(?,?,?)', hash, player.id, Date.now());
+    return {code};
+  }
+  async restoreRecovery(input: string): Promise<{player:Row;newToken:string}|null> {
+    const code = input.trim().toLowerCase();
+    if (!/^trr_[a-f0-9]{48}$/.test(code)) return null;
+    const saved = first(this.sql.exec('SELECT player_id FROM leaderboard_recovery WHERE token_hash=?', await sessionDigest(code)));
+    const player = saved && first(this.sql.exec('SELECT * FROM leaderboard_players WHERE id=?', saved.player_id));
+    if (!player) return null;
+    return {player, newToken:await this.newSession(String(player.id))};
   }
   async logout(cookie: string | null): Promise<{player: Row; newToken: string}> {
     // Resolve/migrate legacy first, then revoke ONLY this device's session.
@@ -241,7 +265,7 @@ export class RaceRankingStore {
    * exchange + authenticated userinfo call. Never expose this as a public route.
    */
   async completeOAuth(cookie:string|null, provider:'google'|'facebook', state:string,
-    providerSubject:string,displayName:string):Promise<{player:Row;newToken:string}|null> {
+    providerSubject:string,displayName:string):Promise<{player:Row;newToken:string;previousPlayerId:string}|null> {
     const player=await this.fromCookie(cookie);
     if (!player || !/^[0-9a-f-]{36}$/.test(state) || !/^[\w.:-]{1,128}$/.test(providerSubject)) return null;
     const pending=first(this.sql.exec('SELECT * FROM leaderboard_oauth_states WHERE state=?',state));
@@ -261,10 +285,11 @@ export class RaceRankingStore {
     if (String(target.name).startsWith('Зочин')) {
       this.sql.exec('UPDATE leaderboard_players SET name=? WHERE id=?',sanitized,resolvedId);
     }
+    if (resolvedId !== player.id) this.sql.exec('UPDATE leaderboard_recovery SET player_id=? WHERE player_id=?', resolvedId, player.id);
     // Rotate ONLY the initiating device; never revoke other signed-in devices.
     await this.revoke(cookie);
     return {player:first(this.sql.exec('SELECT * FROM leaderboard_players WHERE id=?',resolvedId))!,
-      newToken:await this.newSession(String(resolvedId))};
+      newToken:await this.newSession(String(resolvedId)), previousPlayerId:String(player.id)};
   }
   myTeam(player: Row): object|null {
     if (!player.team_id) return null;

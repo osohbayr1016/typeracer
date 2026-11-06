@@ -1,11 +1,13 @@
-import { memo, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { accuracyPercent, characters, wordsPerMinute } from '@typeracer/shared';
+import { memo, useEffect, useMemo, useRef, useState, type ChangeEvent, useLayoutEffect } from 'react';
+import { accuracyPercent, characters, wordsPerMinute, type TypingProgress } from '@typeracer/shared';
 import { applyLocalKey, INITIAL_LOCAL_PROGRESS, type LocalProgress } from './typingSync';
 import { readRaceClock, type ServerClock } from './useRaceStart';
 
 
 type Props = {
   text: string;
+  prediction?: TypingProgress | null;
+  syncing?: boolean;
   enabled: boolean;
   available: boolean;
   canAcceptKey: () => boolean;
@@ -23,7 +25,7 @@ type Props = {
  * Mount with key={matchId} to reset local state between races.
  */
 export const QuickTypingPanel = memo(function QuickTypingPanel({
-  text, enabled, available, canAcceptKey, clock, serverProgress, serverStrokes, serverMistakes, startedAt, sendKey
+  text, prediction, syncing, enabled, available, canAcceptKey, clock, serverProgress, serverStrokes, serverMistakes, startedAt, sendKey
 }: Props) {
   const letters = useMemo(() => characters(text), [text]);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -41,11 +43,15 @@ export const QuickTypingPanel = memo(function QuickTypingPanel({
       inputRef.current?.focus({ preventScroll: true });
   }, [enabled]);
 
+  useEffect(() => {
+    if (prediction) { localRef.current = prediction; setLocal(prediction); }
+  }, [prediction]);
+
   // Only the server can move the confirmed finish line. If a snapshot is ahead
   // (e.g. after an interrupted frame), catch up without rolling the caret back
   // during normal WebSocket latency.
   useEffect(() => {
-    if (serverProgress <= localRef.current.progress) return;
+    if (prediction || serverProgress <= localRef.current.progress) return;
     const next = {
       progress: serverProgress,
       strokes: Math.max(localRef.current.strokes, serverStrokes),
@@ -54,7 +60,7 @@ export const QuickTypingPanel = memo(function QuickTypingPanel({
     };
     localRef.current = next;
     setLocal(next);
-  }, [serverProgress, serverStrokes, serverMistakes]);
+  }, [prediction, serverProgress, serverStrokes, serverMistakes]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -80,8 +86,8 @@ export const QuickTypingPanel = memo(function QuickTypingPanel({
     acceptInput(value);
   }
 
-  const shown = Math.max(serverProgress, local.progress);
-  useEffect(() => {
+  const shown = prediction?.progress ?? Math.max(serverProgress, local.progress);
+  useLayoutEffect(() => {
     const phrase = phraseRef.current;
     const cursor = phrase?.children[shown] as HTMLElement | undefined;
     if (!phrase || !cursor) return;
@@ -92,10 +98,10 @@ export const QuickTypingPanel = memo(function QuickTypingPanel({
       phrase.scrollTop += line.top - box.top;
     }
   }, [shown]);
-  const strokes = Math.max(serverStrokes, local.strokes);
-  const mistakes = Math.max(serverMistakes, local.mistakes);
+  const strokes = prediction?.strokes ?? Math.max(serverStrokes, local.strokes);
+  const mistakes = prediction?.mistakes ?? Math.max(serverMistakes, local.mistakes);
   const seconds = startedAt ? Math.max(1, now - startedAt) : 1;
-  const wpm = startedAt ? wordsPerMinute(shown, seconds) : 0;
+  const wpm = startedAt ? wordsPerMinute(shown, Math.max(1000, seconds)) : 0;
   const accuracy = accuracyPercent(Math.max(0, strokes - mistakes), strokes);
 
   return <section className={'quick-type-panel'+(enabled ? ' active' : ' prepare')} data-testid="quick-type-panel"
@@ -106,7 +112,7 @@ export const QuickTypingPanel = memo(function QuickTypingPanel({
     </div>
     <div ref={phraseRef} className="quick-phrase" role="group" aria-label="Бичих текст" onClick={() => { if (available) inputRef.current?.focus(); }}>
       {letters.map((letter, i) => <span key={i}
-        className={i < shown ? 'typed' : i === shown ? (local.wrong && enabled ? 'incorrect' : 'cursor') : undefined}>
+        className={i < shown ? 'typed' : i === shown ? ((prediction?.wrong ?? local.wrong) && enabled ? 'incorrect' : 'cursor') : undefined}>
         {letter}
       </span>)}
     </div>
@@ -123,9 +129,10 @@ export const QuickTypingPanel = memo(function QuickTypingPanel({
       }}
       onPaste={event => event.preventDefault()} onDrop={event => event.preventDefault()}
       placeholder={enabled ? 'Энд бичиж эхлээрэй...' : 'Энд дарж keyboard-оо бэлдээрэй'} />
+    {syncing && <p className="quick-sync-note" role="status">Холболт удаан байна. Бичсэн үсгийг баталгаажуулж байна…</p>}
     {enabled ? <div className="quick-metrics">
-      <div><b>{wpm}</b><small>ҮГ/МИН</small></div>
-      <div><b>{accuracy}%</b><small>НАРИЙВЧЛАЛ</small></div>
+      <div title="Зөв тэмдэгт ÷ 5 ÷ минут. Эхний секундэд жигдрүүлж харуулна."><b>{wpm}</b><small>ҮГ/МИН</small></div>
+      <div title="Зөв оролдлого ÷ бүх оролдлого. Алдаа зассан ч өмнөх алдаа тооцогдоно."><b>{accuracy}%</b><small>НАРИЙВЧЛАЛ</small></div>
       <div><b>{(seconds / 1000).toFixed(1)}s</b><small>ХУГАЦАА</small></div>
     </div> : <p className="quick-ready-hint" id="quick-keyboard-hint">Энд дарж keyboard-оо нээгээрэй. Ногоон гэрэл асахаас өмнөх бичилт тооцогдохгүй.</p>}
   </section>;

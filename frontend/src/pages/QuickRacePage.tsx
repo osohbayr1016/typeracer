@@ -1,11 +1,13 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import {
-  progressPercent, type RoomSnapshot, type Racer
+  progressPercent, characters, type RoomSnapshot, type Racer, type TypingProgress, type InputAcknowledgement
 } from '@typeracer/shared';
 import { CARS, raceCarIcon, type Skin } from './cars';
 import { type Profile } from '../progression';
 import { QuickTypingPanel } from './QuickTypingPanel';
 import { sendRaceKey } from './typingSync';
+import { ReliableRaceInput } from './reliableInput';
+import { paymentSession } from '../payments';
 import { raceCanType } from './raceStartSignal';
 import { readRaceClock, useRaceStart, type ServerClock } from './useRaceStart';
 import { type QuickRaceOutcome, type QuickResult } from './quickResultsModel';
@@ -24,21 +26,24 @@ const BOT_CARS: Skin[] = ['mint','steppe','thunder'];
 function carOf(player: Racer, index: number): Skin {
   return player.car && player.car in CARS ? player.car as Skin : BOT_CARS[index % BOT_CARS.length];
 }
-const QuickLane = memo(function QuickLane({ name, mine, rank, done, bot, connected, car }: {
-  name: string; mine: boolean; rank: number; done: number; bot: boolean; connected: boolean; car: Skin;
+const QuickLane = memo(function QuickLane({ name, mine, rank, done, bot, connected, car, trail, sticker, title }: {
+  name: string; mine: boolean; rank: number; done: number; bot: boolean; connected: boolean; car: Skin; trail?: string; sticker?: string; title?: string;
 }) {
   return <div className={'quick-lane'+(mine?' me':'')}>
     <div className="quick-lane-meta">
       <span className="quick-lane-order">{rank}</span>
-      <div><strong>{name}{mine ? ' · ТА' : ''}</strong>
+      <div><strong>{title === 'supporter' && <span className="supporter-name" aria-label="Дэмжигч">♛ </span>}{name}{mine ? ' · ТА' : ''}</strong>
         <small>{bot ? 'БОТ' : !connected ? 'ХОЛБОЛТ ТАСАРСАН' : 'ТОГЛОГЧ'}</small></div>
-      <b>{done}%</b>
+      <b>{Math.round(done)}%</b>
     </div>
     <div className="quick-road">
       <span className="quick-road-progress" style={{ transform: `scaleX(${done / 100})` }}/>
       <span className="quick-car-position" style={{ transform: `translate3d(${done}%,0,0)` }}>
-        <img src={raceCarIcon(car)} alt="" draggable={false} decoding="async"
-          style={{ transform: `translate3d(-${done}%,0,0)` }}/>
+        <span className={'quick-car-sprite trail-' + (trail || 'none')} style={{ transform: `translate3d(-${done}%,0,0)` }}>
+          {trail === 'gold' && <span className="quick-paid-trail" aria-hidden="true"/>}
+          <img src={raceCarIcon(car)} alt="" draggable={false} decoding="async"/>
+          {sticker === 'crown' && <b className="quick-paid-sticker" aria-hidden="true">♛</b>}
+        </span>
       </span>
       <span className="quick-flag" aria-hidden="true"/>
     </div>
@@ -53,6 +58,10 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
   const [result, setResult] = useState<QuickResult | null>(null);
   const [clock, setClock] = useState<ServerClock | null>(null);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [prediction, setPrediction] = useState<TypingProgress | null>(null);
+  const [syncSlow, setSyncSlow] = useState(false);
+  const reliableInput = useRef<ReliableRaceInput | null>(null);
+  const reliableVersion = useRef(false);
   const socketRef = useRef<WebSocket | null>(null);
   const rewardRef = useRef(onReward);
   const finishRef = useRef(onFinish);
@@ -61,6 +70,17 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
   const awardedMatches = useRef(new Set<string>());
   rewardRef.current = onReward;
   finishRef.current = onFinish;
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const input = reliableInput.current;
+      if (!input || !reliableVersion.current) return;
+      const now = performance.now();
+      input.flush(socketRef.current, now);
+      setSyncSlow(input.delayed(now));
+    }, 450);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const viewport = window.visualViewport;
@@ -79,7 +99,7 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
     latestSnapshot.current = null;
     setClock(null);
     const base = API_BASE || window.location.origin;
-    const params = new URLSearchParams({ name: nickname, car, trail: profile.trail,
+    const params = new URLSearchParams({ input:'2', name: nickname, car, trail: profile.trail,
       sticker: profile.sticker, title: profile.title });
     // Per-tab bearer token: reconnect to the SAME match inside the Durable Object.
     // Never persist the token in the player profile or send it to opponents.
@@ -93,7 +113,7 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
     // The browser cannot claim points itself; the DO writes finished scores.
     void (async () => {
       try {
-        await fetch(base + '/api/account', { credentials:'include', signal: controller.signal });
+        await paymentSession();
       } catch { /* Race still works if leaderboard session creation fails. */ }
       finally { clearTimeout(accountTimeout); }
       if (disposed) return;
@@ -112,15 +132,30 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
       if (disposed) return;
       try {
         const data = JSON.parse(event.data) as RoomSnapshot |
-          { type: 'welcome'; id: string; resumeToken?: string; resumed?: boolean } | QuickResult;
+          { type: 'welcome'; id: string; resumeToken?: string; resumed?: boolean; inputVersion?: number } | QuickResult | InputAcknowledgement;
         if (data.type === 'welcome') {
+          reliableVersion.current = data.inputVersion === 2;
+          if (!reliableVersion.current) { reliableInput.current = null; setPrediction(null); }
           latestMyId.current = data.id;
           setMyId(data.id);
           if (data.resumeToken) {
             try { window.sessionStorage.setItem(RESUME_KEY, data.resumeToken); } catch { /* optional */ }
           }
         }
+        else if (data.type === 'input-ack' && reliableInput.current?.matchId === data.matchId) {
+          reliableInput.current.acknowledge(data);
+          setPrediction(reliableInput.current.prediction);
+        }
         else if (data.type === 'state' && data.mode === 'quick') {
+          if (reliableVersion.current && data.matchId) {
+            if (reliableInput.current?.matchId !== data.matchId)
+              reliableInput.current = new ReliableRaceInput(data.matchId, data.prompt.text);
+            const current = data.players.find(player => player.id === latestMyId.current);
+            if (current && typeof current.inputSeq === 'number') reliableInput.current.acknowledge({
+              seq:current.inputSeq,progress:current.progress,strokes:current.strokes,mistakes:current.mistakes,wrong:current.inputWrong
+            });
+            setPrediction(reliableInput.current.prediction);
+          }
           if (!latestSnapshot.current || data.startAt !== latestSnapshot.current.startAt) {
             setClock({ serverNow: data.serverNow ?? Date.now(), receivedAt: performance.now() });
           }
@@ -178,7 +213,13 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
     (p.progress > self.progress || (p.progress === self.progress &&
     p.completedAt !== null && (self.completedAt === null || p.completedAt < self.completedAt)))).length : null;
   const isRacing = canType && !result && connection === 'connected';
-  const sendKey = useCallback((key: string) => sendRaceKey(socketRef.current, key), []);
+  const sendKey = useCallback((key: string) => {
+    if (!reliableVersion.current || !reliableInput.current) return sendRaceKey(socketRef.current, key);
+    const accepted = reliableInput.current.enqueue(key, socketRef.current, performance.now());
+    if (accepted) setPrediction(reliableInput.current.prediction);
+    else if (socketRef.current?.readyState === 1) setSyncSlow(true);
+    return accepted;
+  }, []);
   const canAcceptKey = useCallback(() => connection === 'connected' && !result &&
     raceCanType(latestSnapshot.current?.phase, latestSnapshot.current?.startAt, readRaceClock(clock)), [connection, result, clock]);
 
@@ -189,7 +230,7 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
         <strong>ШУУД УРАЛДААН</strong><span>5 ТОГЛОГЧ · МОНГОЛ ХЭЛ</span>
       </div>
       <span className={'quick-connection'+(connection === 'error' ? ' offline' : '')}>
-        {connection === 'connected' ? '● ОНЛАЙН' : connection === 'error' ? '● ТАСАРСАН' : '○ ХОЛБОГДОЖ БАЙНА'}
+        {connection === 'connected' ? (syncSlow ? '● СИНК ХИЙЖ БАЙНА' : '● ОНЛАЙН') : connection === 'error' ? '● ТАСАРСАН' : '○ ХОЛБОГДОЖ БАЙНА'}
       </span>
     </header>
 
@@ -198,7 +239,7 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
       <button className="primary-button" onClick={() => setAttempt(n => n + 1)}>↻ ДАХИН НЭГДЭХ</button>
     </section>}
     {connection === 'connecting' && !snapshot && <section className="quick-state-panel" role="status">
-      <h2>{attempt ? 'УРАЛДААНД ДАХИН ХОЛБОГДОЖ БАЙНА' : 'ТОГЛОГЧИДТОЙ ХОЛБОГДОЖ БАЙНА'}</h2><p>{attempt ? 'Durable Object-оос өмнөх байрлал, явцыг сэргээж байна…' : 'Уралдааны өрөөг нээж байна…'}</p>
+      <h2>{attempt ? 'УРАЛДААНД ДАХИН ХОЛБОГДОЖ БАЙНА' : 'ТОГЛОГЧИДТОЙ ХОЛБОГДОЖ БАЙНА'}</h2><p>{attempt ? 'Таны уралдааны явцыг сэргээж байна…' : 'Уралдааны өрөөг нээж байна…'}</p>
     </section>}
 
     {snapshot && <div className={'quick-phase phase-'+snapshot.phase}
@@ -243,13 +284,14 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
       <div className="quick-lanes">
         {snapshot.players.map((player,index) => {
           const which = carOf(player,index);
-          const done = progressPercent(player.progress,snapshot.prompt.text);
+          const shown = player.id === myId && prediction ? prediction.progress : player.progress;
+          const done = Math.min(100, shown / characters(snapshot.prompt.text).length * 100);
           const rank = 1 + snapshot.players.filter(p => p.id !== player.id &&
             (p.progress > player.progress || (p.progress === player.progress &&
              p.completedAt !== null && (player.completedAt === null || p.completedAt < player.completedAt)))).length;
           return <QuickLane key={player.id} name={player.name} mine={player.id === myId}
             rank={snapshot.phase === 'racing' || snapshot.phase === 'finished' ? rank : index + 1}
-            done={done} bot={!!player.bot} connected={player.connected !== false} car={which}/>;
+            done={done} bot={!!player.bot} connected={player.connected !== false} car={which} trail={player.trail} sticker={player.sticker} title={player.title}/>;
         })}
         {snapshot.phase === 'waiting' && Array.from({length: Math.max(0,5 - filled)},(_,i) =>
           <div className="quick-empty" key={'empty'+i}><span>+</span> УРАЛДАГЧ ХҮЛЭЭЖ БАЙНА</div>)}
@@ -259,6 +301,8 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
     {snapshot && snapshot.phase !== 'finished' && <QuickTypingPanel
       key={snapshot.matchId || snapshot.prompt.id}
       text={snapshot.prompt.text}
+      prediction={prediction}
+      syncing={syncSlow}
       enabled={isRacing}
       available={connection === 'connected'}
       canAcceptKey={canAcceptKey}

@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { PROMPTS, ROOM_CAPACITY } from '@typeracer/shared';
+import { PROMPTS, ROOM_CAPACITY, premiumCosmeticAllowed } from '@typeracer/shared';
 import { validRoomCode } from './logic';
 import { originAllowed } from './origin';
 import type { PaymentEnv } from './payments';
@@ -76,6 +76,18 @@ app.get('/api/auth/providers',c=>c.json({
   google:providerReady(c.env,'google'),facebook:providerReady(c.env,'facebook')
 }));
 app.post('/api/auth/logout',c=>publicRanking(c,'/account/logout?secure='+(new URL(c.req.url).protocol==='https:'?'1':'0')));
+app.post('/api/account/recovery', c => publicRanking(c, '/account/recovery'));
+const recoveryAttempts = new Map<string, { start: number; count: number }>();
+app.post('/api/account/recover', c => {
+  const ip = c.req.header('CF-Connecting-IP') || 'anonymous';
+  const now = Date.now();
+  if (recoveryAttempts.size > 2000) recoveryAttempts.clear();
+  const previous = recoveryAttempts.get(ip);
+  const entry = !previous || now - previous.start > 60_000 ? {start:now,count:1} : {start:previous.start,count:previous.count+1};
+  recoveryAttempts.set(ip, entry);
+  if (entry.count > 8) return c.json({error:'rate_limit_exceeded'},429);
+  return publicRanking(c, '/account/recover?secure=' + (new URL(c.req.url).protocol === 'https:' ? '1' : '0'));
+});
 function oauthOrigin(c:{env:Env;req:{url:string}}):string {
   const requested=new URL(c.req.url).origin;
   // Configured origin prevents callback URL manipulation via Host headers.
@@ -158,14 +170,21 @@ app.get('/api/quickplay/ws', c => {
   return c.env.RACE_ROOMS.get(id).fetch('https://room.internal/quickplay' + source.search,
     { headers: c.req.raw.headers });
 });
-app.get('/api/rooms/:code/ws', c => {
+app.get('/api/rooms/:code/ws', async c => {
   const code = c.req.param('code').toUpperCase();
   if (!validRoomCode(code)) return c.json({ error: 'Invalid room code' }, 400);
   if (c.req.header('Upgrade')?.toLowerCase() !== 'websocket') {
     return c.json({ error: 'WebSocket upgrade required' }, 426);
   }
   const id = c.env.RACE_ROOMS.idFromName(code);
-  return c.env.RACE_ROOMS.get(id).fetch(c.req.raw);
+  const url = new URL(c.req.url);
+  const appearance = ['trail','title','sticker'].filter(kind => !premiumCosmeticAllowed(kind, url.searchParams.get(kind) ?? '', []));
+  if (appearance.length) {
+    const response = await paymentProxy(c, 'appearance');
+    const owned = response.ok ? (await response.json() as {owned:string[]}).owned : [];
+    for (const kind of appearance) if (!premiumCosmeticAllowed(kind, url.searchParams.get(kind)!, owned)) url.searchParams.delete(kind);
+  }
+  return c.env.RACE_ROOMS.get(id).fetch(url.href, {headers:c.req.raw.headers});
 });
 app.notFound(c => c.json({ error: 'Not found' }, 404));
 export default app;

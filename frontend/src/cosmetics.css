@@ -152,3 +152,4 @@
     font-size: clamp(36px, 9vw, 48px);
   }
 }
+.trail-gold .race-trail,.trail-gold .garage-preview-trail{display:block;background:linear-gradient(90deg,transparent,#c38b29,#ffe49a);box-shadow:0 0 18px #f6c85b88}.garage-tile-preview.trail-gold{background:radial-gradient(ellipse,#ba8e3550,transparent)}.garage-tile-preview.trail-gold>span{color:#ffdc82}.supporter-name{color:#fbd77b}

@@ -10,9 +10,9 @@ type Message = { type: 'ready' } | { type: 'key'; key: string } | { type: 'remat
 type Player = Racer & { socket: WebSocket; windowStart: number; windowCount: number };
 type Phase = RoomSnapshot['phase'];
 const CAR_IDS = ['mint','sunset','purple','lime','phantom','steppe','thunder','midnight','khan','dawn','cosmic', 'falcon', 'nomad', 'rover', 'sunflare', 'dune', 'cobalt', 'glacier', 'fox', 'streak', 'ghost', 'onyx', 'meteor', 'temple', 'nebula', 'eagle', 'royal', 'aurora-x', 'dragon'] as const;
-const TRAIL_IDS = ['none','ember','steppe','ice','aurora'] as const;
-const STICKER_IDS = ['none','horse','bolt','star'] as const;
-const TITLE_IDS = ['rookie','swift','khan','legend'] as const;
+const TRAIL_IDS = ['none','ember','steppe','ice','aurora','gold'] as const;
+const STICKER_IDS = ['none','horse','bolt','star','crown'] as const;
+const TITLE_IDS = ['rookie','swift','khan','legend','supporter'] as const;
 function safeCosmetic(value: string | null, allowed: readonly string[], fallback: string) {
   return value && allowed.includes(value) ? value : fallback;
 }
@@ -52,6 +52,23 @@ export class RaceRoom {
         }
         return new Response(JSON.stringify({player:rank.publicPlayer(player)}), {headers});
       }
+      if (path === '/account/recovery' && request.method === 'POST') {
+        const result = await rank.createRecovery(cookie);
+        return Response.json(result ?? {error:'session_required'}, {status:!result ? 401 : result.exists ? 409 : 201});
+      }
+      if (path === '/account/recover' && request.method === 'POST') {
+        const raw = await request.text();
+        if (raw.length > 256) return Response.json({error:'invalid_recovery'}, {status:400});
+        let code: unknown;
+        try { code = (JSON.parse(raw) as {code?:unknown}).code; } catch { /* invalid code */ }
+        const result = typeof code === 'string' ? await rank.restoreRecovery(code) : null;
+        if (!result) return Response.json({error:'invalid_recovery'}, {status:400});
+        const secure = new URL(request.url).searchParams.get('secure') === '1';
+        return new Response(JSON.stringify({player:rank.publicPlayer(result.player)}), {headers:{
+          'Content-Type':'application/json', 'Cache-Control':'no-store',
+          'Set-Cookie':'tr_guest='+result.newToken+'; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000'+(secure?'; Secure':'')
+        }});
+      }
       if (path === '/account/logout' && request.method === 'POST') {
         const out=await rank.logout(cookie);
         const secure=new URL(request.url).searchParams.get('secure')==='1';
@@ -75,6 +92,8 @@ export class RaceRoom {
             return Response.json({error:'Invalid provider profile'},{status:400});
           const result=await rank.completeOAuth(cookie,provider,input.state,input.providerSubject,input.displayName);
           if (!result) return Response.json({error:'Expired or invalid OAuth state'},{status:403});
+          this.payments ??= new PaymentService(this.state.storage.sql, rank, this.env);
+          this.state.storage.transactionSync(() => this.payments!.mergeAccount(result.previousPlayerId, String(result.player.id)));
           const headers=new Headers({'Content-Type':'application/json','Cache-Control':'no-store'});
           const secure=new URL(request.url).searchParams.get('secure')==='1';
           headers.append('Set-Cookie','tr_guest='+result.newToken+'; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000'+(secure?'; Secure':''));

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import './AuthPanel.css';
+import { AccountProtection } from './AccountProtection';
+import { paymentSession } from '../payments';
 
 type Providers = {google:boolean;facebook:boolean};
-type Identity = {id:string;name:string;provider:string|null;guest:boolean;points:number;races:number};
+type Identity = {id:string;name:string;provider:string|null;guest:boolean;recoveryReady?:boolean;points:number;races:number};
 const readJSON=async <T,>(path:string,init?:RequestInit):Promise<T>=>{
   const result=await fetch(path,{credentials:'include',...init});
   if(!result.ok)throw Error('Нэвтрэлтийн сервертэй холбогдож чадсангүй.');
@@ -20,6 +22,7 @@ export function AuthPanel(){
       try {
         // Session creation precedes OAuth start to prevent login-CSRF and
         // preserve progress when a guest links their first provider account.
+        await paymentSession();
         const account=await readJSON<{player:Identity}>('/api/account');
         const available=await readJSON<Providers>('/api/auth/providers');
         if(active){setIdentity(account.player);setProviders(available);}
@@ -32,7 +35,7 @@ export function AuthPanel(){
     setBusy(true);setError('');
     try {
       const session=await readJSON<{player:Identity}>('/api/auth/logout',{method:'POST'});
-      setIdentity(session.player);
+      setIdentity(session.player); window.dispatchEvent(new Event('racer-account-changed'));
     }catch{setError('Гарах үед алдаа гарлаа. Дахин оролдоно уу.');}
     finally{setBusy(false);}
   };
@@ -53,6 +56,9 @@ export function AuthPanel(){
         <p className="auth-note">Google/Facebook OAuth app-ийн тохиргоо хараахан идэвхжээгүй. Одоохондоо зочноор уралдаж болно.</p>}
       <p className="auth-note">Нэвтрэлт нь серверийн оноо, багийн бүртгэлийг хамгаална. Хөтчийн хуучин зоос, XP автоматаар шилжихгүй.</p>
     </>}
+    {identity && <AccountProtection ready={!!identity.recoveryReady || !identity.guest} onSaved={() => {
+      void readJSON<{player:Identity}>('/api/account').then(value => {setIdentity(value.player);window.dispatchEvent(new Event('racer-account-changed'));});
+    }}/>}
     {status==='connected'&&identity?.guest===false&&<p role="status" className="auth-success">Account амжилттай холбогдлоо.</p>}
     {status&&status!=='connected'&&<p role="alert" className="auth-error">Нэвтрэлт баталгаажаагүй ({status}). Дахин оролдоно уу.</p>}
     {error&&<p role="alert" className="auth-error">{error}</p>}

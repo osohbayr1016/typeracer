@@ -31,6 +31,18 @@ export async function verifyWireSignature(body: string, header: string, secret: 
   return false;
 }
 
+/** Paid-exclusive appearance is read from receipts, never the browser profile. */
+export function purchasedInventory(sql: SqlStorage, playerId: string): string[] {
+  if (!first(sql.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='payment_orders'"))) return [];
+  const columns = sql.exec('PRAGMA table_info(payment_orders)').toArray();
+  const granted = columns.some(column => column.name === 'grants_json')
+    ? sql.exec('SELECT grants_json FROM payment_orders WHERE player_id=? AND credited=1', playerId).toArray()
+      .flatMap(row => { try { return JSON.parse(String(row.grants_json)) as string[]; } catch { return []; } }) : [];
+  const items = first(sql.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='payment_items'"))
+    ? sql.exec('SELECT item_key FROM payment_items WHERE player_id=?', playerId).toArray().map(row => String(row.item_key)) : [];
+  return [...new Set([...items, ...granted])];
+}
+
 /** Uses the existing SQLite coordinator; no D1 binding or destructive migration. */
 export class PaymentService {
   // Workerd brand-checks fetch receivers; an arrow keeps the global call unbound.
@@ -42,6 +54,11 @@ export class PaymentService {
       intent_id TEXT UNIQUE, checkout_url TEXT, status TEXT NOT NULL DEFAULT 'creating',
       credited INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL,
       checked_at INTEGER NOT NULL DEFAULT 0, UNIQUE(player_id,request_id))`);
+    const columns = sql.exec('PRAGMA table_info(payment_orders)').toArray();
+    if (!columns.some(column => column.name === 'grants_json'))
+      sql.exec("ALTER TABLE payment_orders ADD COLUMN grants_json TEXT NOT NULL DEFAULT '[]'");
+    if (!columns.some(column => column.name === 'label'))
+      sql.exec("ALTER TABLE payment_orders ADD COLUMN label TEXT NOT NULL DEFAULT ''");
     sql.exec(`CREATE INDEX IF NOT EXISTS payment_orders_player ON payment_orders(player_id,created_at)`);
     sql.exec(`CREATE TABLE IF NOT EXISTS payment_items (
       player_id TEXT NOT NULL, item_key TEXT NOT NULL, price INTEGER NOT NULL,
@@ -74,10 +91,12 @@ export class PaymentService {
       'SELECT COALESCE(SUM(coins),0) AS total FROM payment_orders WHERE player_id=? AND credited=1', playerId))?.total ?? 0);
     const spent = Number(first(this.sql.exec(
       'SELECT COALESCE(SUM(price),0) AS total FROM payment_items WHERE player_id=?', playerId))?.total ?? 0);
-    return { balance: credit - spent,
-      owned: this.sql.exec('SELECT item_key FROM payment_items WHERE player_id=?', playerId).toArray().map(row => String(row.item_key)),
-      recent: this.sql.exec('SELECT id,coins,amount,status,credited FROM payment_orders WHERE player_id=? ORDER BY created_at DESC LIMIT 10', playerId)
-        .toArray().map(row => ({ ...row, credited: row.credited === 1 })) };
+    const inventory = purchasedInventory(this.sql, playerId);
+    return { balance: credit - spent, playerId,
+      linked:!!first(this.sql.exec('SELECT provider FROM leaderboard_identities WHERE player_id=? LIMIT 1',playerId)),
+      recoveryReady:!!first(this.sql.exec('SELECT token_hash FROM leaderboard_recovery WHERE player_id=? LIMIT 1',playerId)), supporter: inventory.includes('title:supporter'), owned: inventory,
+      recent: this.sql.exec('SELECT id,coins,amount,status,credited,label,created_at,grants_json FROM payment_orders WHERE player_id=? ORDER BY created_at DESC LIMIT 10', playerId)
+        .toArray().map(row => ({ id: row.id, coins: row.coins, amount: row.amount, status: row.status, label: row.label, createdAt: row.created_at, grants: JSON.parse(String(row.grants_json)), credited: row.credited === 1 })) };
   }
   private async reconcile(order: Row, force = false) {
     if (!order.intent_id || order.credited === 1 || order.status === 'canceled') return order;
@@ -94,23 +113,35 @@ export class PaymentService {
   }
   private async create(playerId: string, input: Record<string, unknown>, origin: string) {
     const pack = COIN_PACKS.find(pack => pack.id === input.packId);
+    if (pack && !pack.testOnly && !this.wallet(playerId).linked && !this.wallet(playerId).recoveryReady)
+      throw new PaymentError('account_protection_required', 403);
     if (!pack || typeof input.requestId !== 'string' || !/^[a-f0-9-]{36}$/i.test(input.requestId))
       throw new PaymentError('invalid_request', 400);
+    if (pack.oneTime && purchasedInventory(this.sql, playerId).includes('title:supporter'))
+      throw new PaymentError('already_owned', 409);
     let order = first(this.sql.exec('SELECT * FROM payment_orders WHERE player_id=? AND request_id=?', playerId, input.requestId));
+    if (!order && pack.oneTime) {
+      order = first(this.sql.exec("SELECT * FROM payment_orders WHERE player_id=? AND pack_id=? AND credited=0 AND status!='canceled' ORDER BY created_at DESC LIMIT 1", playerId, pack.id));
+      if (order?.intent_id) {
+        order = await this.reconcile(order);
+        if (order.credited === 1) throw new PaymentError('already_owned', 409);
+        if (order.status === 'canceled') order = undefined;
+      }
+    }
     if (order && order.pack_id !== pack.id) throw new PaymentError('invalid_request', 409);
     if (!order) {
       const recent = Number(first(this.sql.exec('SELECT COUNT(*) AS n FROM payment_orders WHERE player_id=? AND created_at>?',
         playerId, Date.now() - 60_000))?.n ?? 0);
       if (recent >= 3) throw new PaymentError('rate_limit_exceeded', 429);
-      this.sql.exec('INSERT INTO payment_orders(id,player_id,request_id,pack_id,amount,coins,created_at) VALUES(?,?,?,?,?,?,?)',
-        crypto.randomUUID(), playerId, input.requestId, pack.id, pack.amount, pack.coins, Date.now());
+      this.sql.exec('INSERT INTO payment_orders(id,player_id,request_id,pack_id,amount,coins,created_at,label,grants_json) VALUES(?,?,?,?,?,?,?,?,?)',
+        crypto.randomUUID(), playerId, input.requestId, pack.id, pack.amount, pack.coins, Date.now(), pack.label, JSON.stringify(pack.grants ?? []));
       order = first(this.sql.exec('SELECT * FROM payment_orders WHERE player_id=? AND request_id=?', playerId, input.requestId))!;
     }
     if (order.credited === 1) return { orderId: order.id, paid: true };
     if (order.checkout_url) return { orderId: order.id, url: checkoutUrl(order.checkout_url) };
     if (!order.intent_id) {
       const intent = await this.wire('/payment_intents', 'tr-' + order.id + '-intent', {
-        amount: pack.amount, currency: 'MNT', description: 'TypeRacer · ' + pack.coins + ' coins',
+        amount: Number(order.amount), currency: 'MNT', description: 'TypeRacer · ' + String(order.label || pack.label),
         metadata: { order_id: String(order.id) }
       });
       if (typeof intent.id !== 'string' || !/^pi_[a-zA-Z0-9]+$/.test(intent.id)) throw new PaymentError('wire_unavailable');
@@ -126,6 +157,16 @@ export class PaymentService {
     const url = checkoutUrl(checkout.url);
     this.sql.exec('UPDATE payment_orders SET checkout_url=? WHERE id=?', url, order.id);
     return { orderId: order.id, url };
+  }
+  /** Caller wraps this in the coordinator's synchronous SQLite transaction. */
+  mergeAccount(from: string, to: string) {
+    if (from === to) return;
+    // A browser can retain the same retry key across logout. Keep both receipts
+    // when those guest/account histories are later linked.
+    this.sql.exec("UPDATE payment_orders SET request_id='merged-' || id WHERE player_id=? AND request_id IN (SELECT request_id FROM payment_orders WHERE player_id=?)", from, to);
+    this.sql.exec('UPDATE payment_orders SET player_id=? WHERE player_id=?', to, from);
+    this.sql.exec('DELETE FROM payment_items WHERE player_id=? AND item_key IN (SELECT item_key FROM payment_items WHERE player_id=?)', from, to);
+    this.sql.exec('UPDATE payment_items SET player_id=? WHERE player_id=?', to, from);
   }
   async fetch(request: Request) {
     try {
@@ -145,6 +186,7 @@ export class PaymentService {
       const player = await this.rank.fromCookie(request.headers.get('Cookie'));
       if (!player) return Response.json({ error: 'session_required' }, { status: 401 });
       const playerId = String(player.id);
+      if (path === '/payments/appearance') return Response.json({ owned: purchasedInventory(this.sql, playerId) });
       if (path === '/payments/wallet') {
         if (this.ready()) {
           const pending = this.sql.exec("SELECT * FROM payment_orders WHERE player_id=? AND credited=0 AND intent_id IS NOT NULL AND status!='canceled' ORDER BY created_at DESC LIMIT 5", playerId).toArray();
@@ -158,7 +200,9 @@ export class PaymentService {
         if (!order) return Response.json({ error: 'order_not_found' }, { status: 404 });
         const current = await this.reconcile(order);
         return Response.json({ orderId: id, status: current.status, credited: current.credited === 1,
-          amount: current.amount, coins: current.coins, wallet: this.wallet(playerId) });
+          amount: current.amount, coins: current.coins, label: current.label, grants: JSON.parse(String(current.grants_json)),
+          checkoutUrl: !current.credited && current.status !== 'canceled' && current.checkout_url ? checkoutUrl(current.checkout_url) : undefined,
+          wallet: this.wallet(playerId) });
       }
       if (request.method !== 'POST') return new Response(null, { status: 405 });
       const raw = await request.text();
@@ -176,7 +220,7 @@ export class PaymentService {
         const item = SHOP.find(item => item.kind + ':' + item.id === input.itemKey);
         if (!item) throw new PaymentError('invalid_request', 400);
         const key = item.kind + ':' + item.id;
-        if (!first(this.sql.exec('SELECT item_key FROM payment_items WHERE player_id=? AND item_key=?', playerId, key))) {
+        if (!purchasedInventory(this.sql, playerId).includes(key)) {
           if (this.wallet(playerId).balance < item.price) throw new PaymentError('insufficient_coins', 409);
           // No await between checking the balance and inserting the debit: serialized in this DO.
           this.sql.exec('INSERT INTO payment_items(player_id,item_key,price,created_at) VALUES(?,?,?,?)', playerId, key, item.price, Date.now());
