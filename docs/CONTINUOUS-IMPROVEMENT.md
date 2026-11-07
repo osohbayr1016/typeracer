@@ -8,7 +8,7 @@
 
 **Race screen:** `QuickRacePage` now shows a three-step strip (ЦУГЛУУЛГА → ГАРАА → УРАЛДААН) with one message and one number (players found, seconds to start, current place); every lane shows live WPM and its finishing place; the passage underlines the current word, names the source story, flashes the input red on a wrong key and shows the live place; a finish card (place, WPM, accuracy, coins) stays on the track for 1.5 s (or until Enter) before the results page opens. Results show the story and accept Enter to race again. All existing e2e selectors and layout limits (desktop no-scroll, phone passage-first, centred lights) are kept.
 
-**Verification:** typecheck, unit tests (shared/backend/frontend, including new generator, telemetry and live-room passage tests) and the Chromium suite including `e2e/race-texts.spec.ts`. CI and staging are not run from this change until it is pushed.
+**Verification:** typecheck, unit tests (shared/backend/frontend, including new generator, telemetry and live-room passage tests) and the Chromium suite including `e2e/race-texts.spec.ts`. CI run 42368782260 verified and deployed `1413fb5` to https://mongolian-typeracer-staging.osohoo691016.workers.dev; its live smoke test passed. One Chromium test was retried once on CI because the longer passage let the 100 WPM bot finish before a slow runner's typist (27 instead of 30 coins); the two "earned coins" assertions now accept any finishing-place prize.
 
 ---
 
