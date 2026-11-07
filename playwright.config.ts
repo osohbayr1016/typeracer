@@ -2,6 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
+  // Generated passages are up to ~205 characters; tests type them at human speed.
+  timeout: 60_000,
   retries: process.env.CI ? 1 : 0,
   reporter: 'list',
   use: {

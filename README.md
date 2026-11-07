@@ -8,7 +8,7 @@ A Mongolian Cyrillic typing-race game, built with the same main stack as the aut
 
 ## Features available now
 
-- Mongolian-only typing practice with 48 original Cyrillic prompts including Ө/Ү, WPM, accuracy and personal best.
+- Mongolian-only typing races on **generated passages**: consecutive sentences cut from 22 original Mongolian short stories (so every text has context), plus a Monkeytype-style random-words mode for solo practice. WPM, accuracy and personal best. See [docs/RACE-TEXTS.md](docs/RACE-TEXTS.md).
 - Browser-local practice XP, earned coins, fixed-price cosmetics store, original six-car collection expansion (eleven total), equipped trails/titles/stickers and an eight-tier free seasonal reward pass.
 - Friend-only guest rooms, 2–6 players, 8-character invite code, Ready, countdown and real-time race progress.
 - Server-computed race progress, per-socket abuse limits and same-origin browser API protection.

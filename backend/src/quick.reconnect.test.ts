@@ -175,7 +175,8 @@ describe('Durable Object live quick race reconnect', () => {
     expect(first.socket.sent.filter(m=>m.type==='quick-result').at(-1)).toMatchObject({place:null,elapsedMs:RACE_DURATION_MS,wpm:0});
   });
   it('times bot finishes from their exact pace rather than the next simulation tick',async()=>{
-    const first=await connect(new QuickMatchmaker());vi.advanceTimersByTime(60000);
+    // The slowest roster bot (39 WPM) needs under 65 s for the longest generated passage.
+    const first=await connect(new QuickMatchmaker());vi.advanceTimersByTime(90000);
     const state=first.socket.sent.filter(m=>m.type==='state').at(-1)!;
     const size=characters((state.prompt as {text:string}).text).length;
     for(const bot of (state.players as Array<{bot:boolean;name:string;completedAt:number}>).filter(p=>p.bot)){

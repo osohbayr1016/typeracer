@@ -1,5 +1,5 @@
 import {
-  choosePrompt, characters, ROOM_CAPACITY, RACE_DURATION_MS, START_COUNTDOWN_MS, PROMPTS,
+  generatePassage, characters, ROOM_CAPACITY, RACE_DURATION_MS, START_COUNTDOWN_MS,
   type Racer, type RoomSnapshot, wordsPerMinute
 } from '@typeracer/shared';
 import { acceptKeystroke, safePlayerName } from './logic';
@@ -23,7 +23,7 @@ export class RaceRoom {
     return this.quick ??= new QuickMatchmaker(this.state.storage);
   }
   private sockets = new Map<WebSocket, Player>();
-  private prompt = choosePrompt('mn');
+  private prompt = generatePassage({ mode: 'story' });
   private phase: Phase = 'waiting';
   private startAt: number | null = null;
   private matchId = crypto.randomUUID();
@@ -226,8 +226,8 @@ export class RaceRoom {
     if (!message || typeof message !== 'object') return;
     if (message.type === 'rematch') {
       if (this.phase !== 'finished' || message.matchId !== this.matchId) return;
-      const prompts = PROMPTS.mn.filter(prompt => prompt.id !== this.prompt.id);
-      this.prompt = prompts[Math.floor(Math.random() * prompts.length)] ?? choosePrompt('mn');
+      // A rematch always gets a passage from a different story.
+      this.prompt = generatePassage({ mode: 'story', exclude: this.prompt.text });
       this.matchId = crypto.randomUUID();
       this.phase = 'waiting';
       this.startAt = null;

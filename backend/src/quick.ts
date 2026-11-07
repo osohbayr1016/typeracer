@@ -1,5 +1,5 @@
 import {
-  choosePrompt, characters, RACE_DURATION_MS, START_COUNTDOWN_MS, wordsPerMinute,
+  generatePassage, characters, RACE_DURATION_MS, START_COUNTDOWN_MS, wordsPerMinute,
   advanceTyping, typingKey, premiumCosmeticAllowed, type Prompt, type Racer, type RoomSnapshot
 } from '@typeracer/shared';
 import { safePlayerName } from './logic';
@@ -169,8 +169,11 @@ export class QuickMatchmaker {
     socket.addEventListener('error', () => this.leave(socket));
   }
 
+  private lastPromptText = '';
   private newRace(): QuickRace {
-    const prompt = choosePrompt('mn');
+    // A fresh story excerpt per race; never the same passage twice in a row.
+    const prompt = generatePassage({ mode: 'story', exclude: this.lastPromptText });
+    this.lastPromptText = prompt.text;
     const race: QuickRace = {
       id: crypto.randomUUID(), prompt, letters: characters(prompt.text), phase: 'waiting',
       humans: new Set(), bots: [], startAt: null,

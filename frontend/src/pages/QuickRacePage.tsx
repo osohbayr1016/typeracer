@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import {
-  progressPercent, characters, type RoomSnapshot, type Racer, type TypingProgress, type InputAcknowledgement
+  characters, type RoomSnapshot, type Racer, type TypingProgress, type InputAcknowledgement
 } from '@typeracer/shared';
 import { CARS, raceCarIcon, type Skin } from './cars';
 import { type Profile } from '../progression';
@@ -11,6 +11,7 @@ import { paymentSession } from '../payments';
 import { raceCanType } from './raceStartSignal';
 import { readRaceClock, useRaceStart, type ServerClock } from './useRaceStart';
 import { type QuickRaceOutcome, type QuickResult } from './quickResultsModel';
+import { finishPlace, laneWpm, liveRank, placeLabel } from './raceView';
 import './QuickRacePage.css';
 
 export type { QuickResult } from './quickResultsModel';
@@ -22,18 +23,22 @@ type Props = {
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 const RESUME_KEY = 'typeracer.quick.resume.v1';
 const BOT_CARS: Skin[] = ['mint','steppe','thunder'];
+/** The finish moment stays on the track briefly (place, speed, prize) before the full results page opens. */
+export const FINISH_HOLD_MS = 1500;
+const STEPS = ['ЦУГЛУУЛГА', 'ГАРАА', 'УРАЛДААН'] as const;
 
 function carOf(player: Racer, index: number): Skin {
   return player.car && player.car in CARS ? player.car as Skin : BOT_CARS[index % BOT_CARS.length];
 }
-const QuickLane = memo(function QuickLane({ name, mine, rank, done, bot, connected, car, trail, sticker, title }: {
-  name: string; mine: boolean; rank: number; done: number; bot: boolean; connected: boolean; car: Skin; trail?: string; sticker?: string; title?: string;
+const QuickLane = memo(function QuickLane({ name, mine, rank, done, bot, connected, car, trail, sticker, title, wpm, place, live }: {
+  name: string; mine: boolean; rank: number; done: number; bot: boolean; connected: boolean; car: Skin;
+  trail?: string; sticker?: string; title?: string; wpm: number; place: number | null; live: boolean;
 }) {
-  return <div className={'quick-lane'+(mine?' me':'')}>
+  return <div className={'quick-lane'+(mine?' me':'')+(place?' finished':'')}>
     <div className="quick-lane-meta">
       <span className="quick-lane-order">{rank}</span>
       <div><strong>{title === 'supporter' && <span className="supporter-name" aria-label="Дэмжигч">♛ </span>}{name}{mine ? ' · ТА' : ''}</strong>
-        <small>{bot ? 'БОТ' : !connected ? 'ХОЛБОЛТ ТАСАРСАН' : 'ТОГЛОГЧ'}</small></div>
+        <small>{bot ? 'БОТ' : !connected ? 'ХОЛБОЛТ ТАСАРСАН' : 'ТОГЛОГЧ'}{live && <i className="quick-lane-mini"> · {place ? placeLabel(place) + ' · ' : ''}{wpm} WPM</i>}</small></div>
       <b>{Math.round(done)}%</b>
     </div>
     <div className="quick-road">
@@ -42,10 +47,14 @@ const QuickLane = memo(function QuickLane({ name, mine, rank, done, bot, connect
         <span className={'quick-car-sprite trail-' + (trail || 'none')} style={{ transform: `translate3d(-${done}%,0,0)` }}>
           {trail === 'gold' && <span className="quick-paid-trail" aria-hidden="true"/>}
           <img src={raceCarIcon(car)} alt="" draggable={false} decoding="async"/>
-          {sticker === 'crown' && <b className="quick-paid-sticker" aria-hidden="true">♛</b>}
+          {sticker === 'crown' && <i className="quick-paid-sticker" aria-hidden="true">♛</i>}
         </span>
       </span>
       <span className="quick-flag" aria-hidden="true"/>
+    </div>
+    <div className="quick-lane-telemetry">
+      {place ? <em className="quick-lane-place">{placeLabel(place)} байр</em> : <em className="quick-lane-place muted">{live ? 'уралдаж байна' : 'бэлэн'}</em>}
+      <span className="quick-lane-wpm">{live ? wpm : '–'}<small>WPM</small></span>
     </div>
   </div>;
 });
@@ -57,6 +66,7 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
   const [myId, setMyId] = useState('');
   const [result, setResult] = useState<QuickResult | null>(null);
   const [clock, setClock] = useState<ServerClock | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [prediction, setPrediction] = useState<TypingProgress | null>(null);
   const [syncSlow, setSyncSlow] = useState(false);
@@ -65,6 +75,7 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
   const socketRef = useRef<WebSocket | null>(null);
   const rewardRef = useRef(onReward);
   const finishRef = useRef(onFinish);
+  const finishNow = useRef<(() => void) | null>(null);
   const latestSnapshot = useRef<RoomSnapshot | null>(null);
   const latestMyId = useRef('');
   const awardedMatches = useRef(new Set<string>());
@@ -89,14 +100,26 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
     return () => viewport?.removeEventListener('resize', update);
   }, []);
 
+  // One shared race clock drives the countdown number and every lane's live WPM.
+  const phase = snapshot?.phase;
+  useEffect(() => {
+    if (phase !== 'countdown' && phase !== 'racing') return;
+    const tick = () => setNow(readRaceClock(clock));
+    tick();
+    const id = window.setInterval(tick, 250);
+    return () => window.clearInterval(id);
+  }, [phase, clock]);
+
   useEffect(() => {
     let disposed = false;
     let receivedResult = false;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let finishTimer: ReturnType<typeof setTimeout> | null = null;
     const controller = new AbortController();
     const accountTimeout = setTimeout(() => controller.abort(), 3000);
     setConnection('connecting'); setError(''); setResult(null); setSnapshot(null); setMyId('');
     latestSnapshot.current = null;
+    finishNow.current = null;
     setClock(null);
     const base = API_BASE || window.location.origin;
     const params = new URLSearchParams({ input:'2', name: nickname, car, trail: profile.trail,
@@ -171,8 +194,19 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
           }
           setResult(data);
           if (latestSnapshot.current && latestMyId.current) {
-            finishRef.current({ result: data, snapshot: latestSnapshot.current,
-              playerId: latestMyId.current, at: Date.now() });
+            const playerId = latestMyId.current;
+            const snapshotAtResult = latestSnapshot.current;
+            const open = () => {
+              if (finishTimer) clearTimeout(finishTimer);
+              finishTimer = null;
+              finishNow.current = null;
+              // The newest snapshot shows how the others finished during the hold.
+              finishRef.current({ result: data, snapshot: latestSnapshot.current ?? snapshotAtResult, playerId, at: Date.now() });
+            };
+            // Let the racer see their place on the track, then open the full results.
+            if (finishTimer) clearTimeout(finishTimer);
+            finishTimer = setTimeout(open, FINISH_HOLD_MS);
+            finishNow.current = open;
           }
         }
       } catch { setError('Серверийн хариу ойлгомжгүй байна.'); }
@@ -198,6 +232,8 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
       controller.abort();
       clearTimeout(accountTimeout);
       if (retryTimer) window.clearTimeout(retryTimer);
+      if (finishTimer) clearTimeout(finishTimer);
+      finishNow.current = null;
       socketRef.current = null;
       socket?.close();
     };
@@ -206,12 +242,25 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attempt]);
 
+  // Enter skips the finish hold, like pressing the results button.
+  useEffect(() => {
+    if (!result) return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Enter') finishNow.current?.(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [result]);
+
   const self = snapshot?.players.find(p => p.id === myId);
   const { signal, canType } = useRaceStart(snapshot?.phase, snapshot?.startAt, clock);
   const filled = snapshot?.players.length ?? 0;
-  const myRank = snapshot && self ? 1 + snapshot.players.filter(p => p.id !== myId &&
-    (p.progress > self.progress || (p.progress === self.progress &&
-    p.completedAt !== null && (self.completedAt === null || p.completedAt < self.completedAt)))).length : null;
+  const humans = snapshot?.players.filter(p => !p.bot).length ?? 0;
+  const letterCount = snapshot ? characters(snapshot.prompt.text).length : 1;
+  const underway = snapshot?.phase === 'racing' || snapshot?.phase === 'finished';
+  const myRank = snapshot && self ? liveRank(self, snapshot.players) : null;
+  const myPlace = snapshot && self ? finishPlace(self, snapshot.players) : null;
+  const secondsToStart = snapshot?.phase === 'countdown' && snapshot.startAt
+    ? Math.max(0, Math.ceil((snapshot.startAt - now) / 1000)) : null;
+  const stepIndex = snapshot?.phase === 'waiting' ? 0 : snapshot?.phase === 'countdown' ? 1 : 2;
   const isRacing = canType && !result && connection === 'connected';
   const sendKey = useCallback((key: string) => {
     if (!reliableVersion.current || !reliableInput.current) return sendRaceKey(socketRef.current, key);
@@ -244,26 +293,31 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
 
     {snapshot && <div className={'quick-phase phase-'+snapshot.phase}
       data-testid="quick-phase" data-phase={snapshot.phase} role="status" aria-live="polite">
-      {snapshot.phase === 'waiting' ? <>
-        <span className="quick-phase-badge">1 / 2</span>
-        <div className="quick-phase-copy">
+      <ol className="quick-steps" aria-hidden="true">
+        {STEPS.map((label, index) => <li key={label}
+          className={index < stepIndex ? 'done' : index === stepIndex ? 'active' : undefined}>{label}</li>)}
+      </ol>
+      <div className="quick-phase-copy">
+        {snapshot.phase === 'waiting' ? <>
           <strong>ТОГЛОГЧ ЦУГЛУУЛЖ БАЙНА</strong>
-          <small>Хүн хүрэлцэхгүй бол бот нэг нэгээр нэгдэнэ. Одоохондоо бичихгүй.</small>
-        </div>
-        <span className="quick-phase-value">{filled}<em>/5</em></span>
-      </> : snapshot.phase === 'countdown' ? <>
-        <span className="quick-phase-badge">2 / 2</span>
-        <div className="quick-phase-copy"><strong>ГАРААНД БЭЛЭН</strong>
-          <small>Гэрэл ногоон болмогц бичиж эхлээрэй.</small></div>
-      </> : snapshot.phase === 'racing' ? <>
-        <span className="quick-phase-live">● ЭХЭЛЛЭЭ</span>
-        <div className="quick-phase-copy"><strong>ОДОО БИЧЭЭРЭЙ!</strong>
-          <small>Зөв бичих бүрт таны машин урагшилна.</small></div>
-        <span className="quick-phase-rank">{myRank ? 'МИНИЙ БАЙР: ' + myRank + '/5' : 'УРАЛДАЖ БАЙНА'}</span>
-      </> : <>
-        <span className="quick-phase-live">✓ БАРИА</span>
-        <strong className="quick-phase-copy">УРАЛДААН ДУУССАН</strong>
-      </>}
+          <small>Хүн хүрэлцэхгүй бол бот нэг нэгээр нэгдэнэ. Одоохондоо текстээ уншиж бэлдээрэй.</small>
+        </> : snapshot.phase === 'countdown' ? <>
+          <strong>ГАРААНД БЭЛЭН</strong>
+          <small>Гэрэл ногоон болмогц бичиж эхлээрэй.</small>
+        </> : snapshot.phase === 'racing' ? <>
+          <strong>{myPlace ? 'БАРИАНД ОРЛОО' : 'ОДОО БИЧЭЭРЭЙ!'}</strong>
+          <small>{myPlace ? 'Бусад уралдагчдыг хүлээж байна…' : 'Зөв бичих бүрт таны машин урагшилна.'}</small>
+        </> : <>
+          <strong>УРАЛДААН ДУУССАН</strong>
+          <small>Үр дүн бэлэн боллоо.</small>
+        </>}
+      </div>
+      <span className="quick-phase-value">
+        {snapshot.phase === 'waiting' ? <>{filled}<em>/5</em></>
+          : snapshot.phase === 'countdown' ? <>{secondsToStart ?? '…'}<em>сек</em></>
+          : snapshot.phase === 'racing' ? <>{myPlace ? '#' + myPlace : myRank ? '#' + myRank : '—'}<em>{myPlace ? 'бариа' : 'байр'}</em></>
+          : <>✓</>}
+      </span>
     </div>}
 
     {snapshot && <section className="quick-track" aria-label="Таван тоглогчийн байрлал">
@@ -277,34 +331,52 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
         </div>
         <strong>{signal==='red'?'ХҮЛЭЭ':signal==='yellow'?'БЭЛД':'ЭХЭЛ!'}</strong>
       </div>}
+      {result && <div className="quick-finish-card" role="status" aria-live="assertive" data-testid="quick-finish">
+        <span className="quick-finish-kicker">{result.place ? 'БАРИАНД ОРЛОО' : 'ХУГАЦАА ДУУССАН'}</span>
+        <strong className="quick-finish-place">{result.place ? placeLabel(result.place) + ' байр' : 'Дуусаагүй'}</strong>
+        <div className="quick-finish-stats">
+          <span><b>{result.wpm}</b> WPM</span>
+          <span><b>{result.accuracy}%</b> нарийвчлал</span>
+          <span><b>◈ +{result.coins}</b> зоос</span>
+        </div>
+        <button type="button" className="quick-finish-open" onClick={() => finishNow.current?.()}>ҮР ДҮН ХАРАХ → <kbd>Enter</kbd></button>
+      </div>}
       <div className="quick-track-head">
         <span>УРАЛДАГЧИД</span>
-        <strong>{filled} / 5 · {snapshot.players.filter(p => !p.bot).length} ХҮН · {snapshot.players.filter(p => p.bot).length} БОТ</strong>
+        <strong>{filled} / 5 · {humans} ХҮН · {filled - humans} БОТ</strong>
       </div>
       <div className="quick-lanes">
         {snapshot.players.map((player,index) => {
           const which = carOf(player,index);
-          const shown = player.id === myId && prediction ? prediction.progress : player.progress;
-          const done = Math.min(100, shown / characters(snapshot.prompt.text).length * 100);
-          const rank = 1 + snapshot.players.filter(p => p.id !== player.id &&
-            (p.progress > player.progress || (p.progress === player.progress &&
-             p.completedAt !== null && (player.completedAt === null || p.completedAt < player.completedAt)))).length;
-          return <QuickLane key={player.id} name={player.name} mine={player.id === myId}
-            rank={snapshot.phase === 'racing' || snapshot.phase === 'finished' ? rank : index + 1}
-            done={done} bot={!!player.bot} connected={player.connected !== false} car={which} trail={player.trail} sticker={player.sticker} title={player.title}/>;
+          const mine = player.id === myId;
+          const shown = mine && prediction ? prediction.progress : player.progress;
+          const done = Math.min(100, shown / letterCount * 100);
+          const place = underway ? finishPlace(player, snapshot.players) : null;
+          const wpm = underway ? laneWpm(mine && prediction && player.completedAt === null
+            ? { progress: prediction.progress, completedAt: null } : player, snapshot.startAt, now) : 0;
+          return <QuickLane key={player.id} name={player.name} mine={mine}
+            rank={underway ? liveRank(player, snapshot.players) : index + 1}
+            done={done} bot={!!player.bot} connected={player.connected !== false} car={which}
+            trail={player.trail} sticker={player.sticker} title={player.title}
+            wpm={wpm} place={place} live={underway}/>;
         })}
         {snapshot.phase === 'waiting' && Array.from({length: Math.max(0,5 - filled)},(_,i) =>
           <div className="quick-empty" key={'empty'+i}><span>+</span> УРАЛДАГЧ ХҮЛЭЭЖ БАЙНА</div>)}
       </div>
     </section>}
 
-    {snapshot && snapshot.phase !== 'finished' && <QuickTypingPanel
+    {snapshot && <QuickTypingPanel
       key={snapshot.matchId || snapshot.prompt.id}
       text={snapshot.prompt.text}
+      title={snapshot.prompt.title}
+      part={snapshot.prompt.part}
       prediction={prediction}
       syncing={syncSlow}
       enabled={isRacing}
       available={connection === 'connected'}
+      finished={!!myPlace || !!result?.place}
+      ended={snapshot.phase === 'finished' || (!!result && result.place === null)}
+      rank={myPlace ?? myRank}
       canAcceptKey={canAcceptKey}
       clock={clock}
       serverProgress={self?.progress || 0}
@@ -314,19 +386,13 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
       sendKey={sendKey}
     />}
 
-    {result && <section className="quick-result-panel" aria-label="Уралдааны үр дүн">
-      <div className="quick-result-top">{result.place ? 'УРАЛДААНЫГ ДУУСГАЛАА' : 'ХУГАЦАА ДУУССАН'}</div>
-      <div className="quick-result-score"><div><small>БАЙР</small><strong>{result.place ? '#'+result.place : '—'}</strong></div>
-        <div><small>ХУРД</small><strong>{result.wpm}<em> WPM</em></strong></div>
-        <div><small>НАРИЙВЧЛАЛ</small><strong>{result.accuracy}%</strong></div>
-        <div><small>ШАГНАЛ</small><strong>◈ {result.coins}</strong></div></div>
-      <p>Дуусгасан байрнаас хамаарч тоглоомын зоос олгоно. Бүртгэлгүй учир зоос, XP энэ төхөөрөмжид хадгалагдана. Албан ёсны рейтинг биш.</p>
+    {snapshot?.phase === 'finished' && !result && <section className="quick-result-panel" aria-label="Уралдаан дууссан">
+      <div className="quick-result-top">УРАЛДААН ДУУССАН</div>
       <div className="quick-result-actions">
-        <button className="primary-button" onClick={() => setAttempt(n => n + 1)}>▶ ДАХИН УРАЛДАХ →</button>
+        <button className="primary-button" onClick={() => setAttempt(n => n + 1)}>▶ ДАХИН УРАЛДАХ</button>
         <button className="secondary-button" onClick={onGarage}>ГАРАЖ</button>
-        <button className="secondary-button" onClick={onBack}>БУЦАХ</button>
       </div>
     </section>}
-    <div className="quick-footer-note">Автоматаар хүн хайна · Хүрэлцэхгүй бол ботоор нөхнө · Бодит болон бот тоглогчдыг тусад нь тэмдэглэнэ · Уралдааны зоос бодит мөнгө биш.</div>
+    <div className="quick-footer-note">Хүн хүрэлцэхгүй бол бот нэгдэнэ · Бот тоглогчдыг тусад нь тэмдэглэнэ · Уралдааны зоос бодит мөнгө биш.</div>
   </div>;
 }

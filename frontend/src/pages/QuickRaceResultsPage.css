@@ -5,6 +5,10 @@
 .qr-live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #f66f4f; }
 .qr-heading h1 { font: 900 clamp(32px,5vw,64px)/1.05 var(--font-display); letter-spacing: -.035em; margin: 13px 0 8px; }
 .qr-heading p { color: #b2baba; line-height: 1.5; font-size: 13px; margin: 0; }
+.qr-heading .qr-text-source { display: inline-block; margin-top: 10px; padding: 5px 9px; border: 1px solid #45524f; background: #1d2628;
+  color: #d8e2dc; font-size: 10px; font-weight: 850; letter-spacing: .4px; }
+.qr-actions .qr-play-again em { display: inline-flex; align-items: center; gap: 8px; font-style: normal; }
+.qr-actions .qr-play-again kbd { font: 800 9px var(--font-body); padding: 2px 6px; border-radius: 3px; background: #ffffff2a; letter-spacing: .3px; }
 .qr-event-mark { border-left: 2px solid #f25f45; padding: 10px 0 6px 17px; color: #858e90; font: 800 13px/1.1 var(--font-display); letter-spacing: 1.8px; white-space: nowrap; }
 .qr-event-mark strong { color: #f6f5ef; font-size: 25px; margin-left: 5px; }
 .qr-layout { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(288px, .9fr); gap: 16px; align-items: start; }

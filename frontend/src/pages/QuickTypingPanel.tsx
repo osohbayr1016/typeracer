@@ -2,14 +2,23 @@ import { memo, useEffect, useMemo, useRef, useState, type ChangeEvent, useLayout
 import { accuracyPercent, characters, wordsPerMinute, type TypingProgress } from '@typeracer/shared';
 import { applyLocalKey, INITIAL_LOCAL_PROGRESS, type LocalProgress } from './typingSync';
 import { readRaceClock, type ServerClock } from './useRaceStart';
+import { currentWordRange } from './raceView';
 
 
 type Props = {
   text: string;
+  /** Source story title and sentence range, so the racer knows what they are reading. */
+  title?: string;
+  part?: string;
   prediction?: TypingProgress | null;
   syncing?: boolean;
   enabled: boolean;
   available: boolean;
+  /** The racer already crossed the finish line; the passage stays as a record. */
+  finished?: boolean;
+  /** The race is over for everyone (or this racer timed out) without a finish. */
+  ended?: boolean;
+  rank?: number | null;
   canAcceptKey: () => boolean;
   clock: ServerClock | null;
   serverProgress: number;
@@ -25,7 +34,8 @@ type Props = {
  * Mount with key={matchId} to reset local state between races.
  */
 export const QuickTypingPanel = memo(function QuickTypingPanel({
-  text, prediction, syncing, enabled, available, canAcceptKey, clock, serverProgress, serverStrokes, serverMistakes, startedAt, sendKey
+  text, title, part, prediction, syncing, enabled, available, finished, ended, rank, canAcceptKey, clock,
+  serverProgress, serverStrokes, serverMistakes, startedAt, sendKey
 }: Props) {
   const letters = useMemo(() => characters(text), [text]);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -87,6 +97,8 @@ export const QuickTypingPanel = memo(function QuickTypingPanel({
   }
 
   const shown = prediction?.progress ?? Math.max(serverProgress, local.progress);
+  const wrong = (prediction?.wrong ?? local.wrong) && enabled;
+  const [wordStart, wordEnd] = useMemo(() => currentWordRange(letters, shown), [letters, shown]);
   useLayoutEffect(() => {
     const phrase = phraseRef.current;
     const cursor = phrase?.children[shown] as HTMLElement | undefined;
@@ -103,23 +115,29 @@ export const QuickTypingPanel = memo(function QuickTypingPanel({
   const seconds = startedAt ? Math.max(1, now - startedAt) : 1;
   const wpm = startedAt ? wordsPerMinute(shown, Math.max(1000, seconds)) : 0;
   const accuracy = accuracyPercent(Math.max(0, strokes - mistakes), strokes);
+  const complete = shown >= letters.length;
+  const over = finished || complete || ended;
 
-  return <section className={'quick-type-panel'+(enabled ? ' active' : ' prepare')} data-testid="quick-type-panel"
+  return <section className={'quick-type-panel'+(enabled ? ' active' : ' prepare')+(finished || complete ? ' done' : '')} data-testid="quick-type-panel"
     aria-label="Монгол хэлээр бичих текст">
     <div className="quick-type-head">
-      <strong>{enabled ? 'ОДОО БИЧЭЭРЭЙ' : 'УРАЛДААНЫ ТЕКСТ · УНШИЖ БЭЛДЭЭРЭЙ'}</strong>
+      <strong>{finished || complete ? '✓ БАРИАНД ОРЛОО' : ended ? 'ХУГАЦАА ДУУССАН' : enabled ? 'ОДОО БИЧЭЭРЭЙ' : 'УРАЛДААНЫ ТЕКСТ · УНШИЖ БЭЛДЭЭРЭЙ'}</strong>
+      {title && <em className="quick-type-source" title="Энэ уралдааны текст аль өгүүллэгээс авсан бэ">«{title}»{part ? ' · ' + part : ''}</em>}
       <span>{shown} / {letters.length} тэмдэгт</span>
     </div>
     <div ref={phraseRef} className="quick-phrase" role="group" aria-label="Бичих текст" onClick={() => { if (available) inputRef.current?.focus(); }}>
-      {letters.map((letter, i) => <span key={i}
-        className={i < shown ? 'typed' : i === shown ? ((prediction?.wrong ?? local.wrong) && enabled ? 'incorrect' : 'cursor') : undefined}>
-        {letter}
-      </span>)}
+      {letters.map((letter, i) => {
+        const classes: string[] = [];
+        if (i < shown) classes.push('typed');
+        else if (i === shown) classes.push(wrong ? 'incorrect' : 'cursor');
+        if (enabled && i >= wordStart && i < wordEnd && i >= shown) classes.push('word');
+        return <span key={i} className={classes.length ? classes.join(' ') : undefined}>{letter}</span>;
+      })}
     </div>
-    <input ref={inputRef} className="quick-type-input" aria-label="Шууд уралдааны бичих талбар"
+    <input ref={inputRef} className={'quick-type-input'+(wrong ? ' wrong' : '')} aria-label="Шууд уралдааны бичих талбар"
       autoCapitalize="off" autoComplete="off" autoCorrect="off" spellCheck={false}
       inputMode="text" disabled={!available} data-race-enabled={enabled} onChange={onInput}
-      aria-describedby="quick-keyboard-hint"
+      aria-describedby="quick-keyboard-hint" aria-invalid={wrong || undefined}
       onCompositionStart={() => { compositionBeforeStart.current = !canAcceptKey(); }}
       onCompositionEnd={event => {
         const value = event.currentTarget.value;
@@ -128,12 +146,13 @@ export const QuickTypingPanel = memo(function QuickTypingPanel({
         compositionBeforeStart.current = false;
       }}
       onPaste={event => event.preventDefault()} onDrop={event => event.preventDefault()}
-      placeholder={enabled ? 'Энд бичиж эхлээрэй...' : 'Энд дарж keyboard-оо бэлдээрэй'} />
+      placeholder={finished || complete ? 'Барианд орлоо!' : ended ? 'Уралдаан дууслаа' : enabled ? 'Энд бичиж эхлээрэй...' : 'Энд дарж keyboard-оо бэлдээрэй'} />
     {syncing && <p className="quick-sync-note" role="status">Холболт удаан байна. Бичсэн үсгийг баталгаажуулж байна…</p>}
-    {enabled ? <div className="quick-metrics">
+    {enabled || over ? <div className="quick-metrics">
       <div title="Зөв тэмдэгт ÷ 5 ÷ минут. Эхний секундэд жигдрүүлж харуулна."><b>{wpm}</b><small>ҮГ/МИН</small></div>
       <div title="Зөв оролдлого ÷ бүх оролдлого. Алдаа зассан ч өмнөх алдаа тооцогдоно."><b>{accuracy}%</b><small>НАРИЙВЧЛАЛ</small></div>
       <div><b>{(seconds / 1000).toFixed(1)}s</b><small>ХУГАЦАА</small></div>
+      <div className="quick-metric-rank"><b>{rank ? '#' + rank : '—'}</b><small>БАЙР</small></div>
     </div> : <p className="quick-ready-hint" id="quick-keyboard-hint">Энд дарж keyboard-оо нээгээрэй. Ногоон гэрэл асахаас өмнөх бичилт тооцогдохгүй.</p>}
   </section>;
 });

@@ -19,8 +19,8 @@ import { loadProfile, saveProfile, raceReward, awardQuickRace, buyItem, claimRew
 import { CARS, raceCarIcon, type Skin } from './pages/cars';
 import { readRaceClock, useRaceStart, type ServerClock } from './pages/useRaceStart';
 import {
-  accuracyPercent, characters, choosePrompt, normalizeText, progressPercent,
-  PROMPTS, wordsPerMinute, type Language, type Prompt, type RoomSnapshot
+  accuracyPercent, characters, choosePrompt, generatePassage, normalizeText, progressPercent,
+  PROMPTS, wordsPerMinute, type Language, type Prompt, type RoomSnapshot, type TextMode
 } from '@typeracer/shared';
 
 type Page = 'coins' | 'home' | 'play' | 'quickRace' | 'quickResults' | 'profile' | 'leaderboard' | 'teams' | 'stats' | 'friends' | 'race' | 'garage' | 'results' | 'shop' | 'season' | 'multiplayer' | 'multiplayerRace';
@@ -85,7 +85,9 @@ export function App() {
   const [page, setPage] = useState<Page>(routeFromLocation);
   const [countdown, setCountdown] = useState<number | null>(() => routeFromLocation() === 'race' ? 3 : null);
   const [language, setLanguage] = useState<Language>('mn');
-  const [prompt, setPrompt] = useState<Prompt>(() => choosePrompt('mn', 0));
+  // Solo practice: a story excerpt with context by default, or random words like a word-drill.
+  const [textMode, setTextMode] = useState<TextMode>('story');
+  const [prompt, setPrompt] = useState<Prompt>(() => generatePassage({ mode: 'story' }));
   const [typed, setTyped] = useState('');
   const [strokes, setStrokes] = useState(0);
   const [mistakes, setMistakes] = useState(0);
@@ -169,10 +171,12 @@ export function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [page, finishedAt, language, prompt.id]);
-  function resetPractice(nextLanguage = language, shouldFocus = true) {
+  function resetPractice(nextLanguage = language, shouldFocus = true, mode: TextMode = textMode) {
     const pool = PROMPTS[nextLanguage].filter(item => item.id !== prompt.id);
-    const next = pool[Math.floor(Math.random() * pool.length)] || choosePrompt(nextLanguage);
+    const next = nextLanguage === 'mn' ? generatePassage({ mode, exclude: prompt.text })
+      : pool[Math.floor(Math.random() * pool.length)] || choosePrompt(nextLanguage);
     setLanguage(nextLanguage);
+    setTextMode(mode);
     setPrompt(next);
     setTyped(''); setStrokes(0); setMistakes(0); setStartedAt(null); setFinishedAt(null); setNow(Date.now());
     if (shouldFocus) window.setTimeout(() => inputRef.current?.focus(), 10);
@@ -393,7 +397,13 @@ export function App() {
           <div className="race-panel-head">
             <div className="race-title"><span className="race-indicator" aria-hidden="true"/> <h2>УРАЛДААНЫ ЗАМ</h2><span className="race-chip">ГАНЦААРАА</span></div>
             <div className="panel-actions">
-<span className="language-note">🇲🇳 МОНГОЛ ХЭЛ</span>
+              <span className="language-note">🇲🇳 МОНГОЛ ХЭЛ</span>
+              <div className="segmented" role="group" aria-label="Текстийн төрөл">
+                <button type="button" className={textMode === 'story' ? 'active' : ''} aria-pressed={textMode === 'story'}
+                  onClick={() => resetPractice(language, true, 'story')}>ӨГҮҮЛЛЭГ</button>
+                <button type="button" className={textMode === 'words' ? 'active' : ''} aria-pressed={textMode === 'words'}
+                  onClick={() => resetPractice(language, true, 'words')}>ҮГС</button>
+              </div>
               <button className="text-button" onClick={() => resetPractice()} aria-label="Шинэ текст">↻ Шинэ текст</button>
             </div>
           </div>
@@ -411,7 +421,10 @@ export function App() {
             <div className="track-note">БУСАД МАШИНУУД БОЛ ЖИШИГ ХУРД, БОДИТ ТОГЛОГЧ БИШ</div>
           </div>
           <div className="typing-area" onClick={() => { if (countdown === null) inputRef.current?.focus(); }}>
-            <div className="typing-label"><span><i aria-hidden="true">//</i> МОНГОЛ ӨГҮҮЛБЭР</span><span>{prompt.id.toUpperCase()} · {correct} / {target.length}</span></div>
+            <div className="typing-label">
+              <span><i aria-hidden="true">//</i> {prompt.title ? <>«{prompt.title.toUpperCase()}»{prompt.part ? ' · ' + prompt.part : ''}</> : 'МОНГОЛ ӨГҮҮЛБЭР'}</span>
+              <span>{correct} / {target.length}</span>
+            </div>
             <PhraseView prompt={prompt} typed={typed}/>
             <div className="typing-input-row">
               <input ref={inputRef} autoFocus={false} readOnly={countdown !== null} autoCapitalize="off" autoCorrect="off" autoComplete="off"

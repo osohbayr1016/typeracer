@@ -1,3 +1,17 @@
+## 2026-11-07 — Generated story passages and a clearer public race screen (working tree)
+
+**User request:** sync the working tree, make the race ("battle") page easier to understand in the style of a classic typing-race screen, and replace the handful of stored sentences with generated texts that have context (story paragraphs) or Monkeytype-style words. Also smooth the home → play → race → results → race-again loop.
+
+**Sync:** local `main` was six commits behind `origin/main`; the uncommitted local Wire.mn device-wallet payments draft duplicated the committed Wire/QPay implementation on origin, so it was preserved in `git stash` ("WIP: local Wire.mn device-wallet payments draft") and `main` was fast-forwarded. Nothing was pushed.
+
+**Texts:** `packages/shared/src/texts.ts` holds 22 original Mongolian stories (8 sentences each) and `generatePassage()`, which returns consecutive sentences of one story inside a 130–205 character budget, always containing Ө/Ү, with `title` and `part` on the prompt. Words mode builds random common words. Public races, friend rooms (and their rematches) and solo practice use it; `GET /api/texts` exposes it. `RACE_DURATION_MS` is 120 s so slow typists can finish the longer passages; the bot-finish unit test advances 90 s accordingly and the Playwright per-test timeout is 60 s.
+
+**Race screen:** `QuickRacePage` now shows a three-step strip (ЦУГЛУУЛГА → ГАРАА → УРАЛДААН) with one message and one number (players found, seconds to start, current place); every lane shows live WPM and its finishing place; the passage underlines the current word, names the source story, flashes the input red on a wrong key and shows the live place; a finish card (place, WPM, accuracy, coins) stays on the track for 1.5 s (or until Enter) before the results page opens. Results show the story and accept Enter to race again. All existing e2e selectors and layout limits (desktop no-scroll, phone passage-first, centred lights) are kept.
+
+**Verification:** typecheck, unit tests (shared/backend/frontend, including new generator, telemetry and live-room passage tests) and the Chromium suite including `e2e/race-texts.spec.ts`. CI and staging are not run from this change until it is pushed.
+
+---
+
 ## 2026-10-12 — Replace repeated car thumbnail silhouettes with 29 user-owned image assets (PR pending)
 
 **User-observed issue:** Shop/Garage and multiplayer still displayed the old self-authored SVG car art despite the user repeatedly providing new high-quality PNG cutout car images and asking us to integrate them. Existing thumbnails had confusing duplicated visual concepts and made rarity look cheap. The user has supplied 35 PNG images; 29 distinct images were selected to match the 29 stable `Skin` IDs. No images were generated this cycle.

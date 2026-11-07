@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { CARS, type Skin } from './cars';
 import { DAILY_QUESTS, dailyQuests, playerLevel, quickDayStreak, seasonProgress,
   type DailyQuestId, type Profile } from '../progression';
@@ -24,6 +25,17 @@ function carIcon(value?: string) {
 export function QuickRaceResultsPage({
   outcome, profile, nickname, best, onAgain, onHome, onGarage, onSeason, onClaimQuest, onClaimSeason
 }: Props) {
+  // Enter races again, unless the racer is on a button or field (claiming a quest, editing a name).
+  useEffect(() => {
+    if (!outcome) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Enter' || event.target instanceof HTMLButtonElement || event.target instanceof HTMLInputElement) return;
+      event.preventDefault();
+      onAgain();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [outcome, onAgain]);
   if (!outcome) return <section className="qr-empty" data-testid="quick-results-empty">
     <span className="qr-eyebrow">ҮР ДҮН / ОЛДСОНГҮЙ</span>
     <h1>УРАЛДААНЫ МЭДЭЭЛЭЛ АЛГА.</h1>
@@ -57,6 +69,8 @@ export function QuickRaceResultsPage({
         <h1 id="qr-results-title">{finished ? 'БАРИАНД ОРЛОО.' : 'ХУГАЦАА ДУУССАН.'}</h1>
         <p>{finished ? 'Таны бичилтийг сервер баталгаажуулсан. Дараагийн гараанд бэлдээрэй.' :
           'Энэ удаад текстээ бүрэн дуусгаагүй. Дахин оролдоод ахицаа нэмээрэй.'}</p>
+        {snapshot.prompt.title && <p className="qr-text-source" data-testid="quick-results-text">
+          ТЕКСТ · «{snapshot.prompt.title}»{snapshot.prompt.part ? ' · ' + snapshot.prompt.part + ' өгүүлбэр' : ''}</p>}
       </div>
       <span className="qr-event-mark">MN <strong>01</strong></span>
     </header>
@@ -111,7 +125,7 @@ export function QuickRaceResultsPage({
         </section>
 
         <nav className="qr-actions" aria-label="Уралдааны дараах үйлдлүүд">
-          <button type="button" className="qr-play-again" onClick={onAgain}>▶ ДАХИН УРАЛДАХ <span aria-hidden="true">→</span></button>
+          <button type="button" className="qr-play-again" onClick={onAgain}>▶ ДАХИН УРАЛДАХ <em><kbd>Enter</kbd> <span aria-hidden="true">→</span></em></button>
           <button type="button" onClick={onHome}>⌂ НҮҮР ХУУДАС</button>
           <button type="button" onClick={onGarage}>ГАРАЖ ↗</button>
         </nav>

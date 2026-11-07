@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { PROMPTS, ROOM_CAPACITY, premiumCosmeticAllowed } from '@typeracer/shared';
+import { PROMPTS, ROOM_CAPACITY, generatePassage, passageCount, premiumCosmeticAllowed } from '@typeracer/shared';
 import { validRoomCode } from './logic';
 import { originAllowed } from './origin';
 import type { PaymentEnv } from './payments';
@@ -141,6 +141,14 @@ app.post('/api/teams',c=>publicRanking(c,'/ranking/team'));
 app.get('/api/prompts', c => {
   // Public typing competition is Mongolian-only even if clients request another language.
   return c.json({ prompts: PROMPTS.mn });
+});
+// Generated race text: a coherent excerpt of an original Mongolian story, or
+// random practice words. `seed` reproduces the same passage; omit it for a new one.
+app.get('/api/texts', c => {
+  const mode = c.req.query('mode') === 'words' ? 'words' : 'story';
+  const seedValue = Number(c.req.query('seed'));
+  const seed = c.req.query('seed') !== undefined && Number.isSafeInteger(seedValue) ? seedValue : undefined;
+  return c.json({ prompt: generatePassage({ mode, seed }), passages: passageCount() });
 });
 
 // Best-effort per-isolate abuse reduction. Deploy Cloudflare WAF rate limiting for global protection.

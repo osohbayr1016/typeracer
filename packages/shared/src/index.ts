@@ -1,8 +1,15 @@
 export * from './typing';
 export * from './catalog';
 export * from './payments';
+export * from './texts';
 export type Language = 'mn' | 'en';
-export type Prompt = { id: string; language: Language; text: string };
+export type Prompt = {
+  id: string; language: Language; text: string;
+  /** Source story title for generated passages, shown so racers know the context. */
+  title?: string;
+  /** Sentence range inside the story, e.g. "3–4/8". */
+  part?: string;
+};
 export type RacePhase = 'waiting' | 'countdown' | 'racing' | 'finished';
 export type Racer = {
   id: string;
@@ -35,11 +42,13 @@ export type RoomSnapshot = {
   serverNow?: number;
 };
 export const ROOM_CAPACITY = 6;
-export const RACE_DURATION_MS = 90_000;
+/** Generated passages are up to ~205 characters; two minutes lets a 25 WPM typist finish. */
+export const RACE_DURATION_MS = 120_000;
 export const START_LIGHT_MS = 1_000;
 export const START_COUNTDOWN_MS = START_LIGHT_MS * 2;
 
-/** Practice corpus: original Mongolian phrases (no scraped copyrighted texts). */
+/** Legacy single-sentence corpus, kept for the public /api/prompts endpoint and
+ * English fallback. Races now use generatePassage() from ./texts. */
 export const PROMPTS: Record<Language, Prompt[]> = {
   mn: [
     { id: 'mn-1', language: 'mn', text: 'Монгол хэлний зөв бичих дүрмийг өдөр бүр дасгал хийж сайжруулна.' },
