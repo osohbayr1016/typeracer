@@ -273,6 +273,7 @@ export class QuickMatchmaker {
       progress: 0, mistakes: 0, strokes: 0, completedAt: null,
       ready: true, pace: preset.pace
     });
+    this.saveRace(race);
     this.broadcast(race);
     // Once the five-player grid is full, move straight to the ONLY visible
     // countdown. Do not keep a separate "search timeout" running on screen.
@@ -292,6 +293,7 @@ export class QuickMatchmaker {
     while (race.humans.size + race.bots.length < QUICK_LANES) this.joinBot(race, false);
     race.phase = 'countdown';
     race.startAt = Date.now() + QUICK_COUNTDOWN_MS;
+    this.saveRace(race);
     this.broadcast(race);
     race.countdownTimer = setTimeout(() => this.beginRace(race), QUICK_COUNTDOWN_MS);
   }
@@ -306,6 +308,7 @@ export class QuickMatchmaker {
     }
     if (race.humans.size === 0) { this.dispose(race); return; }
     race.phase = 'racing';
+    this.saveRace(race);
     this.broadcast(race);
     race.tick = setInterval(() => this.tickBots(race), 100);
     race.deadline = setTimeout(() => this.finish(race), Math.max(0, race.startAt + RACE_DURATION_MS - Date.now()));
@@ -360,6 +363,7 @@ export class QuickMatchmaker {
       this.tickBots(race);
       this.awardFinish(race, human);
     }
+    this.saveRace(race);
     this.queueBroadcast(race);
     if ([...race.humans].every(p => p.completedAt !== null)) this.finish(race);
   }
@@ -378,6 +382,7 @@ export class QuickMatchmaker {
     // Guest clients cannot submit WPM, accuracy, points, or bots to this store.
     if (human.accountId) this.rankings?.record(race.id, human.accountId,
       human.lastResult.wpm, human.lastResult.accuracy, human.completedAt);
+    this.saveRace(race);
     this.send(human.socket, human.lastResult);
   }
 
@@ -396,11 +401,11 @@ export class QuickMatchmaker {
         this.send(human.socket, human.lastResult);
       }
     }
+    this.saveRace(race);
     this.broadcast(race);
     this.stopTimers(race);
-    // Permit recently disconnected racers to recover their authoritative result.
-    race.deadline = setTimeout(() => this.dispose(race),
-      [...race.humans].some(h => h.socket === null) ? QUICK_RECONNECT_GRACE_MS : 4_000);
+    // Keep a bounded recovery window if the last result frame was lost.
+    race.deadline = setTimeout(() => this.dispose(race), QUICK_RECONNECT_GRACE_MS);
   }
 
   private receiveSnapshot(race: QuickRace): RoomSnapshot {
@@ -442,10 +447,16 @@ export class QuickMatchmaker {
     // Waiting racers have no progress to recover. Evict immediately so a
     // React StrictMode double-mount or closed tab cannot occupy a ghost lobby
     // slot, reduce bot fill or start a countdown with departed players.
-    if (race.phase === 'waiting' || race.phase === 'finished') {
+    if (race.phase === 'finished') {
+      // A disconnected completed racer may reconnect to retrieve the result.
+      this.saveRace(race);
+      this.broadcast(race);
+      return;
+    }
+    if (race.phase === 'waiting') {
       race.humans.delete(human);
       if (race.humans.size === 0) this.dispose(race);
-      else this.broadcast(race);
+      else { this.saveRace(race); this.broadcast(race); }
       return;
     }
     if (human.disconnectTimer) clearTimeout(human.disconnectTimer);
@@ -454,9 +465,10 @@ export class QuickMatchmaker {
       if (human.socket !== null) return;
       race.humans.delete(human);
       if (race.humans.size === 0) this.dispose(race);
-      else this.broadcast(race);
+      else { this.saveRace(race); this.broadcast(race); }
     }, QUICK_RECONNECT_GRACE_MS);
     // Preserve race progress and the player slot during a brief network outage.
+    this.saveRace(race);
     this.broadcast(race);
   }
   private stopTimers(race: QuickRace): void {
@@ -472,6 +484,7 @@ export class QuickMatchmaker {
     this.stopTimers(race);
     if (this.pending === race) this.pending = null;
     this.active.delete(race);
+    this.checkpoints?.forget(race.id);
     for (const human of race.humans) {
       if (human.disconnectTimer) clearTimeout(human.disconnectTimer);
       human.disconnectTimer = null;
