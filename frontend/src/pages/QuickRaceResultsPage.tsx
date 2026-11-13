@@ -47,7 +47,10 @@ export function QuickRaceResultsPage({
   useEffect(() => {
     if (!outcome) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== 'Enter' || event.target instanceof HTMLButtonElement || event.target instanceof HTMLInputElement) return;
+      if (event.key !== 'Enter' || event.repeat || event.isComposing ||
+          event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      if (event.target instanceof Element &&
+          event.target.closest('button,a,input,textarea,select,[role="button"],[contenteditable="true"]')) return;
       event.preventDefault();
       onAgain();
     };
@@ -85,7 +88,7 @@ export function QuickRaceResultsPage({
       <div>
         <span className="qr-eyebrow"><span className="qr-live-dot" aria-hidden="true"/> УРАЛДААНЫ ТАЙЛАН <span aria-hidden="true">/</span> PUBLIC QUICK PLAY</span>
         <h1 id="qr-results-title">{finished ? 'БАРИАНД ОРЛОО.' : 'ХУГАЦАА ДУУССАН.'}</h1>
-        <p>{finished ? 'Таны бичилтийг сервер баталгаажуулсан. Дараагийн гараанд бэлдээрэй.' :
+        <p>{finished ? 'Таны гарааны хурд, байрлалыг сервер тооцоолсон. Энэ нь албан ёсны anti-cheat баталгаажуулалт биш.' :
           'Энэ удаад текстээ бүрэн дуусгаагүй. Дахин оролдоод ахицаа нэмээрэй.'}</p>
         {snapshot.prompt.title && <p className="qr-text-source" data-testid="quick-results-text">
           ТЕКСТ · «{snapshot.prompt.title}»{snapshot.prompt.part ? ' · ' + snapshot.prompt.part + ' өгүүлбэр' : ''}</p>}
@@ -121,6 +124,14 @@ export function QuickRaceResultsPage({
           </div>
         </section>
 
+        <nav className="qr-actions" aria-label="Уралдааны дараах үйлдлүүд">
+          <button type="button" className="qr-play-again" onClick={onAgain}>▶ ДАХИН УРАЛДАХ <em><kbd>Enter</kbd> <span aria-hidden="true">→</span></em></button>
+          <button type="button" onClick={onHome}>⌂ НҮҮР ХУУДАС</button>
+          <button type="button" onClick={onGarage}>ГАРАЖ ↗</button>
+          <button type="button" onClick={() => void shareResult()} data-testid="quick-share-result">ҮР ДҮН ХУВААЛЦАХ</button>
+        </nav>
+        {shareStatus && <p className="qr-share-status" role="status">{shareStatus}</p>}
+
         <section className="qr-panel qr-standing-panel" aria-labelledby="qr-standings-title">
           <div className="qr-panel-header">
             <div><span className="qr-eyebrow">ҮР ДҮН / 01</span><h2 id="qr-standings-title">УРАЛДАГЧДЫН БАЙРЛАЛ</h2></div>
@@ -142,13 +153,6 @@ export function QuickRaceResultsPage({
           <p className="qr-standing-note">Байрыг серверийн барианд орсон хугацаагаар эрэмбэлэв. Дуусаагүй өрсөлдөгчид тухайн үеийн явцаар харагдана; эдгээр нь баталгаажсан барианы байр биш. Зочны уралдаан тул албан ёсны рейтинг биш.</p>
         </section>
 
-        <nav className="qr-actions" aria-label="Уралдааны дараах үйлдлүүд">
-          <button type="button" className="qr-play-again" onClick={onAgain}>▶ ДАХИН УРАЛДАХ <em><kbd>Enter</kbd> <span aria-hidden="true">→</span></em></button>
-          <button type="button" onClick={onHome}>⌂ НҮҮР ХУУДАС</button>
-          <button type="button" onClick={onGarage}>ГАРАЖ ↗</button>
-          <button type="button" onClick={() => void shareResult()} data-testid="quick-share-result">ҮР ДҮН ХУВААЛЦАХ</button>
-        </nav>
-        {shareStatus && <p className="qr-share-status" role="status">{shareStatus}</p>}
       </div>
 
       <aside className="qr-side-column" aria-label="Хувийн ахиц, шагнал болон даалгавар">
