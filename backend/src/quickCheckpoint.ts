@@ -15,7 +15,7 @@ export type StoredQuickBot = Racer & {bot: true; pace: number};
 export type QuickCheckpoint = {
   id: string; prompt: Prompt; phase: RacePhase; startAt: number | null; queueEndsAt: number;
   humans: StoredQuickHuman[]; bots: StoredQuickBot[];
-  botSequence: number; botOffset: number;
+  botSequence: number; botOffset: number; humanCountAtStart?: number;
 };
 
 /** Race checkpoints survive a Cloudflare Durable Object isolate restart.
