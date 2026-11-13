@@ -1,7 +1,7 @@
-type Props = { onPlay: () => void; onMultiplayer: () => void };
+type Props = { onPlay: () => void; onMultiplayer: () => void; onSprint: () => void; onDaily: () => void };
 /** A two-action landing screen. Progress, car collections and explanations
  * belong on their own routes, not in the entry hero. */
-export function HomePage({onPlay,onMultiplayer}:Props) {
+export function HomePage({onPlay,onMultiplayer,onSprint,onDaily}:Props) {
   return <div className="home-page">
     <section className="home-hero">
       <div className="home-hero-copy">
@@ -12,6 +12,10 @@ export function HomePage({onPlay,onMultiplayer}:Props) {
             <span aria-hidden="true">▶</span> ТОГЛОХ <span aria-hidden="true">→</span>
           </button>
           <button className="secondary-button hero-secondary" onClick={onMultiplayer}>НАЙЗУУДТАЙ →</button>
+        </div>
+        <div className="home-fast-links" aria-label="Хурдны дасгал">
+          <button type="button" onClick={onSprint}>15 СЕК ТЕСТ <span aria-hidden="true">→</span></button>
+          <button type="button" onClick={onDaily}>ӨНӨӨДРИЙН СОРИЛ <span aria-hidden="true">→</span></button>
         </div>
       </div>
       <div className="home-visual" aria-hidden="true">

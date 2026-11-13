@@ -3,6 +3,7 @@ import { CoinsPage } from './pages/CoinsPage';
 import { emptyWallet, paymentApi, paymentSession, withPaidInventory } from './payments';
 import type { PaidWallet } from '@typeracer/shared';
 import { HomePage } from './pages/HomePage';
+import { SprintTypingPage } from './pages/SprintTypingPage';
 import { SiteNavigation } from './SiteNavigation';
 import { QuickRacePage, type QuickResult } from './pages/QuickRacePage';
 import { QuickRaceResultsPage } from './pages/QuickRaceResultsPage';
@@ -23,9 +24,9 @@ import {
   PROMPTS, wordsPerMinute, type Language, type Prompt, type RoomSnapshot, type TextMode
 } from '@typeracer/shared';
 
-type Page = 'coins' | 'home' | 'play' | 'quickRace' | 'quickResults' | 'profile' | 'leaderboard' | 'teams' | 'stats' | 'friends' | 'race' | 'garage' | 'results' | 'shop' | 'season' | 'multiplayer' | 'multiplayerRace';
+type Page = 'coins' | 'home' | 'play' | 'sprint' | 'daily' | 'quickRace' | 'quickResults' | 'profile' | 'leaderboard' | 'teams' | 'stats' | 'friends' | 'race' | 'garage' | 'results' | 'shop' | 'season' | 'multiplayer' | 'multiplayerRace';
 const PAGE_URLS: Record<Page, string> = {
-  coins: '/coins', home: '/', play: '/play', quickRace: '/quick-race', quickResults: '/quick-results',
+  coins: '/coins', home: '/', play: '/play', sprint: '/sprint', daily: '/daily', quickRace: '/quick-race', quickResults: '/quick-results',
   profile: '/profile', leaderboard: '/leaderboard', teams: '/teams', stats: '/stats', friends: '/friends',
   race: '/race', garage: '/garage', results: '/results',
   shop: '/shop', season: '/season',
@@ -346,12 +347,15 @@ export function App() {
     <main className="shell main">
       {page === 'coins' && <CoinsPage wallet={paidWallet} onWallet={setPaidWallet} onShop={() => navigate('shop')} onGarage={() => navigate('garage')}/>}
       {page === 'home' && <HomePage onPlay={() => navigate('play')}
-        onMultiplayer={() => navigate('friends')}/>}
+        onMultiplayer={() => navigate('friends')}
+        onSprint={() => navigate('sprint')} onDaily={() => navigate('daily')}/>}
+      {(page === 'sprint' || page === 'daily') && <SprintTypingPage key={page} daily={page === 'daily'}
+        onHome={() => navigate('home')} onRace={() => navigate('quickRace')} onDaily={() => navigate('daily')}/>}
       {page === 'play' && <PlayPage best={best} carIcon={raceCarIcon(skin)} carName={CARS[skin].label}
         onPlay={() => navigate('quickRace')} onMultiplayer={() => navigate('multiplayer')}
         onCreateRoom={() => { navigate('multiplayer'); void createRoom(); }}
         onJoinRoom={room => { navigate('multiplayer'); setJoinCode(room); connectRoom(room); }}
-        onGarage={() => navigate('garage')}/>}
+        onGarage={() => navigate('garage')} onSprint={() => navigate('sprint')} onDaily={() => navigate('daily')}/>}
       {page === 'profile' && <ProfilePage profile={profile} nickname={nickname} best={best}
         onNameChange={updateNickname} onPlay={() => navigate('quickRace')}
         onGarage={() => navigate('garage')} onSeason={() => navigate('season')} onStats={() => navigate('stats')}/>}

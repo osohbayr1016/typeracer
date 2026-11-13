@@ -44,3 +44,11 @@
 @media(max-width:900px) { .play-choice-grid { gap:12px; } .play-choice-card { padding:14px; } .play-choice-art { margin-inline:-14px; } .play-choice-copy h2 { font-size:26px; } }
 @media(max-width:690px) { .play-choice-page { padding-top:20px; } .play-choice-header { align-items:start; } .play-record-pill { font-size:9px; } .play-record-pill b { display:block; margin:4px 0 0; } .play-choice-grid { grid-template-columns:1fr; } .play-choice-card { min-height:420px; } }
 @media(prefers-reduced-motion:reduce) { .play-choice-card { transition:none; } }
+
+.play-practice-strip { margin-top:16px; display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:19px; border:1px solid #43534d; background:#192722; }
+.play-practice-strip>div { margin-right:auto; display:grid; gap:6px; }
+.play-practice-strip strong { font-size:12px; letter-spacing:.7px; }
+.play-practice-strip span { font-size:11px; color:#a8bbb0; }
+.play-practice-strip button { background:#2f493e; color:#e9f7ee; border:1px solid #658c76; padding:12px 16px; font-size:11px; font-weight:850; }
+.play-practice-strip button:hover { background:#3b5a4a; }
+@media(max-width:690px) { .play-practice-strip button { flex:1 1 auto; } }

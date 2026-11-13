@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { characters } from '@typeracer/shared';
+import { characters, typingKey } from '@typeracer/shared';
 import { EMPTY_SPRINT, SPRINT_DURATIONS, sprintAdvance, sprintDailyKey, sprintScore, sprintSeed, sprintText,
   type SprintDuration, type SprintProgress } from './sprintModel';
 import './SprintTypingPage.css';
@@ -86,8 +86,8 @@ export function SprintTypingPage({ daily, onHome, onRace, onDaily }: Props) {
     if (finishedRef.current || !value) return;
     // Composition can produce multiple characters on some keyboards; never treat
     // an inserted phrase as a set of valid keystrokes.
-    const keys = characters(value.normalize('NFC'));
-    if (keys.length !== 1) return;
+    const key = typingKey(value);
+    if (key === null) return;
     const at = performance.now();
     if (startRef.current !== null && at >= startRef.current + duration * 1000) {
       finish(startRef.current + duration * 1000);
@@ -97,7 +97,7 @@ export function SprintTypingPage({ daily, onHome, onRace, onDaily }: Props) {
       startRef.current = at;
       setRunning(true);
     }
-    const next = sprintAdvance(progressRef.current, keys[0], passage);
+    const next = sprintAdvance(progressRef.current, key, passage);
     if (next === progressRef.current) return;
     setWrong(next.mistakes > progressRef.current.mistakes);
     progressRef.current = next;

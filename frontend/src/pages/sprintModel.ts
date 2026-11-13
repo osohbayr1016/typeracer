@@ -1,4 +1,4 @@
-import { accuracyPercent, characters, generatePassage, normalizeText, wordsPerMinute } from '@typeracer/shared';
+import { accuracyPercent, advanceTyping, characters, generatePassage, wordsPerMinute } from '@typeracer/shared';
 
 export const SPRINT_DURATIONS = [15, 30, 60] as const;
 export type SprintDuration = typeof SPRINT_DURATIONS[number];
@@ -33,15 +33,12 @@ export function sprintText(seed: number): string {
 
 /** Single-character acceptance prevents a pasted string from earning progress. */
 export function sprintAdvance(progress: SprintProgress, rawKey: string, text: string): SprintProgress {
-  const key = characters(normalizeText(rawKey));
-  const target = characters(text);
-  if (key.length !== 1 || progress.position >= target.length) return progress;
-  const correct = key[0] === target[progress.position];
-  return {
-    position: progress.position + (correct ? 1 : 0),
-    attempts: progress.attempts + 1,
-    mistakes: progress.mistakes + (correct ? 0 : 1)
-  };
+  const next = advanceTyping(characters(text), {
+    progress: progress.position, strokes: progress.attempts,
+    mistakes: progress.mistakes, wrong: false
+  }, rawKey);
+  if (next.strokes === progress.attempts) return progress;
+  return { position: next.progress, attempts: next.strokes, mistakes: next.mistakes };
 }
 
 export function sprintScore(progress: SprintProgress, elapsedMs: number) {
