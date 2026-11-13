@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { EarnedOnlineProfile } from '../onlineProgress';
 import { AuthPanel } from './AuthPanel';
 import { CARS } from './cars';
 import { type Profile, TITLE_NAMES, quickDayStreak, playerLevel } from '../progression';
@@ -13,8 +14,9 @@ const localNumber = (value: number) => value.toLocaleString('mn-MN');
 const orderedHistory = (profile: Profile) => profile.history.filter(h => h.id.startsWith('quick:'));
 const avg = (numbers: number[]) => numbers.length ? Math.round(numbers.reduce((sum,value) => sum + value,0) / numbers.length) : 0;
 
-export function ProfilePage({ profile, nickname, best, onPlay, onGarage, onNameChange, onStats, onSeason }: BaseProps & {
+export function ProfilePage({ profile, online, onlineError, nickname, best, onPlay, onGarage, onNameChange, onStats, onSeason }: BaseProps & {
   onNameChange: (value:string) => void; onStats: () => void; onSeason: () => void;
+  online: EarnedOnlineProfile | null; onlineError?:string;
 }) {
   const level = playerLevel(profile.xp);
   const recent = orderedHistory(profile);
@@ -31,6 +33,22 @@ export function ProfilePage({ profile, nickname, best, onPlay, onGarage, onNameC
       <img src={CARS[profile.car].icon} alt={CARS[profile.car].label} className="social-profile-car"/>
     </section>
     <AuthPanel/>
+    <section className="social-surface" aria-label="Серверт хадгалсан онлайн ахиц" data-testid="online-progress">
+      <div className="social-card-heading">
+        <h2>ОНЛАЙН УРАЛДААНЫ АХИЦ</h2>
+        <span>{online?'СЕРВЕРТ ХАДГАЛАГДСАН':'СИНК ХИЙХ БОЛОМЖГҮЙ'}</span>
+      </div>
+      {online ? <>
+        <div className="social-stats-row">
+          <div><span>ОНЛАЙН ТҮВШИН</span><strong>{online.level}</strong></div>
+          <div><span>ОНЛАЙН XP</span><strong>{online.xp}</strong></div>
+          <div><span>ОЛСОН ЗООС</span><strong>◈ {localNumber(online.coins)}</strong></div>
+          <div><span>БҮРТГЭГДСЭН ГАРАА</span><strong>{online.races}</strong></div>
+        </div>
+        <p className="social-footnote">Эдгээр шагналыг сервер Quick Race-ийн дууссан гараанаас бүртгэнэ.
+          Онлайн зоосоор Shop-оос худалдан авалт хийж болно. Хуучин хөтчийн XP, зоос автоматаар серверт шилжихгүй.</p>
+      </> : <p className="social-footnote" role="status">{onlineError||'Онлайн бүртгэлийг ачаалж байна…'}</p>}
+    </section>
     <div className="social-stats-row">
       <div><span>ХУВИЙН РЕКОРД</span><strong>{best}<small> WPM</small></strong></div>
       <div><span>НИЙТ ГАРАА</span><strong>{localNumber(profile.races)}</strong></div>
