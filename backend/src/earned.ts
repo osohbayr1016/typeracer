@@ -193,8 +193,7 @@ export class EarnedProgressionStore {
       .map(row=>({raceId:row.race_id,xp:row.xp,coins:row.coins,wpm:row.wpm,
         accuracy:row.accuracy,finishedAt:row.finished_at}));
     const season=this.season(id,at);
-    const raceStats=first(this.sql,`SELECT
-      COALESCE(MAX(wpm),0) AS best_wpm,
+    const raceStats=first(this.sql,`SELECT COALESCE(MAX(wpm),0) AS best_wpm,
       COALESCE(ROUND(AVG(wpm)),0) AS avg_wpm,
       COALESCE(ROUND(AVG(accuracy)),0) AS avg_accuracy,
       MAX(finished_at) AS last_raced_at
