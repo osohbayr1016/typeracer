@@ -15,6 +15,6 @@ test('weekly leaderboard transparently separates human-v-human races from casual
   expect(Array.isArray(payload.players)).toBe(true);
   await expect(pvp).toHaveAttribute('aria-pressed','true');
   await expect(page.getByRole('heading',{name:/ХҮН VS ХҮН/})).toBeVisible();
-  await page.getByRole('button',{name:'БҮХ УРАЛДААН'}).click();
+  await page.getByRole('button',{name:'7 ХОНОГ'}).click();
   await expect(pvp).toHaveAttribute('aria-pressed','false');
 });

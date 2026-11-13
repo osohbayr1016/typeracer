@@ -132,10 +132,18 @@ export class RaceRoom {
     if (path === '/quickplay') return this.quickService().fetch(request);
     if (path.startsWith('/progression')) {
       const service=this.quickService();
+      const earned=service.earned!;
+      if(path==='/progression/daily-leaderboard' && request.method==='GET'){
+        const query=new URL(request.url).searchParams;
+        const limit=Number(query.get('limit')??20);
+        const offset=Number(query.get('offset')??0);
+        return Response.json(earned.dailyLeaderboard(Date.now(),limit,offset),{
+          headers:{'Cache-Control':'no-store'}
+        });
+      }
       const player=await service.rankings!.fromCookie(request.headers.get('Cookie'));
       if (!player) return Response.json({error:'session_required'},{status:401});
       const id=String(player.id);
-      const earned=service.earned!;
       if (path==='/progression' && request.method==='GET')
         return Response.json(earned.overview(id),{headers:{'Cache-Control':'no-store'}});
       if ((path==='/progression/items' || path==='/progression/equip' ||
