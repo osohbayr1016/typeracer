@@ -63,7 +63,7 @@ export function GaragePage({ profile, onEquip, onPlay, onShop, onSeason }: Props
         const oldLevel = tab === 'car' && ['lime','phantom'].includes(x.id) ? CARS[x.id as Skin].unlockAt : 0;
         const minLevel = tab === 'car' ? ITEMS.find(i => i.kind === 'car' && i.id === x.id)?.minLevel : undefined;
         const rarity = tab === 'car' ? CARS[x.id as Skin].rarity : undefined;
-        return <button key={x.id} className={'garage-car-tile'+(selected?' selected':'')+(!owned?' locked':'')}
+        return <button key={x.id} data-item-id={x.id} className={'garage-car-tile'+(selected?' selected':'')+(!owned?' locked':'')}
           aria-pressed={selected} disabled={!owned} onClick={() => onEquip(tab,x.id)}>
           <span className="garage-tile-number">{String(index+1).padStart(2,'0')}</span>
           {rarity && <span className="garage-tile-rarity">{rarity}</span>}
