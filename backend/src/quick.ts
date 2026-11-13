@@ -5,6 +5,7 @@ import {
 import { safePlayerName } from './logic';
 import { RaceRankingStore } from './rankings';
 import { purchasedInventory } from './payments';
+import { QuickCheckpointStore, type QuickCheckpoint } from './quickCheckpoint';
 
 type QuickResult = {
   type: 'quick-result'; raceId: string; place: number | null; coins: number;
@@ -88,12 +89,78 @@ export function quickPrize(place: number, finished: boolean): number {
 
 export class QuickMatchmaker {
   readonly rankings: RaceRankingStore | null;
+  readonly checkpoints: QuickCheckpointStore | null;
   constructor(private storage?: DurableObjectStorage) {
     this.rankings = storage ? new RaceRankingStore(storage.sql) : null;
+    this.checkpoints = storage ? new QuickCheckpointStore(storage.sql) : null;
   }
   private pending: QuickRace | null = null;
   private active = new Set<QuickRace>();
   private sockets = new Map<WebSocket, { race: QuickRace; human: Human }>();
+
+  /** Persist only serializable, accepted race state; never sockets or timers. */
+  private saveRace(race: QuickRace): void {
+    if (!this.checkpoints) return;
+    const record: QuickCheckpoint = {
+      id:race.id, prompt:race.prompt, phase:race.phase, startAt:race.startAt,
+      queueEndsAt:race.queueEndsAt, botSequence:race.botSequence, botOffset:race.botOffset,
+      humans:[...race.humans].map(({socket,disconnectTimer,windowStart,windowCount,...h})=>h),
+      bots:race.bots.map(b=>({...b}))
+    };
+    const remaining = race.startAt === null
+      ? RACE_DURATION_MS + QUICK_QUEUE_MS + QUICK_COUNTDOWN_MS + QUICK_RECONNECT_GRACE_MS
+      : Math.max(QUICK_RECONNECT_GRACE_MS, race.startAt+RACE_DURATION_MS+QUICK_RECONNECT_GRACE_MS-Date.now());
+    this.checkpoints.save(record, Date.now()+
+      (race.phase === 'finished' ? QUICK_RECONNECT_GRACE_MS : remaining));
+  }
+
+  /** Rehydrate one match on a valid token. Server time restores phase and bots. */
+  private restore(token: string): {race: QuickRace; human: Human} | undefined {
+    const saved=this.checkpoints?.findByToken(token);
+    if (!saved) return undefined;
+    let race=[...this.active].find(item=>item.id===saved.id);
+    if (!race) {
+      race={
+        id:saved.id,prompt:saved.prompt,letters:characters(saved.prompt.text),
+        phase:saved.phase,startAt:saved.startAt,queueEndsAt:saved.queueEndsAt,
+        humans:new Set(saved.humans.map(h=>({
+          ...h,socket:null,disconnectTimer:null,windowStart:0,windowCount:0
+        }))),bots:saved.bots,botSequence:saved.botSequence,botOffset:saved.botOffset,
+        deadline:null,countdownTimer:null,tick:null,botJoinTimer:null,broadcastTimer:null
+      };
+      this.active.add(race);
+      if (race.phase==='waiting') {
+        if (!this.pending) this.pending=race;
+        race.botJoinTimer=setInterval(()=>this.joinBot(race!),QUICK_BOT_JOIN_MS);
+        race.deadline=setTimeout(()=>this.startCountdown(race!),Math.max(0,race.queueEndsAt-Date.now()));
+      } else if (race.phase==='countdown') {
+        race.countdownTimer=setTimeout(()=>this.beginRace(race!),Math.max(0,(race.startAt??Date.now())-Date.now()));
+        if (race.startAt!==null && Date.now()>=race.startAt) this.beginRace(race);
+      } else if (race.phase==='racing') {
+        if (race.startAt!==null && Date.now()>=race.startAt+RACE_DURATION_MS) this.finish(race);
+        else {
+          this.tickBots(race);
+          race.tick=setInterval(()=>this.tickBots(race!),100);
+          race.deadline=setTimeout(()=>this.finish(race!),Math.max(0,(race.startAt??Date.now())+RACE_DURATION_MS-Date.now()));
+        }
+      }
+      if (race.phase==='finished') {
+        race.deadline=setTimeout(()=>this.dispose(race!),QUICK_RECONNECT_GRACE_MS);
+      } else {
+        for (const human of race.humans) {
+          human.disconnectTimer=setTimeout(()=>{
+            human.disconnectTimer=null;
+            if (human.socket!==null) return;
+            race!.humans.delete(human);
+            if (!race!.humans.size) this.dispose(race!);
+            else {this.saveRace(race!);this.broadcast(race!);}
+          },QUICK_RECONNECT_GRACE_MS);
+        }
+      }
+    }
+    const human=[...race.humans].find(h=>h.resumeToken===token);
+    return human?{race,human}:undefined;
+  }
 
   async fetch(request: Request): Promise<Response> {
     if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket')
@@ -102,9 +169,10 @@ export class QuickMatchmaker {
     const token = url.searchParams.get('resume');
     // Cryptographically random, short-lived bearer token. Never include it in
     // public snapshots; it only rebinds one socket to an existing DO race.
-    const existing = token && /^[0-9a-f-]{36}$/.test(token) ? [...this.active]
-      .flatMap(race => [...race.humans].map(human => ({ race, human })))
-      .find(entry => entry.human.resumeToken === token) : undefined;
+    const existing = token && /^[0-9a-f-]{36}$/.test(token)
+      ? ([...this.active].flatMap(race=>[...race.humans].map(human=>({race,human})))
+         .find(entry=>entry.human.resumeToken===token) ?? this.restore(token))
+      : undefined;
     if (!existing && this.sockets.size >= 160)
       return new Response('Public queue busy, retry shortly', { status: 503 });
 
@@ -122,6 +190,7 @@ export class QuickMatchmaker {
       human.disconnectTimer = null;
       human.socket = server;
       this.attach(server, race, human);
+      this.saveRace(race);
       this.send(server, { type: 'welcome', id: human.id, resumeToken: human.resumeToken, resumed: true, inputVersion: human.inputVersion });
       // Immediate authoritative snapshot: do not wait for the 50ms fan-out tick.
       this.send(server, this.receiveSnapshot(race));
@@ -152,9 +221,12 @@ export class QuickMatchmaker {
       this.pending = race;
     }
     race.humans.add(human);
+    this.checkpoints?.register(race.id,human.resumeToken,Date.now()+
+      RACE_DURATION_MS+QUICK_QUEUE_MS+QUICK_COUNTDOWN_MS+QUICK_RECONNECT_GRACE_MS*2);
     // Replace the last bot with an incoming real racer while matchmaking is open.
     while (race.humans.size + race.bots.length > QUICK_LANES) race.bots.pop();
     this.attach(server, race, human);
+    this.saveRace(race);
     this.send(server, { type: 'welcome', id: human.id, resumeToken: human.resumeToken, resumed: false, inputVersion: human.inputVersion });
     this.broadcast(race);
     if (race.humans.size === QUICK_MAX_HUMANS) this.startCountdown(race);
@@ -201,6 +273,7 @@ export class QuickMatchmaker {
       progress: 0, mistakes: 0, strokes: 0, completedAt: null,
       ready: true, pace: preset.pace
     });
+    this.saveRace(race);
     this.broadcast(race);
     // Once the five-player grid is full, move straight to the ONLY visible
     // countdown. Do not keep a separate "search timeout" running on screen.
@@ -220,6 +293,7 @@ export class QuickMatchmaker {
     while (race.humans.size + race.bots.length < QUICK_LANES) this.joinBot(race, false);
     race.phase = 'countdown';
     race.startAt = Date.now() + QUICK_COUNTDOWN_MS;
+    this.saveRace(race);
     this.broadcast(race);
     race.countdownTimer = setTimeout(() => this.beginRace(race), QUICK_COUNTDOWN_MS);
   }
@@ -234,6 +308,7 @@ export class QuickMatchmaker {
     }
     if (race.humans.size === 0) { this.dispose(race); return; }
     race.phase = 'racing';
+    this.saveRace(race);
     this.broadcast(race);
     race.tick = setInterval(() => this.tickBots(race), 100);
     race.deadline = setTimeout(() => this.finish(race), Math.max(0, race.startAt + RACE_DURATION_MS - Date.now()));
@@ -288,6 +363,7 @@ export class QuickMatchmaker {
       this.tickBots(race);
       this.awardFinish(race, human);
     }
+    this.saveRace(race);
     this.queueBroadcast(race);
     if ([...race.humans].every(p => p.completedAt !== null)) this.finish(race);
   }
@@ -306,6 +382,7 @@ export class QuickMatchmaker {
     // Guest clients cannot submit WPM, accuracy, points, or bots to this store.
     if (human.accountId) this.rankings?.record(race.id, human.accountId,
       human.lastResult.wpm, human.lastResult.accuracy, human.completedAt);
+    this.saveRace(race);
     this.send(human.socket, human.lastResult);
   }
 
@@ -324,11 +401,11 @@ export class QuickMatchmaker {
         this.send(human.socket, human.lastResult);
       }
     }
+    this.saveRace(race);
     this.broadcast(race);
     this.stopTimers(race);
-    // Permit recently disconnected racers to recover their authoritative result.
-    race.deadline = setTimeout(() => this.dispose(race),
-      [...race.humans].some(h => h.socket === null) ? QUICK_RECONNECT_GRACE_MS : 4_000);
+    // Keep a bounded recovery window if the last result frame was lost.
+    race.deadline = setTimeout(() => this.dispose(race), QUICK_RECONNECT_GRACE_MS);
   }
 
   private receiveSnapshot(race: QuickRace): RoomSnapshot {
@@ -370,10 +447,16 @@ export class QuickMatchmaker {
     // Waiting racers have no progress to recover. Evict immediately so a
     // React StrictMode double-mount or closed tab cannot occupy a ghost lobby
     // slot, reduce bot fill or start a countdown with departed players.
-    if (race.phase === 'waiting' || race.phase === 'finished') {
+    if (race.phase === 'finished') {
+      // A disconnected completed racer may reconnect to retrieve the result.
+      this.saveRace(race);
+      this.broadcast(race);
+      return;
+    }
+    if (race.phase === 'waiting') {
       race.humans.delete(human);
       if (race.humans.size === 0) this.dispose(race);
-      else this.broadcast(race);
+      else { this.saveRace(race); this.broadcast(race); }
       return;
     }
     if (human.disconnectTimer) clearTimeout(human.disconnectTimer);
@@ -382,9 +465,10 @@ export class QuickMatchmaker {
       if (human.socket !== null) return;
       race.humans.delete(human);
       if (race.humans.size === 0) this.dispose(race);
-      else this.broadcast(race);
+      else { this.saveRace(race); this.broadcast(race); }
     }, QUICK_RECONNECT_GRACE_MS);
     // Preserve race progress and the player slot during a brief network outage.
+    this.saveRace(race);
     this.broadcast(race);
   }
   private stopTimers(race: QuickRace): void {
@@ -400,6 +484,7 @@ export class QuickMatchmaker {
     this.stopTimers(race);
     if (this.pending === race) this.pending = null;
     this.active.delete(race);
+    this.checkpoints?.forget(race.id);
     for (const human of race.humans) {
       if (human.disconnectTimer) clearTimeout(human.disconnectTimer);
       human.disconnectTimer = null;
