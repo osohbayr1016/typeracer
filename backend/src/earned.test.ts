@@ -1,6 +1,6 @@
 import {afterEach,describe,expect,it} from 'vitest';
 import {DatabaseSync} from 'node:sqlite';
-import {EarnedProgressionStore,EARNED_STARTER_COINS,earnedXp} from './earned';
+import {EarnedProgressionStore,EARNED_STARTER_COINS,earnedXp,earnedDayKey} from './earned';
 
 const databases:DatabaseSync[]=[];
 function fixture(){
@@ -93,5 +93,67 @@ describe('server-owned free online economy',()=>{
     expect(merged.recent).toHaveLength(3);
     store.mergeAccount('guest','target');
     expect(store.overview('target').coins).toBe(merged.coins);
+  });
+});
+
+describe('authoritative daily missions — Mongolia timezone and coin integrity',()=>{
+  const now=Date.parse('2026-11-12T11:00:00Z'); // 19:00 Ulaanbaatar
+  const id=(i:number)=>'00000000-0000-4000-8000-'+i.toString(16).padStart(12,'0');
+  it('uses Ulaanbaatar midnight and does not roll previous-day eligibility forward',()=>{
+    expect(earnedDayKey(Date.parse('2026-11-12T15:59:59Z'))).toBe('2026-11-12');
+    expect(earnedDayKey(Date.parse('2026-11-12T16:00:00Z'))).toBe('2026-11-13');
+    const {store}=fixture();
+    store.creditRace({...match(A,'tester'),finishedAt:now});
+    expect(store.daily('tester',now).quests[0]).toMatchObject({progress:1,done:true,claimed:false});
+    expect(store.daily('tester',Date.parse('2026-11-12T16:00:00Z')).quests[0])
+      .toMatchObject({progress:0,done:false,claimed:false});
+    expect(store.claimDaily('tester','first-finish',Date.parse('2026-11-12T16:00:00Z')))
+      .toEqual({error:'not_complete'});
+    const claimed=store.claimDaily('tester','first-finish',now);
+    expect(claimed).toMatchObject({profile:{coins:238,daily:{day:'2026-11-12'}}});
+    expect(store.daily('tester',now).quests[0].claimed).toBe(true);
+    expect(store.daily('tester',Date.parse('2026-11-12T16:00:00Z')).quests[0].claimed).toBe(false);
+  });
+  it('requires real server races; each of the three free goals pays exactly once',()=>{
+    const {db,store}=fixture();
+    expect(store.claimDaily('runner','first-finish',now)).toEqual({error:'not_complete'});
+    expect(store.claimDaily('runner','spoofed',now)).toEqual({error:'invalid_quest'});
+    for(let n=1;n<=5;n++){
+      expect(store.creditRace({...match(id(n),'runner'),finishedAt:now+n*2000}).awarded).toBe(true);
+    }
+    const board=store.daily('runner',now).quests;
+    expect(board.map(q=>q.progress)).toEqual([1,3,5]);
+    expect(board.every(q=>q.done&&!q.claimed)).toBe(true);
+    for(const key of ['first-finish','precision','speed']){
+      const result=store.claimDaily('runner',key,now);
+      expect(result).toHaveProperty('profile');
+      expect(store.claimDaily('runner',key,now)).toEqual({error:'already_claimed'});
+    }
+    expect(store.overview('runner',now)).toMatchObject({races:5,coins:200+5*30+8+12+15});
+    expect(db.prepare('SELECT COUNT(*) n FROM earned_quest_claims').get()?.n).toBe(3);
+  });
+  it('rolls back partially written quest claims, then permits one clean retry',()=>{
+    const {db,store,fail}=fixture();
+    store.creditRace({...match(A,'rollback'),finishedAt:now});
+    fail('UPDATE earned_profiles SET');
+    expect(()=>store.claimDaily('rollback','first-finish',now)).toThrow('injected SQL failure');
+    expect(db.prepare('SELECT COUNT(*) n FROM earned_quest_claims').get()?.n).toBe(0);
+    fail('');
+    expect(store.claimDaily('rollback','first-finish',now))
+      .toMatchObject({profile:{coins:200+30+8}});
+    expect(store.claimDaily('rollback','first-finish',now)).toEqual({error:'already_claimed'});
+  });
+  it('deduplicates guest and linked-user claims for the same day on OAuth merge',()=>{
+    const {db,store}=fixture();
+    store.creditRace({...match(A,'guest'),finishedAt:now});
+    store.creditRace({...match(B,'linked'),finishedAt:now+1000});
+    expect(store.claimDaily('guest','first-finish',now)).toHaveProperty('profile');
+    expect(store.claimDaily('linked','first-finish',now)).toHaveProperty('profile');
+    store.mergeAccount('guest','linked');
+    expect(store.overview('linked',now)).toMatchObject({races:2,coins:200+60+8});
+    expect(db.prepare('SELECT COUNT(*) n FROM earned_quest_claims WHERE player_id=?').get('linked')?.n).toBe(1);
+    expect(store.claimDaily('linked','first-finish',now)).toEqual({error:'already_claimed'});
+    store.mergeAccount('guest','linked');
+    expect(store.overview('linked',now).coins).toBe(268);
   });
 });
