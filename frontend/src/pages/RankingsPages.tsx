@@ -110,7 +110,7 @@ export function GlobalLeaderboardPage({outcome,profile,onPlay,onTeams}:{
     <div className="social-bottom-actions"><button type="button" className="social-primary" onClick={onPlay}>▶ УРАЛДАХ</button>
       <span>{dailyOnly
         ?'Өдрийн XP Улаанбаатарын цагаар шинэчлэгдэнэ · Зочны аккаунтуудын anti-cheat одоогоор хязгаарлагдмал.'
-        :'Бодит серверийн оноо · UTC Даваа гарагт долоо хоног шинээр эхэлнэ. Зочны аккаунтуудын anti-cheat одоогоор хязгаарлагдмал.'}</span></div>
+        :'Бодит серверийн оноо · Улаанбаатарын цагаар Даваа 00:00-д долоо хоног шинээр эхэлнэ. Зочны аккаунтуудын anti-cheat одоогоор хязгаарлагдмал.'}</span></div>
   </div>;
 }
 
