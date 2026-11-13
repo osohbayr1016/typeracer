@@ -73,3 +73,27 @@
 @media(max-width:820px) { .social-two-grid {grid-template-columns:1fr;} .social-stats-row {grid-template-columns:repeat(2,minmax(0,1fr));} }
 @media(max-width:600px) { .social-page {padding-top:20px;} .social-profile-hero {padding:15px;gap:12px;flex-wrap:wrap;} .social-profile-car {width:100%;max-width:280px;height:100px;margin:0 auto;} .social-avatar {width:48px;height:48px;flex-basis:48px;font-size:17px;} .social-stats-row {gap:8px;} .social-stats-row>div {padding:13px;} .social-stats-row strong {font-size:27px;} .social-ranking li {grid-template-columns:35px 43px minmax(65px,1fr) 55px;gap:8px;padding:4px 2px;} .social-ranking img {width:43px;} .social-ranking small {display:none;} .social-ranking li>span:last-child {font-size:9px;} .social-personal-ranking li {grid-template-columns:35px 1fr 48px 95px;} }
 @media(prefers-reduced-motion:reduce) { .social-meter span {transition:none;} }
+
+/* Online verified stats are visually distinct from device-only practice. */
+.social-online-records{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:15px}
+.social-online-records>div{display:flex;flex-direction:column;gap:7px;padding:15px 14px;
+  border:1px solid #4c6559;border-radius:6px;background:#1c3028}
+.social-online-records span{font-size:11px;font-weight:800;line-height:1.4;color:#b9dbca;letter-spacing:.025em}
+.social-online-records strong{font:900 clamp(23px,2vw,32px)/1.1 var(--font-display);color:#ecf8e6;font-variant-numeric:tabular-nums}
+.social-online-records small{font-size:12px;color:#a3c6b2}
+.social-online-history{margin-top:15px;border:1px solid #4b5a54;border-radius:6px;background:#1d2626;overflow:hidden}
+.social-online-history summary{display:flex;justify-content:space-between;align-items:center;gap:10px;
+  cursor:pointer;min-height:45px;padding:12px 15px;color:#dae9db;font-size:12px;font-weight:850;letter-spacing:.03em}
+.social-online-history summary:hover,.social-online-history summary:focus-visible{background:#2b3933;outline-offset:-3px}
+.social-online-history[open] summary span{transform:rotate(180deg)}
+.social-online-history-list>div{display:grid;grid-template-columns:1.1fr 1fr .7fr 1.3fr;
+  gap:8px;align-items:center;padding:12px 14px;border-top:1px solid #384940;
+  font-variant-numeric:tabular-nums;font-size:12px;color:#bdccc5}
+.social-online-history-list strong{font-weight:850;color:#f0f6ef}
+.social-online-earned{color:#a9dfb8;text-align:right}
+@media(max-width:620px){
+  .social-online-records{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .social-online-records>div:last-child{grid-column:span 2}
+  .social-online-history-list>div{grid-template-columns:1fr 1fr;gap:7px 10px}
+  .social-online-earned{text-align:left}
+}
