@@ -56,3 +56,18 @@ Player earnings are intentionally slowed down without changing any car prices or
 ### Important economy limitation
 
 All progress, rewards and coins currently live in localStorage. This is suitable for cosmetic beta progression but **not a cheat-proof, authenticated, transferable account economy**. Do not promise this until a server ledger is designed, secured and tested.
+
+## Six original side-view cars (2026-11-13)
+
+Six previously prepared, original 2D vehicle designs have been reconciled with the current server-owned shared cosmetic catalog. They are **earned-coin cosmetics**, not a paid loot box or gameplay-speed advantage. Each rarity receives one new car, stored under a unique ID; existing purchased vehicles and original 29 car IDs remain intact.
+
+| Rarity | ID | Unlock level | Earned coins |
+|---|---|---:|---:|
+| Энгийн | `side-common-graphite` | 2 | 425 |
+| Сайжруулсан | `side-uncommon-cobalt` | 5 | 800 |
+| Ховор | `side-rare-lightning` | 9 | 1,250 |
+| Онцгой | `side-epic-violet` | 15 | 1,900 |
+| Туульс | `side-mythic-emerald` | 24 | 3,100 |
+| Домогт | `side-legend-cyber` | 36 | 5,400 |
+
+Both full-size and race-size transparent WebP assets for all six IDs are committed into `frontend/public/cars/` and `frontend/public/cars/race/` (12 binary files, 221 KiB total). The same shared product record is used by the offline gallery and the authoritative online coin-purchase validator; bot, public race and private-room car allowlists recognize all six.

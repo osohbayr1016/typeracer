@@ -15,7 +15,7 @@ type Player = Racer & {
 };
 export const PRIVATE_RECONNECT_GRACE_MS=15_000;
 type Phase = RoomSnapshot['phase'];
-const CAR_IDS = ['mint','sunset','purple','lime','phantom','steppe','thunder','midnight','khan','dawn','cosmic', 'falcon', 'nomad', 'rover', 'sunflare', 'dune', 'cobalt', 'glacier', 'fox', 'streak', 'ghost', 'onyx', 'meteor', 'temple', 'nebula', 'eagle', 'royal', 'aurora-x', 'dragon'] as const;
+const CAR_IDS = ['mint','sunset','purple','lime','phantom','steppe','thunder','midnight','khan','dawn','cosmic', 'falcon', 'nomad', 'rover', 'sunflare', 'dune', 'cobalt', 'glacier', 'fox', 'streak', 'ghost', 'onyx', 'meteor', 'temple', 'nebula', 'eagle', 'royal', 'aurora-x', 'dragon', 'side-common-graphite', 'side-uncommon-cobalt', 'side-rare-lightning', 'side-epic-violet', 'side-mythic-emerald', 'side-legend-cyber'] as const;
 const TRAIL_IDS = ['none','ember','steppe','ice','aurora','gold'] as const;
 const STICKER_IDS = ['none','horse','bolt','star','crown'] as const;
 const TITLE_IDS = ['rookie','swift','khan','legend','supporter'] as const;
