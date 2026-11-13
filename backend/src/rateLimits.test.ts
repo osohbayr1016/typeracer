@@ -47,6 +47,27 @@ describe('shared checkout and recovery abuse limits',()=>{
     expect((await limiter.check('checkout','203.0.113.1',10,60_000,base)).allowed).toBe(true);
     await expect(limiter.check('', '203.0.113.1',10,60_000,base)).rejects.toThrow();
   });
+  it('enforces durable room-creation quotas across coordinator restarts and isolates',async()=>{
+    const {sql,atomic}=fixture();
+    const state={storage:{sql,transactionSync:atomic}} as unknown as DurableObjectState;
+    const room=new RaceRoom(state,{});
+    const request=(ip:string)=>new Request('https://room.internal/abuse/rooms',{
+      method:'POST',headers:{'CF-Connecting-IP':ip}
+    });
+    for(let n=0;n<10;n++){
+      const result=await room.fetch(request('198.51.100.11'));
+      expect(result.status).toBe(200);
+    }
+    const resumed=new RaceRoom(state,{});
+    const blocked=await resumed.fetch(request('198.51.100.11'));
+    expect(blocked.status).toBe(429);
+    expect(await blocked.json()).toEqual({error:'rate_limit_exceeded'});
+    expect(Number(blocked.headers.get('Retry-After'))).toBeGreaterThan(0);
+    expect((await resumed.fetch(request('198.51.100.12'))).status).toBe(200);
+    // Separate scope: checkout/recovery quotas remain unaffected.
+    const checkout=new GlobalAbuseLimiter(sql,atomic);
+    expect((await checkout.check('checkout','198.51.100.11',10,60_000)).allowed).toBe(true);
+  });
   it('enforces account recovery limit in the real Durable Object before parsing untrusted codes',async()=>{
     const {sql,atomic}=fixture();
     const state={storage:{sql,transactionSync:atomic}} as unknown as DurableObjectState;
