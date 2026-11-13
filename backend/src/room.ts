@@ -1,6 +1,6 @@
 import {
   generatePassage, characters, ROOM_CAPACITY, RACE_DURATION_MS, START_COUNTDOWN_MS,
-  type Racer, type RoomSnapshot, wordsPerMinute
+  type Racer, type RoomSnapshot, type Prompt, wordsPerMinute
 } from '@typeracer/shared';
 import { acceptKeystroke, safePlayerName } from './logic';
 import { QuickMatchmaker } from './quick';
@@ -33,7 +33,7 @@ export class RaceRoom {
   private restored = false;
   private roomExpiresAt=Date.now()+3_600_000;
   private cleanupTimer: ReturnType<typeof setTimeout> | null=null;
-  private prompt = generatePassage({ mode: 'story' });
+  private prompt: Prompt = generatePassage({ mode: 'story' });
   private phase: Phase = 'waiting';
   private startAt: number | null = null;
   private matchId = crypto.randomUUID();
