@@ -195,7 +195,6 @@ export function App() {
   const socketRef = useRef<WebSocket | null>(null);
   const privateRetryRef=useRef<ReturnType<typeof setTimeout>|null>(null);
   const privateReconnectAttempts=useRef(0);
-  const privateBootstrapped=useRef(false);
   const onlineInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -429,13 +428,16 @@ export function App() {
     socket.onerror = () => setError('Өрөөний холболт түр тасарсан байна. Сэргээхийг оролдож байна…');
   }
   useEffect(()=>{
-    if(privateBootstrapped.current)return;
-    privateBootstrapped.current=true;
     if(routeFromLocation()!=='multiplayerRace')return;
+    // Deferring to a zero-delay macrotask survives React StrictMode's
+    // setup/cleanup replay without connecting an orphan lobby slot.
+    let timer:ReturnType<typeof setTimeout>|null=null;
     try{
       const saved=sessionStorage.getItem('typeracer.private.active');
-      if(saved && roomCodePattern.test(saved))connectRoom(saved,true);
+      if(saved && roomCodePattern.test(saved))
+        timer=setTimeout(()=>connectRoom(saved,true),0);
     }catch{/* sessionStorage unavailable */}
+    return ()=>{if(timer!==null)clearTimeout(timer);};
   },[]);
   async function createRoom() {
     setError('');
