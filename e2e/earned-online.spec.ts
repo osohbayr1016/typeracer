@@ -53,7 +53,11 @@ test('Shop UI purchases a cosmetic using server-earned coins without refreshing 
   await card.getByRole('button',{name:'◈ ХУДАЛДАН АВАХ'}).click();
   await expect(page.locator('.coin-counter')).toContainText('10');
   await expect(card.getByRole('button',{name:'Машинд суух / Зүүх'})).toBeVisible();
+  await card.getByRole('button',{name:'Машинд суух / Зүүх'}).click();
+  await expect(card.getByRole('button',{name:'✓ Сонгосон'})).toBeDisabled();
   await page.reload();
   await expect(page.locator('.coin-counter')).toContainText('10');
-  await expect(card.getByRole('button',{name:'Машинд суух / Зүүх'})).toBeVisible();
+  await expect(card.getByRole('button',{name:'✓ Сонгосон'})).toBeDisabled();
+  const equipped=await (await page.request.get('/api/progression')).json();
+  expect(equipped).toMatchObject({equipped:{title:'swift'},owned:['title:swift']});
 });
