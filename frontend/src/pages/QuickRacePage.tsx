@@ -245,7 +245,13 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
   // Enter skips the finish hold, like pressing the results button.
   useEffect(() => {
     if (!result) return;
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Enter') finishNow.current?.(); };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Enter' || event.repeat || event.isComposing ||
+          event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return;
+      if (event.target instanceof Element &&
+          event.target.closest('button,a,input,textarea,select,[contenteditable="true"]')) return;
+      finishNow.current?.();
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [result]);

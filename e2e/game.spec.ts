@@ -91,9 +91,7 @@ test('mobile dock exposes all routes without duplicate desktop navigation or hor
 });
 test('main Play starts live matchmaking, adds bots and awards a finished match', async ({ page }) => {
   await page.goto('/');
-  await page.locator('.home-hero').getByRole('button', { name: /ТОГЛОХ/ }).click();
-  await expect(page).toHaveURL(/\/play$/);
-  await page.locator('.play-choice-primary').click();
+  await page.getByTestId('home-instant-race').click();
   await expect(page).toHaveURL(/\/quick-race$/);
   await expect(page.getByTestId('quick-race')).toBeVisible();
   await expect(page.locator('.quick-phrase')).toBeVisible();

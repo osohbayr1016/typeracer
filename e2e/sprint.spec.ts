@@ -25,13 +25,17 @@ test('daily challenge text stays identical across independent visits', async ({p
   await expect(page.getByTestId('sprint-countdown')).toContainText('30.0');
 });
 
-test('home has a one-click speed practice entry without breaking the original online play flow', async ({page}) => {
+test('home provides instant online racing, quick practice and access to mode selection', async ({page}) => {
   await page.goto('/');
   await page.getByRole('button',{name:/15 СЕК ТЕСТ/}).click();
   await expect(page).toHaveURL(/\/sprint$/);
   await expect(page.getByTestId('sprint-page')).toBeVisible();
   await page.goto('/');
-  await page.locator('.home-hero').getByRole('button',{name:/ТОГЛОХ/}).click();
+  await page.getByTestId('home-instant-race').click();
+  await expect(page).toHaveURL(/\/quick-race$/);
+  await expect(page.getByTestId('quick-race')).toBeVisible();
+  await page.goto('/');
+  await page.getByRole('button',{name:/БУСАД ГОРИМ/}).click();
   await expect(page).toHaveURL(/\/play$/);
 });
 
