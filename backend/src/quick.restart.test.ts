@@ -86,7 +86,12 @@ describe('SQLite durable quick-match crash recovery',()=>{
     resumed.socket.receive({type:'key',key:letters[3],matchId:live.matchId,seq:4});
     vi.advanceTimersByTime(60);
     const after=resumed.socket.latest('state') as typeof resumed.state;
-    expect(after.players.find(p=>p.id===first.welcome.id)).toMatchObject({progress:4,inputSeq:4});
+    const stored=JSON.parse(String(db.prepare('SELECT payload FROM quick_checkpoints WHERE id=?')
+      .get(live.matchId)?.payload)) as {phase:string;humans:Array<{inputSeq:number;progress:number}>};
+    expect({phase:after.phase,storedPhase:stored.phase,storedHuman:stored.humans[0],
+      latestAck:resumed.socket.latest('input-ack'),latestState:after.players.find(p=>p.id===first.welcome.id)})
+      .toMatchObject({phase:'racing',storedPhase:'racing',storedHuman:{progress:4,inputSeq:4},
+        latestState:{progress:4,inputSeq:4}});
     expect(after.matchId).toBe(before.matchId);
     expect(JSON.stringify(after)).not.toContain(first.welcome.resumeToken);
   });
