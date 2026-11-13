@@ -48,7 +48,8 @@ export class RaceRoom {
       const earned=service.earned!;
       if (path==='/progression' && request.method==='GET')
         return Response.json(earned.overview(id),{headers:{'Cache-Control':'no-store'}});
-      if ((path==='/progression/items' || path==='/progression/equip') && request.method==='POST') {
+      if ((path==='/progression/items' || path==='/progression/equip' ||
+          path==='/progression/quests/claim') && request.method==='POST') {
         let input:Record<string,unknown>;
         try {
           const raw=await request.text();
@@ -56,11 +57,13 @@ export class RaceRoom {
           input=JSON.parse(raw) as Record<string,unknown>;
           if (!input || typeof input!=='object')throw Error('invalid');
         } catch {return Response.json({error:'invalid_request'},{status:400});}
-        if (typeof input.kind!=='string'||typeof input.id!=='string')
+        if (typeof input.id!=='string'||(path!=='/progression/quests/claim'&&typeof input.kind!=='string'))
           return Response.json({error:'invalid_request'},{status:400});
-        const result=path==='/progression/items'
-          ? earned.buy(id,input.kind,input.id)
-          : earned.equip(id,input.kind,input.id);
+        const result=path==='/progression/quests/claim'
+          ? earned.claimDaily(id,input.id)
+          : path==='/progression/items'
+            ? earned.buy(id,input.kind as string,input.id)
+            : earned.equip(id,input.kind as string,input.id);
         return Response.json(result,{status:'error' in result?result.error==='already_owned'?409:400:200});
       }
       return new Response('Method not allowed',{status:405});
