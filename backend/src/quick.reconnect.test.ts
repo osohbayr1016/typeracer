@@ -62,10 +62,10 @@ afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals()
 describe('Durable Object live quick race reconnect', () => {
   it('reschedules an early countdown timer instead of leaving the lobby stuck', async () => {
     const first = await connect(new QuickMatchmaker());
-    vi.advanceTimersByTime(2600);
+    vi.advanceTimersByTime(5000);
     const startAt = Number(first.socket.sent.filter(m => m.type === 'state').at(-1)!.startAt);
     const clock = vi.spyOn(Date, 'now').mockReturnValue(startAt - 1);
-    vi.advanceTimersByTime(2000);
+    vi.advanceTimersByTime(3000);
     expect(first.socket.sent.filter(m => m.type === 'state').at(-1)!.phase).toBe('countdown');
     clock.mockRestore();
     vi.advanceTimersByTime(2);
@@ -74,7 +74,7 @@ describe('Durable Object live quick race reconnect', () => {
   it('rejects early keys but accepts the first green key even before the countdown timer callback runs', async () => {
     const matchmaker = new QuickMatchmaker();
     const first = await connect(matchmaker);
-    vi.advanceTimersByTime(2600);
+    vi.advanceTimersByTime(5000);
     const state = first.socket.sent.filter(message => message.type === 'state').at(-1)!;
     expect(state.phase).toBe('countdown');
     const startAt = Number(state.startAt);
@@ -95,7 +95,7 @@ describe('Durable Object live quick race reconnect', () => {
     expect(first.welcome.resumed).toBe(false);
     expect(typeof first.welcome.resumeToken).toBe('string');
     expect(JSON.stringify(first.snapshot)).not.toContain(String(first.welcome.resumeToken));
-    vi.advanceTimersByTime(6_000); // staggered bots plus 3-second countdown
+    vi.advanceTimersByTime(8_100); // staggered bots plus 3-second countdown
     const racing = first.socket.sent.filter(message => message.type === 'state').at(-1)!;
     expect(racing.phase).toBe('racing');
     const prompt = racing.prompt as {text: string};
@@ -117,7 +117,7 @@ describe('Durable Object live quick race reconnect', () => {
     const ephemeral = await connect(doMatch);
     ephemeral.socket.close();
     const real = await connect(doMatch);
-    vi.advanceTimersByTime(6_000);
+    vi.advanceTimersByTime(8_100);
     const state = real.socket.sent.filter(message => message.type === 'state').at(-1)!;
     expect(state.phase).toBe('racing');
     const players = state.players as Array<{id:string;bot:boolean}>;
@@ -129,7 +129,7 @@ describe('Durable Object live quick race reconnect', () => {
   it('refuses a guessed token and expires disconnected sessions after grace', async () => {
     const doMatch = new QuickMatchmaker();
     const first = await connect(doMatch);
-    vi.advanceTimersByTime(6_000); // Resume grace applies to an actual racing match.
+    vi.advanceTimersByTime(8_100); // Resume grace applies to an actual racing match.
     first.socket.close();
     const stranger = await connect(doMatch, 'ffffffff-ffff-4fff-8fff-ffffffffffff');
     expect(stranger.welcome.id).not.toBe(first.welcome.id);
@@ -140,7 +140,7 @@ describe('Durable Object live quick race reconnect', () => {
   });
   it('acknowledges contiguous keys once, repairs gaps, and preserves the sequence on reconnect', async () => {
     const matchmaker=new QuickMatchmaker();const first=await connect(matchmaker,undefined,true);
-    expect(first.welcome.inputVersion).toBe(2);vi.advanceTimersByTime(6000);
+    expect(first.welcome.inputVersion).toBe(2);vi.advanceTimersByTime(8100);
     const state=first.socket.sent.filter(message=>message.type==='state').at(-1)!;
     const keys=characters((state.prompt as {text:string}).text);const matchId=state.matchId;
     first.socket.receive({type:'key',key:keys[0],seq:1,matchId});
@@ -157,7 +157,7 @@ describe('Durable Object live quick race reconnect', () => {
       .toMatchObject({progress:3,strokes:3,inputSeq:3});
   });
   it('recovers a rate-limited key instead of permanently losing it or its accuracy', async()=>{
-    const matchmaker=new QuickMatchmaker();const first=await connect(matchmaker,undefined,true);vi.advanceTimersByTime(6000);
+    const matchmaker=new QuickMatchmaker();const first=await connect(matchmaker,undefined,true);vi.advanceTimersByTime(8100);
     const state=first.socket.sent.filter(m=>m.type==='state').at(-1)!;
     const keys=characters((state.prompt as {text:string}).text);
     for(let i=0;i<36;i++)first.socket.receive({type:'key',key:keys[i],seq:i+1,matchId:state.matchId});
@@ -168,7 +168,7 @@ describe('Durable Object live quick race reconnect', () => {
       .toMatchObject({progress:36,strokes:36,mistakes:0,inputSeq:36});
   });
   it('enforces the race deadline even when its timer callback is delayed',async()=>{
-    const first=await connect(new QuickMatchmaker(),undefined,true);vi.advanceTimersByTime(6000);
+    const first=await connect(new QuickMatchmaker(),undefined,true);vi.advanceTimersByTime(8100);
     const state=first.socket.sent.filter(m=>m.type==='state').at(-1)!;
     vi.setSystemTime(Number(state.startAt)+RACE_DURATION_MS+2000);
     first.socket.receive({type:'key',key:(state.prompt as {text:string}).text[0],seq:1,matchId:state.matchId});
