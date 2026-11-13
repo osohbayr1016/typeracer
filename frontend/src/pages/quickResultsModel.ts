@@ -46,3 +46,14 @@ export function raceStandings(outcome: QuickRaceOutcome): Standing[] {
   });
   return normalized.map((item,index) => ({ ...item, position: index + 1 }));
 }
+
+/** Guest results are server-computed but not anti-cheat verified; never advertise
+ * them as official records or imply that the daily link is the same race. */
+export function quickResultShareText(outcome: QuickRaceOutcome, nickname: string, challengeUrl: string): string {
+  const player = nickname.trim().slice(0, 20) || 'Тоглогч';
+  const { place, wpm, accuracy } = outcome.result;
+  const placing = place !== null ? '#' + place + ' байр' : 'барианд ороогүй';
+  return player + ' · TypeRacer Mongolia: ' + placing + ', ' + wpm + ' WPM, ' + accuracy +
+    '% нарийвчлал (зочны тоглолт, албан ёсны rank биш).\n' +
+    'Надтай 30 секундийн Монгол typing challenge-д өрсөлдөөрэй: ' + challengeUrl;
+}

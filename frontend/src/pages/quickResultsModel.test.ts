@@ -1,6 +1,6 @@
 import { describe,expect,it } from 'vitest';
 import { type Racer, type RoomSnapshot } from '@typeracer/shared';
-import { raceStandings, type QuickRaceOutcome } from './quickResultsModel';
+import { quickResultShareText, raceStandings, type QuickRaceOutcome } from './quickResultsModel';
 
 function racer(id:string, progress:number, completedAt:number|null, bot=false): Racer {
   return {id,name:id,car:'sunset',trail:'none',sticker:'none',progress,
@@ -16,6 +16,13 @@ function result(players:Racer[], place:number|null, withFinal=false):QuickRaceOu
       standings:withFinal?players:undefined}};
 }
 describe('real server-backed quick match rankings', () => {
+  it('shares the measured guest result without claiming verified rank or fake direct rematch', () => {
+    const message = quickResultShareText(result([racer('mine', 4, time - 1000)], 1), 'Анар', 'https://example.org/daily');
+    expect(message).toContain('Анар · TypeRacer Mongolia: #1 байр, 82 WPM, 98%');
+    expect(message).toContain('албан ёсны rank биш');
+    expect(message).toContain('https://example.org/daily');
+  });
+
   it('ranks completed racers by finish time, unfinished racers by progress',()=>{
     const players=[racer('mine',4,time-1000),racer('earlier',4,time-3000,true),
       racer('typing',3,null,true),racer('later',4,time-500,true)];

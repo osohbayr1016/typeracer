@@ -6,3 +6,8 @@
 - Players can share a practice result and a direct challenge link via native Share or clipboard. This is an invitation, not a signed/attested competitive score.
 
 Test with `npm run typecheck`, `npm test`, `npm run build`, `npm run test:e2e` and physical Android/iPhone Mongolian keyboard QA. Manually test background tab throttling, focus, portrait keyboard and page refresh. No claims of server-authoritative scoring, cheat-proofing, multi-device recovery or completed device QA.
+
+## Phase 1 · Wave 2: sharing and trust language
+- A completed public Quick Race now has a dedicated share action. It includes real server-calculated WPM, accuracy and place, clearly labels the result as an **unranked guest race**, and directs friends to the separate reproducible `/daily` challenge.
+- Uses Web Share API where supported, otherwise clipboard copy with status feedback. No automatic posting, personal tracking or generated "live online" counter.
+- Global leaderboard heading now says **server-recorded beta**, not anti-cheat verified. The leaderboard remains a guest scoreboard, not official ranked esports certification.

@@ -40,7 +40,7 @@ export function GlobalLeaderboardPage({outcome,profile,onPlay,onTeams}:{
   const standings=outcome?raceStandings(outcome):[];
   const personal=[...profile.history.filter(h=>h.id.startsWith('quick:'))].sort((a,b)=>b.wpm-a.wpm).slice(0,15);
   return <div className="social-page" data-testid="leaderboard-page">
-    <header className="social-heading"><span className="social-eyebrow">ДОЛОО ХОНОГ · БАТАЛГААЖУУЛСАН ГАРАА</span><h1>ЧАНСАА</h1></header>
+    <header className="social-heading"><span className="social-eyebrow">ДОЛОО ХОНОГ · СЕРВЕРТ БҮРТГЭСЭН BETA</span><h1>ЧАНСАА</h1></header>
     <div className="rank-summary"><strong>POINTS</strong><span>WPM + нарийвчлалаас сервер оноо бодно. Ботууд орохгүй.</span><button type="button" onClick={onTeams}>БАГИЙН ЧАНСАА ↗</button></div>
     <div className="social-tabs" role="group" aria-label="Чансааны төрөл">
       <button type="button" className={tab==='global'?'active':''} onClick={()=>setTab('global')}>БҮХ ТОГЛОГЧ</button>

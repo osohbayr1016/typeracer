@@ -1,8 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { CARS, type Skin } from './cars';
 import { DAILY_QUESTS, dailyQuests, playerLevel, quickDayStreak, seasonProgress,
   type DailyQuestId, type Profile } from '../progression';
-import { raceStandings, type QuickRaceOutcome } from './quickResultsModel';
+import { quickResultShareText, raceStandings, type QuickRaceOutcome } from './quickResultsModel';
 import './QuickRaceResultsPage.css';
 
 type Props = {
@@ -25,6 +25,24 @@ function carIcon(value?: string) {
 export function QuickRaceResultsPage({
   outcome, profile, nickname, best, onAgain, onHome, onGarage, onSeason, onClaimQuest, onClaimSeason
 }: Props) {
+  const [shareStatus, setShareStatus] = useState('');
+  useEffect(() => setShareStatus(''), [outcome?.result.raceId]);
+  async function shareResult() {
+    if (!outcome) return;
+    const challengeUrl = new URL('/daily', window.location.origin).toString();
+    const text = quickResultShareText(outcome, nickname, challengeUrl);
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'TypeRacer Mongolia', text });
+        setShareStatus('Хуваалцах цэсийг ашиглан үр дүнгээ илгээнэ үү.');
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        setShareStatus('Үр дүн болон сорилын холбоосыг хууллаа.');
+      } else {
+        setShareStatus('Энэ хөтөч дээр автоматаар хуваалцах боломжгүй байна.');
+      }
+    } catch { setShareStatus('Хуваалцах үйлдэл цуцлагдсан.'); }
+  }
   // Enter races again, unless the racer is on a button or field (claiming a quest, editing a name).
   useEffect(() => {
     if (!outcome) return;
@@ -128,7 +146,9 @@ export function QuickRaceResultsPage({
           <button type="button" className="qr-play-again" onClick={onAgain}>▶ ДАХИН УРАЛДАХ <em><kbd>Enter</kbd> <span aria-hidden="true">→</span></em></button>
           <button type="button" onClick={onHome}>⌂ НҮҮР ХУУДАС</button>
           <button type="button" onClick={onGarage}>ГАРАЖ ↗</button>
+          <button type="button" onClick={() => void shareResult()} data-testid="quick-share-result">ҮР ДҮН ХУВААЛЦАХ</button>
         </nav>
+        {shareStatus && <p className="qr-share-status" role="status">{shareStatus}</p>}
       </div>
 
       <aside className="qr-side-column" aria-label="Хувийн ахиц, шагнал болон даалгавар">
