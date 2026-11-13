@@ -12,7 +12,7 @@ const readBest = (key: string): number => {
 };
 
 export function SprintTypingPage({ daily, onHome, onRace, onDaily }: Props) {
-  const day = useMemo(() => sprintDailyKey(), []);
+  const [day, setDay] = useState(() => sprintDailyKey());
   const [duration, setDuration] = useState<SprintDuration>(daily ? 30 : 15);
   const [round, setRound] = useState(0);
   const [progress, setProgress] = useState<SprintProgress>(EMPTY_SPRINT);
@@ -28,6 +28,33 @@ export function SprintTypingPage({ daily, onHome, onRace, onDaily }: Props) {
   const [shareMessage, setShareMessage] = useState('');
   const storageKey = daily ? 'racer.daily.pb.' + day : 'racer.sprint.pb.' + duration;
   const [best, setBest] = useState(() => readBest(storageKey));
+  // A daily challenge that stays open overnight must not keep yesterday's
+  // passage, score or input. Refresh on visible tab, focus and clock ticks.
+  useEffect(() => {
+    if (!daily) return;
+    const refresh = () => { if (!document.hidden) setDay(sprintDailyKey()); };
+    const interval = window.setInterval(refresh, 30_000);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [daily]);
+  useEffect(() => {
+    if (!daily) return;
+    finishedRef.current = false;
+    startRef.current = null;
+    progressRef.current = EMPTY_SPRINT;
+    setProgress(EMPTY_SPRINT);
+    setRunning(false);
+    setRemainingMs(30_000);
+    setWrong(false);
+    setFinalScore(null);
+    setShareMessage('');
+    setBest(readBest('racer.daily.pb.' + day));
+  }, [daily, day]);
   const passage = useMemo(() => sprintText(daily ? sprintSeed(day) : (Date.now() + Math.imul(round + 1, 7919)) >>> 0), [daily, day, round]);
   const letters = useMemo(() => characters(passage), [passage]);
   const finish = useCallback((at: number) => {
