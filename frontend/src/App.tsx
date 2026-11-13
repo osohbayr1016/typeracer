@@ -17,7 +17,8 @@ import { ResultsPage } from './pages/ResultsPage';
 import { ShopPage } from './pages/ShopPage';
 import { SeasonPage } from './pages/SeasonPage';
 import { loadProfile, saveProfile, raceReward, awardQuickRace, buyItem, claimReward, claimAvailableRewards, equipItem,
-  TITLE_NAMES, STICKER_SYMBOLS, claimDailyQuest, type DailyQuestId, type CosmeticKind, type Cosmetic } from './progression';
+  TITLE_NAMES, STICKER_SYMBOLS, claimDailyQuest, type DailyQuestId, type CosmeticKind, type Cosmetic,
+  type Trail, type Title, type Sticker } from './progression';
 import { CARS, raceCarIcon, type Skin } from './pages/cars';
 import { readRaceClock, useRaceStart, type ServerClock } from './pages/useRaceStart';
 import {
@@ -115,7 +116,11 @@ export function App() {
   const [paidError, setPaidError] = useState('');
   // Local legacy rewards are retained, never credited as server-owned currency.
   const displayProfile = withPaidInventory({
-    ...profile, owned:[...new Set([...profile.owned,...(online?.owned??[])])]
+    ...profile, owned:[...new Set([...profile.owned,...(online?.owned??[])])],
+    car:online?.equipped.car && online.equipped.car!=='sunset' ? online.equipped.car as Skin : profile.car,
+    trail:online?.equipped.trail && online.equipped.trail!=='none' ? online.equipped.trail as Trail : profile.trail,
+    title:online?.equipped.title && online.equipped.title!=='rookie' ? online.equipped.title as Title : profile.title,
+    sticker:online?.equipped.sticker && online.equipped.sticker!=='none' ? online.equipped.sticker as Sticker : profile.sticker
   }, paidWallet);
   const shopProfile = online ? {
     ...displayProfile,xp:online.xp,coins:online.coins,
@@ -135,7 +140,7 @@ export function App() {
     return ()=>{active=false;};
   }, [page,accountRevision]);
   const xp = profile.xp;
-  const skin = profile.car;
+  const skin = displayProfile.car;
   const inputRef = useRef<HTMLInputElement>(null);
   const [nickname, setNickname] = useState(() => {
     try { return localStorage.getItem('racer.nickname')?.slice(0, 20) || 'Зочин'; } catch { return 'Зочин'; }
@@ -233,13 +238,29 @@ export function App() {
     updateTypingValue(event.target.value);
   }
   function handleEquip(kind: CosmeticKind, id: string) {
-    setProfile(p => {
-      const enriched=withPaidInventory({
-        ...p, owned:[...new Set([...p.owned,...(online?.owned??[])])]
-      },paidWallet);
-      const next=equipItem(enriched,kind,id);
-      return {...next,owned:p.owned};
-    });
+    const defaults:{[K in CosmeticKind]:string}={
+      car:'sunset',trail:'none',title:'rookie',sticker:'none'
+    };
+    const serverOwned=!!online&&(online.owned.includes(kind+':'+id)||id===defaults[kind]);
+    if (serverOwned) {
+      setOnlineBusy(true);setOnlineError('');
+      void onlineProgressApi<{profile:EarnedOnlineProfile}>('/equip',{kind,id})
+        .then(value=>{
+          setOnline(value.profile);
+          // Keep the browser's last visible selection but do not duplicate
+          // server-owned assets into its editable local inventory.
+          setProfile(p=>({...p,[kind]:id}));
+        })
+        .catch(error=>setOnlineError((error as Error).message))
+        .finally(()=>setOnlineBusy(false));
+      return;
+    }
+    setProfile(p=>equipItem(withPaidInventory(p,paidWallet),kind,id));
+    if (online && online.equipped[kind]!==defaults[kind]) {
+      void onlineProgressApi<{profile:EarnedOnlineProfile}>('/equip',{
+        kind,id:defaults[kind]
+      }).then(value=>setOnline(value.profile)).catch(()=>{});
+    }
   }
   async function handlePaidBuy(item: Cosmetic) {
     if (paidBusy) return;
