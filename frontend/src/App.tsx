@@ -108,7 +108,8 @@ export function App() {
   const [accountRevision, setAccountRevision] = useState(0);
   useEffect(() => {
     const changed = () => {
-      setPaidWallet(emptyWallet()); setOnline(null); setAccountRevision(value => value + 1);
+      setPaidWallet(emptyWallet()); setOnline(null); setProfile(loadProfile());
+      setAccountRevision(value => value + 1);
     };
     window.addEventListener('racer-account-changed', changed);
     return () => window.removeEventListener('racer-account-changed', changed);
