@@ -296,3 +296,10 @@
  .header-right .profile-chip {padding-left:9px;gap:7px;height:35px;}
  .header-layout .nav-item {padding:11px 12px;}
 }
+
+/* Quick practice links sit below, not inside, the primary online racing actions. */
+.home-fast-links { display:flex; gap:9px; flex-wrap:wrap; margin-top:16px; }
+.home-fast-links button { border:1px solid #56615e; background:#1a2827; color:#d8f0e4; padding:11px 16px; font:850 11px var(--font-body); letter-spacing:.3px; }
+.home-fast-links button:hover { background:#32463b; border-color:#8db59d; }
+.home-fast-links button span { margin-left:8px; color:#a9ddb5; }
+@media(max-width:580px) { .home-fast-links button { flex:1 1 auto; min-height:48px; } }

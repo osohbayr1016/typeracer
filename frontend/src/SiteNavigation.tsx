@@ -25,7 +25,7 @@ const extra: Array<{page:NavDestination;label:string;description:string}> = [
   {page:'stats',label:'Статистик',description:'Хурд · үр дүн'}
 ];
 export function navActive(current:string, destination:NavDestination):boolean {
-  if(destination==='play')return ['play','race','quickRace','quickResults','results'].includes(current);
+  if(destination==='play')return ['play','race','sprint','daily','quickRace','quickResults','results'].includes(current);
   if(destination==='friends')return ['friends','multiplayer','multiplayerRace'].includes(current);
   return current===destination;
 }

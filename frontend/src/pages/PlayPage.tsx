@@ -5,9 +5,10 @@ type Props = {
   best: number; carIcon: string; carName: string;
   onPlay: () => void; onMultiplayer: () => void;
   onCreateRoom: () => void; onJoinRoom: (code: string) => void; onGarage: () => void;
+  onSprint: () => void; onDaily: () => void;
 };
 /** Two obvious next actions. No invented online friend or account state. */
-export function PlayPage({ best, carIcon, carName, onPlay, onMultiplayer, onCreateRoom, onJoinRoom, onGarage }: Props) {
+export function PlayPage({ best, carIcon, carName, onPlay, onMultiplayer, onCreateRoom, onJoinRoom, onGarage, onSprint, onDaily }: Props) {
   const [code, setCode] = useState('');
   const validCode = /^[A-F0-9]{8}$/.test(code);
   return <div className="play-choice-page" data-testid="play-choices">
@@ -48,5 +49,10 @@ export function PlayPage({ best, carIcon, carName, onPlay, onMultiplayer, onCrea
         <button className="play-choice-subtle" type="button" onClick={onMultiplayer}>ӨРӨӨНИЙ ХУУДАС ↗</button>
       </section>
     </div>
+    <section className="play-practice-strip" aria-label="Дасгалын горим">
+      <div><strong>ЭХЛЭЭД ӨӨРИЙГӨӨ СОРЬ</strong><span>Нэвтрэх шаардлагагүй · Монгол гар · 15/30/60 секунд</span></div>
+      <button type="button" onClick={onSprint}>ХУРДНЫ ТЕСТ →</button>
+      <button type="button" onClick={onDaily}>ӨНӨӨДРИЙН СОРИЛ →</button>
+    </section>
   </div>;
 }
