@@ -59,6 +59,11 @@ describe('server-owned free online economy',()=>{
     const {store}=fixture();
     expect(store.buy('shopper','title','swift')).toMatchObject({profile:{coins:10,owned:['title:swift']}});
     expect(store.buy('shopper','title','swift')).toEqual({error:'already_owned'});
+    expect(store.equip('shopper','title','swift')).toMatchObject({profile:{equipped:{title:'swift'}}});
+    expect(store.equip('shopper','title','rookie')).toMatchObject({profile:{equipped:{title:'rookie'}}});
+    expect(store.equip('shopper','car','dragon')).toEqual({error:'not_owned'});
+    expect(store.equip('shopper','title','supporter')).toEqual({error:'invalid_item'});
+    expect(store.equip('shopper','__proto__','swift')).toEqual({error:'invalid_item'});
     expect(store.buy('shopper','car','dragon')).toEqual({error:'level_required'});
     expect(store.buy('shopper','car','falcon')).toEqual({error:'insufficient_earned_coins'});
     expect(store.buy('shopper','title','not-a-real-item')).toEqual({error:'not_found'});
@@ -79,10 +84,12 @@ describe('server-owned free online economy',()=>{
     store.creditRace(match(B,'target',30));
     store.creditRace(match(C,'guest',20));
     store.buy('guest','title','swift');
+    store.equip('guest','title','swift');
     expect(store.overview('guest').coins).toBe(200+18+20-190);
     store.mergeAccount('guest','target');
     const merged=store.overview('target');
-    expect(merged).toMatchObject({coins:200+18+20+30-190,races:3,owned:['title:swift']});
+    expect(merged).toMatchObject({coins:200+18+20+30-190,races:3,owned:['title:swift'],
+      equipped:{title:'swift'}});
     expect(merged.recent).toHaveLength(3);
     store.mergeAccount('guest','target');
     expect(store.overview('target').coins).toBe(merged.coins);
