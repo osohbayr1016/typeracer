@@ -56,18 +56,8 @@ const paymentProxy = (c: { env: Env; req: { raw: Request; url: string } }, path:
 };
 app.get('/api/payments/config', c => paymentProxy(c, 'config'));
 app.get('/api/payments/wallet', c => paymentProxy(c, 'wallet'));
-const checkoutAttempts = new Map<string, { start: number; count: number }>();
-app.post('/api/payments/checkout', c => {
-  const ip = c.req.header('CF-Connecting-IP') || 'anonymous';
-  const now = Date.now();
-  if (checkoutAttempts.size > 2000) checkoutAttempts.clear();
-  const previous = checkoutAttempts.get(ip);
-  const attempt = !previous || now - previous.start > 60_000 ? { start: now, count: 1 } :
-    { start: previous.start, count: previous.count + 1 };
-  checkoutAttempts.set(ip, attempt);
-  if (attempt.count > 10) return c.json({ error: 'rate_limit_exceeded' }, 429);
-  return paymentProxy(c, 'checkout');
-});
+// Checkout limiter runs in the shared Durable Object, not one Worker isolate.
+app.post('/api/payments/checkout', c => paymentProxy(c, 'checkout'));
 app.post('/api/payments/items', c => paymentProxy(c, 'items'));
 app.get('/api/payments/orders/:id', c => paymentProxy(c, 'orders/' + encodeURIComponent(c.req.param('id'))));
 app.post('/api/webhooks/wire', c => paymentProxy(c, 'webhook'));
@@ -82,17 +72,9 @@ app.get('/api/auth/providers',c=>c.json({
 }));
 app.post('/api/auth/logout',c=>publicRanking(c,'/account/logout?secure='+(new URL(c.req.url).protocol==='https:'?'1':'0')));
 app.post('/api/account/recovery', c => publicRanking(c, '/account/recovery'));
-const recoveryAttempts = new Map<string, { start: number; count: number }>();
-app.post('/api/account/recover', c => {
-  const ip = c.req.header('CF-Connecting-IP') || 'anonymous';
-  const now = Date.now();
-  if (recoveryAttempts.size > 2000) recoveryAttempts.clear();
-  const previous = recoveryAttempts.get(ip);
-  const entry = !previous || now - previous.start > 60_000 ? {start:now,count:1} : {start:previous.start,count:previous.count+1};
-  recoveryAttempts.set(ip, entry);
-  if (entry.count > 8) return c.json({error:'rate_limit_exceeded'},429);
-  return publicRanking(c, '/account/recover?secure=' + (new URL(c.req.url).protocol === 'https:' ? '1' : '0'));
-});
+// Recovery limiter runs in the same global Durable Object as account state.
+app.post('/api/account/recover', c => publicRanking(c,
+  '/account/recover?secure=' + (new URL(c.req.url).protocol === 'https:' ? '1' : '0')));
 function oauthOrigin(c:{env:Env;req:{url:string}}):string {
   const requested=new URL(c.req.url).origin;
   // Configured origin prevents callback URL manipulation via Host headers.
