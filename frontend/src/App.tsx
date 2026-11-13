@@ -17,7 +17,7 @@ import { type QuickRaceOutcome } from './pages/quickResultsModel';
 
 
 import { loadProfile, saveProfile, raceReward, awardQuickRace, buyItem, claimReward, claimAvailableRewards, equipItem,
-  TITLE_NAMES, STICKER_SYMBOLS, claimDailyQuest, type DailyQuestId, type CosmeticKind, type Cosmetic,
+  TITLE_NAMES, STICKER_SYMBOLS, SEASON, claimDailyQuest, type DailyQuestId, type CosmeticKind, type Cosmetic,
   type Trail, type Title, type Sticker } from './progression';
 import { CARS, raceCarIcon, type Skin } from './pages/cars';
 import { readRaceClock, useRaceStart, type ServerClock } from './pages/useRaceStart';
@@ -41,6 +41,7 @@ const GaragePage = lazy(() => import('./pages/GaragePage').then(m => ({default:m
 const ResultsPage = lazy(() => import('./pages/ResultsPage').then(m => ({default:m.ResultsPage})));
 const ShopPage = lazy(() => import('./pages/ShopPage').then(m => ({default:m.ShopPage})));
 const SeasonPage = lazy(() => import('./pages/SeasonPage').then(m => ({default:m.SeasonPage})));
+const OnlineSeasonPage = lazy(() => import('./pages/OnlineSeasonPage').then(m => ({default:m.OnlineSeasonPage})));
 
 type Page = 'coins' | 'home' | 'play' | 'sprint' | 'daily' | 'quickRace' | 'quickResults' | 'profile' | 'leaderboard' | 'teams' | 'stats' | 'friends' | 'race' | 'garage' | 'results' | 'shop' | 'season' | 'multiplayer' | 'multiplayerRace';
 const PAGE_URLS: Record<Page, string> = {
@@ -121,6 +122,7 @@ export function App() {
   const [online, setOnline] = useState<EarnedOnlineProfile | null>(null);
   const [onlineBusy, setOnlineBusy] = useState(false);
   const [onlineError, setOnlineError] = useState('');
+  const [seasonClock,setSeasonClock] = useState(Date.now());
   const [accountRevision, setAccountRevision] = useState(0);
   useEffect(() => {
     const changed = () => {
@@ -156,6 +158,22 @@ export function App() {
       .catch(()=>{if(active){setOnline(null);setOnlineError('Онлайн ахиц түр боломжгүй. Хөтчийн шагнал серверт шилжихгүй.');}});
     return ()=>{active=false;};
   }, [page,accountRevision]);
+  useEffect(()=>{
+    if(page!=='season')return;
+    const refresh=()=>{
+      if(document.hidden)return;
+      setSeasonClock(Date.now());
+      void onlineProgressApi<EarnedOnlineProfile>().then(setOnline).catch(()=>{});
+    };
+    const timer=window.setInterval(refresh,60_000);
+    window.addEventListener('focus',refresh);
+    document.addEventListener('visibilitychange',refresh);
+    return ()=>{
+      window.clearInterval(timer);
+      window.removeEventListener('focus',refresh);
+      document.removeEventListener('visibilitychange',refresh);
+    };
+  },[page]);
   const xp = profile.xp;
   const skin = displayProfile.car;
   const inputRef = useRef<HTMLInputElement>(null);
@@ -304,6 +322,15 @@ export function App() {
     } catch(error) {
       setOnlineError((error as Error).message);
     } finally {setOnlineBusy(false);}
+  }
+  async function handleOnlineSeasonClaim(tier:number) {
+    if(!online || onlineBusy)return;
+    setOnlineBusy(true);setOnlineError('');
+    try {
+      const result=await onlineProgressApi<{profile:EarnedOnlineProfile}>('/season/claim',{tier});
+      setOnline(result.profile);
+    } catch(error){setOnlineError((error as Error).message);}
+    finally {setOnlineBusy(false);}
   }
   function handleClaim(tier: number) { setProfile(p => claimReward(p, tier)); }
   function handleClaimAll() { setProfile(p => claimAvailableRewards(p)); }
@@ -467,7 +494,8 @@ export function App() {
         online={online} onlineBusy={onlineBusy} onlineError={onlineError} best={best}
         onAgain={() => { setQuickOutcome(null); navigate('quickRace'); }}
         onHome={() => navigate('home')} onGarage={() => navigate('garage')}
-        onSeason={() => navigate('season')} onClaimQuest={handleQuestClaim} onClaimSeason={handleClaimAll}/>}
+        onSeason={() => navigate('season')} onClaimQuest={handleQuestClaim}
+        onClaimSeason={seasonClock>=SEASON.until?()=>navigate('season'):handleClaimAll}/>}
       {page === 'quickRace' && <QuickRacePage nickname={nickname} car={skin} profile={displayProfile}
         onBack={() => navigate('play')} onGarage={() => navigate('garage')}
         onFinish={outcome => { setQuickOutcome(outcome); navigate('quickResults'); }}
@@ -485,8 +513,12 @@ export function App() {
         freeBusy={onlineBusy} freeError={onlineError} onBuy={item=>void handleBuy(item)}
         paidCoins={paidWallet.balance} paidBusy={paidBusy} paidError={paidError} onPaidBuy={item => void handlePaidBuy(item)} onTopUp={() => navigate('coins')}
         onEquip={item => handleEquip(item.kind, item.id)} onRace={() => navigate('play')}/>}
-      {page === 'season' && <SeasonPage profile={profile} onClaim={handleClaim} onClaimAll={handleClaimAll}
-        onRace={() => navigate('play')} onShop={() => navigate('shop')}/>}
+      {page === 'season' && (seasonClock>=SEASON.until ?
+        <OnlineSeasonPage online={online?.season.number && online.season.number>=2?online:null}
+          busy={onlineBusy} error={onlineError} onClaim={tier=>void handleOnlineSeasonClaim(tier)}
+          onRace={()=>navigate('quickRace')} onShop={()=>navigate('shop')}/> :
+        <SeasonPage profile={profile} onClaim={handleClaim} onClaimAll={handleClaimAll}
+          onRace={() => navigate('quickRace')} onShop={() => navigate('shop')}/>)}
 
       {page === 'results' && <ResultsPage wpm={wpm} accuracy={accuracy} elapsed={elapsed} best={best} correct={correct} carIcon={CARS[skin].icon} earnedXp={profile.history[0]?.earnedXp || 0} earnedCoins={profile.history[0]?.earnedCoins || 0}
         onAgain={startSolo} onPlay={() => navigate('play')} onGarage={() => navigate('garage')} />}

@@ -84,7 +84,12 @@ export function QuickRaceResultsPage({
     ? Math.round(profile.history.reduce((sum, race) => sum + race.wpm, 0) / profile.history.length) : 0;
   const podium = standings.slice(0, 5);
   const myCar = carIcon(standings.find(row => row.player.id === playerId)?.player.car || profile.car);
-  const seasonClaimable = pass.claimable.length;
+  const liveSeason=online?.season && online.season.number>=2 ? online.season : null;
+  const goal=liveSeason?.rewards.at(-1)?.xp??10500;
+  const seasonClaimable=liveSeason?liveSeason.rewards.filter(r=>r.claimable).length:pass.claimable.length;
+  const nextSeasonTier=liveSeason?.rewards.find(r=>!r.claimed&&r.xp>liveSeason.xp);
+  const seasonPct=liveSeason?Math.min(100,liveSeason.xp/goal*100):pass.totalPercent;
+  const seasonUnlocked=liveSeason?liveSeason.rewards.filter(r=>r.claimed||r.claimable).length:pass.unlocked.length;
 
   return <div className="qr-results" data-testid="quick-results" aria-labelledby="qr-results-title">
     <header className="qr-heading">
@@ -167,9 +172,14 @@ export function QuickRaceResultsPage({
         </section>
 
         <section className="qr-panel qr-pass-panel">
-          <div className="qr-panel-header"><div><span className="qr-eyebrow">УЛИРАЛ 01 · ҮНЭГҮЙ</span><h2>BATTLE PASS</h2></div><span className="qr-pass-tier">{pass.unlocked.length}/8</span></div>
-          <div className="qr-progress-label"><span>{pass.next ? 'ДАРААГИЙН ШАТ · ' + pass.next.tier : 'БҮХ ШАТ НЭЭГДСЭН'}</span><strong>{pass.next ? pass.xpToNext + ' XP ҮЛДСЭН' : '100%'}</strong></div>
-          <div className="qr-progress-track qr-season-track" role="progressbar" aria-label="Улирлын нийт ахиц" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pass.totalPercent)}><span style={{width:pass.totalPercent+'%'}}/></div>
+          <div className="qr-panel-header"><div><span className="qr-eyebrow">УЛИРАЛ {String(liveSeason?.number??1).padStart(2,'0')} · ҮНЭГҮЙ</span><h2>BATTLE PASS</h2></div><span className="qr-pass-tier">{seasonUnlocked}/8</span></div>
+          <div className="qr-progress-label"><span>{liveSeason
+              ? nextSeasonTier?'ДАРААГИЙН ШАТ · '+nextSeasonTier.tier:'БҮХ ШАТ НЭЭГДСЭН'
+              : pass.next?'ДАРААГИЙН ШАТ · '+pass.next.tier:'БҮХ ШАТ НЭЭГДСЭН'}</span>
+            <strong>{liveSeason
+              ? nextSeasonTier?Math.max(0,nextSeasonTier.xp-liveSeason.xp)+' XP ҮЛДСЭН':'100%'
+              : pass.next?pass.xpToNext+' XP ҮЛДСЭН':'100%'}</strong></div>
+          <div className="qr-progress-track qr-season-track" role="progressbar" aria-label="Улирлын нийт ахиц" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(seasonPct)}><span style={{width:seasonPct+'%'}}/></div>
           {seasonClaimable > 0 && <button type="button" className="qr-claim-pass" onClick={onClaimSeason}>✓ {seasonClaimable} ШАГНАЛ АВАХ</button>}
           <button type="button" className="qr-text-link" onClick={onSeason}>ШАГНАЛЫН ЗАМ ХАРАХ <span aria-hidden="true">↗</span></button>
         </section>

@@ -1,6 +1,11 @@
 export type EarnedOnlineProfile = {
   xp:number; coins:number; races:number; seasonXp:number; level:number;
   owned:string[]; source:'server'; starter:number;
+  season:{id:string;number:number;name:string;from:number;until:number;
+    xp:number;remainingDays:number;rewards:Array<{
+      tier:number;xp:number;coins:number;itemKey:string|null;name:string;
+      claimed:boolean;claimable:boolean;
+    }>};
   daily:{day:string;quests:Array<{
     id:'first-finish'|'precision'|'speed';name:string;detail:string;target:number;
     coins:number;progress:number;done:boolean;claimed:boolean;
@@ -23,7 +28,9 @@ export async function onlineProgressApi<T>(path='',body?:object):Promise<T> {
       not_found:'Бараа олдсонгүй.',
       invalid_quest:'Өдрийн даалгавар олдсонгүй.',
       already_claimed:'Энэ даалгаврын шагналыг авсан байна.',
-      not_complete:'Энэ даалгаврыг хараахан дуусгаагүй.'
+      not_complete:'Шагнал авахад шаардлагатай XP/даалгавар дуусаагүй.',
+      legacy_season:'Энэ улирлын хуучин шагналыг тухайн төхөөрөмжөөс авна.',
+      invalid_tier:'Улирлын шагналын шат хүчингүй.'
     };
     throw Error(messages[payload.error??'']??'Онлайн ахицын сервертэй холбогдож чадсангүй.');
   }
