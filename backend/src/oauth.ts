@@ -55,11 +55,12 @@ export async function exchangeProviderIdentity(provider:OAuthProvider,env:OAuthE
         client_secret:env.GOOGLE_CLIENT_SECRET!,redirect_uri:callback,grant_type:'authorization_code'})
     }));
   }else{
-    // Facebook Graph accepts app credentials and authorization code over HTTPS.
-    const url=new URL('https://graph.facebook.com/v21.0/oauth/access_token');
-    url.search=new URLSearchParams({client_id:env.FACEBOOK_APP_ID!,
-      client_secret:env.FACEBOOK_APP_SECRET!,redirect_uri:callback,code}).toString();
-    token=await checkedJSON<Token>(await fetch(url));
+    // Keep confidential app credentials out of URL logs and proxy traces.
+    token=await checkedJSON<Token>(await fetch('https://graph.facebook.com/v21.0/oauth/access_token',{
+      method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:new URLSearchParams({client_id:env.FACEBOOK_APP_ID!,
+        client_secret:env.FACEBOOK_APP_SECRET!,redirect_uri:callback,code})
+    }));
   }
   if(typeof token.access_token!=='string'||token.access_token.length<10)
     throw Error('OAuth token exchange failed');
