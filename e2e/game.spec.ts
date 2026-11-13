@@ -861,7 +861,9 @@ test('completed quickplay opens post-race standings and claims daily goals only 
   const input = page.getByRole('textbox',{name:'Шууд уралдааны бичих талбар'});
   await expect(input).toHaveAttribute('data-race-enabled', 'true', {timeout:13000});
   const prompt = (await page.locator('.quick-phrase').innerText()).replace(/\u00a0/g,' ').trim();
-  await input.pressSequentially(prompt,{delay:44});
+  // Human-plausible input: >210 WPM is intentionally rejected by the
+  // server-earned ledger and must not mint online quest rewards.
+  await input.pressSequentially(prompt,{delay:95});
   await expect(page).toHaveURL(/\/quick-results$/,{timeout:15000});
   await expect(page.getByTestId('quick-results')).toBeVisible();
   await expect(page.locator('.qr-standings li')).toHaveCount(5);
