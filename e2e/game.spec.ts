@@ -524,7 +524,8 @@ test('rarity shop has six distinct tiers, 18 original vehicle assets and respons
   }
 });
 
-test('collection purchase spends coins once, equips in garage and level-gates legendary cars', async ({page}) => {
+test('legacy offline collection purchase remains available without server economy', async ({page}) => {
+  await page.route('**/api/progression',route=>route.fulfill({status:503,json:{error:'offline'}}));
   await page.goto('/shop');
   await page.evaluate(() => localStorage.setItem('racer.profile.v1', JSON.stringify({xp:0,coins:50000,owned:[]})));
   await page.reload();
@@ -543,7 +544,8 @@ test('collection purchase spends coins once, equips in garage and level-gates le
   await expect(page.locator('.garage-feature h2')).toContainText('Шонхор GT');
 });
 
-test('level 35 veteran may buy and equip a legendary car, accessible on shop and garage', async ({page}) => {
+test('offline legacy level 35 can still use local-only cars without upgrading balances', async ({page}) => {
+  await page.route('**/api/progression',route=>route.fulfill({status:503,json:{error:'offline'}}));
   await page.goto('/shop');
   await page.evaluate(() => localStorage.setItem('racer.profile.v1', JSON.stringify({xp:10200,coins:8000,owned:[]})));
   await page.reload();
