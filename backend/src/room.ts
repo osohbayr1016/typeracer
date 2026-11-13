@@ -5,6 +5,7 @@ import {
 import { acceptKeystroke, safePlayerName } from './logic';
 import { QuickMatchmaker } from './quick';
 import { PrivateCheckpointStore, type PrivateCheckpoint } from './privateCheckpoint';
+import { GlobalAbuseLimiter } from './rateLimits';
 import { PaymentService, type PaymentEnv } from './payments';
 
 type Message = { type: 'ready' } | { type: 'key'; key: string } | { type: 'rematch'; matchId: string };
@@ -41,6 +42,7 @@ export class RaceRoom {
   private pendingBroadcast: ReturnType<typeof setTimeout> | null = null;
 
   private payments: PaymentService | null = null;
+  private abuse:GlobalAbuseLimiter|null=null;
   constructor(private readonly state: DurableObjectState, private env: PaymentEnv) {
     // The legacy unit fixture has no SQLite. Production DOs always do.
     this.checkpoint=state.storage.sql
@@ -102,9 +104,28 @@ export class RaceRoom {
     },Math.max(1,deadline-Date.now()));
   }
 
+  private async checkGlobalLimit(request:Request,scope:'checkout'|'recovery',
+    threshold:number):Promise<Response|null>{
+    const ip=request.headers.get('CF-Connecting-IP');
+    // The connecting IP is injected by Cloudflare on production requests.
+    // Do not trust client-provided X-Forwarded-For or penalize local tests.
+    if (!ip)return null;
+    this.abuse ??= new GlobalAbuseLimiter(this.state.storage.sql,
+      this.state.storage.transactionSync
+        ? callback=>this.state.storage.transactionSync(callback)
+        : undefined);
+    const decision=await this.abuse.check(scope,ip,threshold,60_000);
+    return decision.allowed?null:Response.json({error:'rate_limit_exceeded'},{
+      status:429,headers:{'Retry-After':String(decision.retryAfterSeconds),'Cache-Control':'no-store'}
+    });
+  }
   async fetch(request: Request): Promise<Response> {
     const path = new URL(request.url).pathname;
     if (path.startsWith('/payments/')) {
+      if(path==='/payments/checkout' && request.method==='POST'){
+        const rejected=await this.checkGlobalLimit(request,'checkout',10);
+        if(rejected)return rejected;
+      }
       this.payments ??= new PaymentService(this.state.storage.sql, this.quickService().rankings!, this.env);
       return this.payments.fetch(request);
     }
@@ -159,6 +180,8 @@ export class RaceRoom {
         return Response.json(result ?? {error:'session_required'}, {status:!result ? 401 : result.exists ? 409 : 201});
       }
       if (path === '/account/recover' && request.method === 'POST') {
+        const rejected=await this.checkGlobalLimit(request,'recovery',8);
+        if(rejected)return rejected;
         const raw = await request.text();
         if (raw.length > 256) return Response.json({error:'invalid_recovery'}, {status:400});
         let code: unknown;
