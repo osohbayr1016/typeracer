@@ -135,16 +135,16 @@ export function App() {
   const onlineInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (startedAt === null || finishedAt !== null) return;
+    if (page !== 'race' || startedAt === null || finishedAt !== null) return;
     const id = window.setInterval(() => setNow(Date.now()), 125);
     return () => window.clearInterval(id);
-  }, [startedAt, finishedAt]);
+  }, [page, startedAt, finishedAt]);
   useEffect(() => () => socketRef.current?.close(), []);
   useEffect(() => {
-    if (snapshot?.phase !== 'racing') return;
+    if (page !== 'multiplayerRace' || snapshot?.phase !== 'racing') return;
     const id = window.setInterval(() => setNow(Date.now()), 125);
     return () => window.clearInterval(id);
-  }, [snapshot?.phase]);
+  }, [page,snapshot?.phase]);
   const target = useMemo(() => characters(prompt.text), [prompt]);
   const entered = useMemo(() => characters(typed), [typed]);
   const firstMismatch = entered.findIndex((letter, index) => letter !== target[index]);
@@ -167,7 +167,11 @@ export function App() {
   useEffect(() => {
     if (page !== 'results' || finishedAt === null) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Enter' && !(event.target instanceof HTMLButtonElement)) startSolo();
+      if (event.key !== 'Enter' || event.repeat || event.isComposing ||
+          event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return;
+      if (event.target instanceof Element &&
+          event.target.closest('button,a,input,textarea,select,[role="button"],[contenteditable="true"]')) return;
+      startSolo();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -322,6 +326,10 @@ export function App() {
       navigate('multiplayerRace');
   }, [page, snapshot?.phase]);
   function navigate(next: Page) {
+    if (page === 'race' && next !== 'race' && next !== 'results') {
+      // Abandon a solo run explicitly; hidden tabs must not accumulate race time.
+      setStartedAt(null); setFinishedAt(null); setTyped(''); setStrokes(0); setMistakes(0);
+    }
     if (next === 'multiplayer' && status === 'connected' &&
         (snapshot?.phase === 'countdown' || snapshot?.phase === 'racing')) next = 'multiplayerRace';
     if ((page === 'multiplayer' || page === 'multiplayerRace') &&
@@ -347,7 +355,7 @@ export function App() {
       onNavigate={destination => navigate(destination)}/>
     <main className="shell main">
       {page === 'coins' && <CoinsPage wallet={paidWallet} onWallet={setPaidWallet} onShop={() => navigate('shop')} onGarage={() => navigate('garage')}/>}
-      {page === 'home' && <HomePage onPlay={() => navigate('play')}
+      {page === 'home' && <HomePage onPlay={() => navigate('play')} onQuickRace={() => navigate('quickRace')}
         onMultiplayer={() => navigate('friends')}
         onSprint={() => navigate('sprint')} onDaily={() => navigate('daily')}/>}
       {(page === 'sprint' || page === 'daily') && <SprintTypingPage key={page} daily={page === 'daily'}
