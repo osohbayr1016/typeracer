@@ -53,7 +53,27 @@ assert.equal(earned.coins,200);
 assert.equal(earned.xp,0);
 assert.deepEqual(earned.owned,[]);
 assert.deepEqual(earned.equipped,{car:'sunset',trail:'none',title:'rookie',sticker:'none'});
-console.log('✓ Durable account-bound online earned rewards');
+assert.equal(earned.stats?.bestWpm,0,'New guest has no fabricated online record');
+assert.equal(earned.stats?.lastRacedAt,null);
+const mongoliaDay=new Date(Date.now()+8*60*60_000).toISOString().slice(0,10);
+assert.equal(earned.daily?.day,mongoliaDay);
+assert.equal(typeof earned.season?.number,'number');
+assert(Array.isArray(earned.season?.rewards));
+console.log('✓ Durable account-bound online earned rewards, statistics and current season');
+
+const dailyResponse=await fetchHealthy('/api/leaderboard/daily?limit=5');
+const dailyBoard=await dailyResponse.json();
+assert.equal(dailyBoard.period,'day');
+assert.equal(dailyBoard.mode,'daily');
+assert.equal(dailyBoard.day,mongoliaDay);
+assert(Array.isArray(dailyBoard.players));
+assert(Number.isInteger(dailyBoard.total)&&dailyBoard.total>=0);
+console.log('✓ Live verified daily XP board uses Mongolia-local date');
+
+const auth=await (await fetchHealthy('/api/auth/providers')).json();
+assert.equal(typeof auth.google,'boolean');
+assert.equal(typeof auth.facebook,'boolean');
+console.log('✓ Provider discovery returns explicit enabled/disabled status');
 
 const created = await (await fetchHealthy('/api/rooms', { method: 'POST' })).json();
 assert.match(created.code, /^[A-F0-9]{8}$/);
