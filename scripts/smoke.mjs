@@ -41,6 +41,20 @@ const prompts = await (await fetchHealthy('/api/prompts?lang=mn')).json();
 assert(Array.isArray(prompts.prompts) && prompts.prompts.length > 0);
 console.log('✓ Mongolian prompts');
 
+// A fresh browser session must receive a durable, receipt-independent earned
+// balance. No public route may accept client-authored XP, coins or match scores.
+const accountResponse = await fetchHealthy('/api/account');
+const newCookie = accountResponse.headers.get('set-cookie')?.split(';')[0];
+assert.match(newCookie || '', /^tr_guest=[a-f0-9]{64}$/);
+const earnedResponse = await fetchHealthy('/api/progression', {headers:{Cookie:newCookie}});
+const earned = await earnedResponse.json();
+assert.equal(earned.source,'server');
+assert.equal(earned.coins,200);
+assert.equal(earned.xp,0);
+assert.deepEqual(earned.owned,[]);
+assert.deepEqual(earned.equipped,{car:'sunset',trail:'none',title:'rookie',sticker:'none'});
+console.log('✓ Durable account-bound online earned rewards');
+
 const created = await (await fetchHealthy('/api/rooms', { method: 'POST' })).json();
 assert.match(created.code, /^[A-F0-9]{8}$/);
 console.log('✓ Durable Object room:', created.code);
