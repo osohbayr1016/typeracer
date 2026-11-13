@@ -71,3 +71,5 @@ Six previously prepared, original 2D vehicle designs have been reconciled with t
 | Домогт | `side-legend-cyber` | 36 | 5,400 |
 
 Both full-size and race-size transparent WebP assets for all six IDs are committed into `frontend/public/cars/` and `frontend/public/cars/race/` (12 binary files, 221 KiB total). The same shared product record is used by the offline gallery and the authoritative online coin-purchase validator; bot, public race and private-room car allowlists recognize all six.
+
+Shop and Garage use stable shared cosmetic IDs, including `data-item-id` on garage tiles, so identical Mongolian names never point to the wrong locked or equipped vehicle.
