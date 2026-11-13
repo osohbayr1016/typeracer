@@ -291,7 +291,16 @@ export function App() {
   }
   function handleClaim(tier: number) { setProfile(p => claimReward(p, tier)); }
   function handleClaimAll() { setProfile(p => claimAvailableRewards(p)); }
-  function handleQuestClaim(id: DailyQuestId) { setProfile(p => claimDailyQuest(p, id)); }
+  async function handleQuestClaim(id: DailyQuestId) {
+    if (!online) { setProfile(p=>claimDailyQuest(p,id)); return; }
+    if (onlineBusy)return;
+    setOnlineBusy(true);setOnlineError('');
+    try {
+      const result=await onlineProgressApi<{profile:EarnedOnlineProfile}>('/quests/claim',{id});
+      setOnline(result.profile);
+    } catch(error){setOnlineError((error as Error).message);}
+    finally {setOnlineBusy(false);}
+  }
   function disconnect() {
     socketRef.current?.close(); socketRef.current = null;
     setStatus('disconnected'); setSnapshot(null); setCode(''); setMyId(''); setRaceResult(null);
@@ -436,7 +445,8 @@ export function App() {
         onCreateRoom={() => { navigate('multiplayer'); void createRoom(); }}
         onJoinRoom={room => { navigate('multiplayer'); setJoinCode(room); connectRoom(room); }}
         onLobby={() => navigate('multiplayer')}/>}
-      {page === 'quickResults' && <QuickRaceResultsPage outcome={quickOutcome} nickname={nickname} profile={profile} best={best}
+      {page === 'quickResults' && <QuickRaceResultsPage outcome={quickOutcome} nickname={nickname} profile={profile}
+        online={online} onlineBusy={onlineBusy} onlineError={onlineError} best={best}
         onAgain={() => { setQuickOutcome(null); navigate('quickRace'); }}
         onHome={() => navigate('home')} onGarage={() => navigate('garage')}
         onSeason={() => navigate('season')} onClaimQuest={handleQuestClaim} onClaimSeason={handleClaimAll}/>}

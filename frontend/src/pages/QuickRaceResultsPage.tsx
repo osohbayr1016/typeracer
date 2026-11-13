@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CARS, type Skin } from './cars';
-import { DAILY_QUESTS, dailyQuests, playerLevel, quickDayStreak, seasonProgress,
+import type {EarnedOnlineProfile} from '../onlineProgress';
+import { dailyQuests, playerLevel, quickDayStreak, seasonProgress,
   type DailyQuestId, type Profile } from '../progression';
 import { quickResultShareText, raceStandings, type QuickRaceOutcome } from './quickResultsModel';
 import './QuickRaceResultsPage.css';
@@ -8,6 +9,8 @@ import './QuickRaceResultsPage.css';
 type Props = {
   outcome: QuickRaceOutcome | null;
   profile: Profile;
+  online: EarnedOnlineProfile | null;
+  onlineBusy?: boolean; onlineError?:string;
   nickname: string;
   best: number;
   onAgain: () => void;
@@ -23,7 +26,7 @@ function carIcon(value?: string) {
 }
 
 export function QuickRaceResultsPage({
-  outcome, profile, nickname, best, onAgain, onHome, onGarage, onSeason, onClaimQuest, onClaimSeason
+  outcome, profile, online, onlineBusy, onlineError, nickname, best, onAgain, onHome, onGarage, onSeason, onClaimQuest, onClaimSeason
 }: Props) {
   const [shareStatus, setShareStatus] = useState('');
   useEffect(() => setShareStatus(''), [outcome?.result.raceId]);
@@ -75,7 +78,7 @@ export function QuickRaceResultsPage({
   const currentLevelXp = profile.xp % 300;
   const pass = seasonProgress(profile, at);
   const streak = quickDayStreak(profile, at);
-  const quests = dailyQuests(profile, at);
+  const quests = online ? online.daily.quests : dailyQuests(profile, at);
   const claimedCount = quests.filter(q => q.claimed).length;
   const average = profile.history.length
     ? Math.round(profile.history.reduce((sum, race) => sum + race.wpm, 0) / profile.history.length) : 0;
@@ -172,7 +175,8 @@ export function QuickRaceResultsPage({
         </section>
 
         <section className="qr-panel qr-quest-panel" data-testid="quick-daily-quests">
-          <div className="qr-panel-header"><div><span className="qr-eyebrow">ӨНӨӨДӨР / МОНГОЛЫН ЦАГ</span><h2>ӨДРИЙН ДААЛГАВАР</h2></div><span className="qr-quest-counter">{claimedCount}/{DAILY_QUESTS.length}</span></div>
+          <div className="qr-panel-header"><div><span className="qr-eyebrow">{online?'СЕРВЕРТ ХАДГАЛСАН':'ЭНЭ ТӨХӨӨРӨМЖ'} / МОНГОЛЫН ЦАГ</span><h2>ӨДРИЙН ДААЛГАВАР</h2></div><span className="qr-quest-counter">{claimedCount}/{quests.length}</span></div>
+          {onlineError && <p role="alert" className="error-note">{onlineError}</p>}
           <ul className="qr-quest-list">
             {quests.map(quest => <li key={quest.id} className={'qr-quest'+(quest.claimed?' claimed':'')} data-quest-id={quest.id}>
               <div className="qr-quest-row">
@@ -181,7 +185,7 @@ export function QuickRaceResultsPage({
               </div>
               <div className="qr-quest-bottom">
                 <div className="qr-mini-track" role="progressbar" aria-label={quest.name+' явц'} aria-valuemin={0} aria-valuemax={quest.target} aria-valuenow={quest.progress}><span style={{width:quest.progress/quest.target*100+'%'}}/></div>
-                <button type="button" disabled={!quest.done || quest.claimed} onClick={() => onClaimQuest(quest.id)}>
+                <button type="button" disabled={!quest.done || quest.claimed || onlineBusy} onClick={() => onClaimQuest(quest.id)}>
                   {quest.claimed ? '✓ АВСАН' : quest.done ? 'ШАГНАЛ АВАХ' : quest.progress + '/' + quest.target}
                 </button>
               </div>
