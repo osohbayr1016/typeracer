@@ -443,6 +443,11 @@ export function App() {
     setError('');
     try {
       const response = await fetch(API_BASE + '/api/rooms', { method: 'POST' });
+      if (response.status===429){
+        const seconds=Math.max(1,Math.min(120,Number(response.headers.get('Retry-After'))||60));
+        throw new Error('Нэг минутад хэт олон өрөө үүсгэсэн байна. '+seconds+' секундын дараа дахин оролдоно уу.');
+      }
+      if (response.status===503) throw new Error('Өрөөний сервер түр боломжгүй байна. Дараа дахин оролдоно уу.');
       if (!response.ok) throw new Error('Сервер шинэ өрөө үүсгэж чадсангүй (' + response.status + ')');
       const data: { code: string } = await response.json();
       connectRoom(data.code);
