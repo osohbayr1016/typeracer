@@ -4,6 +4,7 @@ import {
 } from '@typeracer/shared';
 import { safePlayerName } from './logic';
 import { RaceRankingStore } from './rankings';
+import { EarnedProgressionStore } from './earned';
 import { purchasedInventory } from './payments';
 import { QuickCheckpointStore, type QuickCheckpoint } from './quickCheckpoint';
 
@@ -104,11 +105,14 @@ export function connectedHumanCount(entries: Iterable<{
 
 export class QuickMatchmaker {
   readonly rankings: RaceRankingStore | null;
+  readonly earned: EarnedProgressionStore | null;
   readonly checkpoints: QuickCheckpointStore | null;
   constructor(private storage?: DurableObjectStorage) {
     this.rankings = storage ? new RaceRankingStore(storage.sql,
       storage.transactionSync ? operation => storage.transactionSync(operation) : undefined) : null;
     this.checkpoints = storage ? new QuickCheckpointStore(storage.sql) : null;
+    this.earned = storage ? new EarnedProgressionStore(storage.sql,
+      storage.transactionSync ? operation => storage.transactionSync(operation) : undefined) : null;
   }
   private pending: QuickRace | null = null;
   private active = new Set<QuickRace>();
@@ -208,6 +212,7 @@ export class QuickMatchmaker {
       human.disconnectTimer = null;
       human.socket = server;
       this.attach(server, race, human);
+      if (human.completedAt !== null && !human.lastResult) this.awardFinish(race,human);
       this.saveRace(race);
       this.send(server, { type: 'welcome', id: human.id, resumeToken: human.resumeToken, resumed: true, inputVersion: human.inputVersion });
       // Immediate authoritative snapshot: do not wait for the 50ms fan-out tick.
@@ -390,9 +395,8 @@ export class QuickMatchmaker {
 
   private awardFinish(race: QuickRace, human: Human): void {
     if (human.paid || human.completedAt === null || race.startAt === null) return;
-    human.paid = true;
     const place = quickPlacement(human, [...race.humans, ...race.bots]);
-    human.lastResult = {
+    const result: QuickResult = {
       type: 'quick-result', raceId: race.id, place, coins: quickPrize(place, true),
       wpm: wordsPerMinute(human.progress, Math.max(1, human.completedAt - race.startAt)),
       accuracy: human.strokes ? Math.round((human.strokes - human.mistakes) / human.strokes * 100) : 100,
@@ -400,11 +404,31 @@ export class QuickMatchmaker {
     };
     // The only leaderboard writer is the authoritative Durable Object finish.
     // Guest clients cannot submit WPM, accuracy, points, or bots to this store.
-    if (human.accountId) this.rankings?.record(race.id, human.accountId,
-      human.lastResult.wpm, human.lastResult.accuracy, human.completedAt,
-      race.humanCountAtStart >= 2);
+    if (human.accountId) {
+      try {
+        // Retry-safe independent ledgers: a crash after score write but before
+        // earned credit retries both, with each ledger deduplicating race+account.
+        this.rankings?.record(race.id, human.accountId,
+          result.wpm, result.accuracy, human.completedAt,
+          race.humanCountAtStart >= 2);
+        this.earned?.creditRace({
+          raceId:race.id,playerId:human.accountId,place,
+          coins:result.coins,wpm:result.wpm,accuracy:result.accuracy,
+          finishedAt:human.completedAt
+        });
+      } catch (error) {
+        console.error('Online reward write failed; match remains retryable', {
+          raceId:race.id,error:error instanceof Error?error.name:'unknown'
+        });
+        this.saveRace(race);
+        return;
+      }
+    }
+    // Never checkpoint "paid" until all server-side writes have completed.
+    human.lastResult = result;
+    human.paid = true;
     this.saveRace(race);
-    this.send(human.socket, human.lastResult);
+    this.send(human.socket, result);
   }
 
   private finish(race: QuickRace): void {

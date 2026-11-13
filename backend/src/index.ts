@@ -71,6 +71,8 @@ app.post('/api/payments/checkout', c => {
 app.post('/api/payments/items', c => paymentProxy(c, 'items'));
 app.get('/api/payments/orders/:id', c => paymentProxy(c, 'orders/' + encodeURIComponent(c.req.param('id'))));
 app.post('/api/webhooks/wire', c => paymentProxy(c, 'webhook'));
+app.get('/api/progression',c=>publicRanking(c,'/progression'));
+app.post('/api/progression/items',c=>publicRanking(c,'/progression/items'));
 app.get('/api/account',c=>publicRanking(c,'/account?secure='+(new URL(c.req.url).protocol==='https:'?'1':'0')));
 app.get('/api/auth/providers',c=>c.json({
   google:providerReady(c.env,'google'),facebook:providerReady(c.env,'facebook')

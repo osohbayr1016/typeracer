@@ -100,9 +100,9 @@ export class EarnedProgressionStore {
   /** OAuth merges identities only after trusted provider exchange. Drop duplicate
    * race/item events and grant the 200-coin starter allowance just once.
    */
-  mergeAccount(from:string,to:string) {
+  mergeAccount(from:string,to:string,inTransaction=false) {
     if (from===to)return;
-    this.atomic(()=>{
+    const merge=()=>{
       const source=first(this.sql,'SELECT player_id FROM earned_profiles WHERE player_id=?',from);
       if (!source)return;
       this.ensure(to);
@@ -116,6 +116,8 @@ export class EarnedProgressionStore {
       this.sql.exec('DELETE FROM earned_items WHERE player_id=?',from);
       this.sql.exec('DELETE FROM earned_profiles WHERE player_id=?',from);
       this.reconcile(to);
-    });
+    };
+    if (inTransaction) merge();
+    else this.atomic(merge);
   }
 }
