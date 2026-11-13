@@ -64,7 +64,7 @@ export function GlobalLeaderboardPage({outcome,profile,onPlay,onTeams}:{
           board?.players.length?<div className="rank-overflow"><table className="rank-table" data-testid="global-points-table"><thead><tr>
             <th>#</th><th>ТОГЛОГЧ</th><th>БАГ</th><th>ОНОО</th><th>ГАРАА</th><th>WPM</th><th>НАРИЙВЧЛАЛ</th>
           </tr></thead><tbody>{board.players.map(row=><tr key={row.id}>
-            <td className="rank-position">{String(row.rank).padStart(2,'0')}</td><td><strong>{row.name}</strong><small>ЗОЧИН</small></td>
+            <td className="rank-position">{String(row.rank).padStart(2,'0')}</td><td><strong>{row.name}</strong><small>{row.guest?'ЗОЧИН':'ХОЛБОСОН ACCOUNT'}</small></td>
             <td>{row.teamTag??'—'}</td><td className="rank-points">{row.points.toLocaleString('mn-MN')}</td>
             <td>{row.races}</td><td>{row.wpm}</td><td>{row.accuracy}%</td>
           </tr>)}</tbody></table></div>

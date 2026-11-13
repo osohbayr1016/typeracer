@@ -64,10 +64,24 @@ async function enter(service:QuickMatchmaker,token?:string,cookie?:string){
   };
 }
 describe('SQLite durable quick-match crash recovery',()=>{
+  it('keeps bot-filled queues open for a late second human until the deadline',async()=>{
+    const service=new QuickMatchmaker(storage);
+    const first=await enter(service);
+    vi.advanceTimersByTime(2600);
+    const lobby=first.socket.latest('state') as typeof first.state;
+    expect(lobby.phase).toBe('waiting');
+    expect(lobby.players).toHaveLength(5);
+    const second=await enter(service);
+    expect(second.state.matchId).toBe(lobby.matchId);
+    expect(second.state.players.filter(p=>!String(p.id).startsWith('bot-'))).toHaveLength(2);
+    vi.advanceTimersByTime(2400);
+    expect((first.socket.latest('state') as typeof first.state).phase).toBe('countdown');
+  });
+
   it('restores match ID, input ACK sequence, bot state and accepted Cyrillic progress on fresh instance',async()=>{
     const original=new QuickMatchmaker(storage);
     const first=await enter(original);
-    vi.advanceTimersByTime(6000);
+    vi.advanceTimersByTime(8100);
     const live=first.socket.latest('state') as typeof first.state;
     const letters=characters(live.prompt.text);
     for(let index=0;index<3;index++){
@@ -102,7 +116,7 @@ describe('SQLite durable quick-match crash recovery',()=>{
     const original=new QuickMatchmaker(storage);
     const account=await original.rankings!.session(null);
     const first=await enter(original,undefined,'tr_guest='+account.newToken);
-    vi.advanceTimersByTime(6000);
+    vi.advanceTimersByTime(8100);
     const live=first.socket.latest('state') as typeof first.state;
     const letters=characters(live.prompt.text);
     for(let index=0;index<letters.length;index++){

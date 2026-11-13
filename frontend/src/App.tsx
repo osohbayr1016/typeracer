@@ -342,7 +342,8 @@ export function App() {
   }
 
   return <div className="app-shell" style={{ '--accent': CARS[skin].color } as CSSProperties}>
-    <SiteNavigation page={page} nickname={nickname} level={level} coins={profile.coins + paidWallet.balance}
+    <SiteNavigation page={page} nickname={nickname} level={level}
+      earnedCoins={profile.coins} paidCoins={paidWallet.balance}
       onNavigate={destination => navigate(destination)}/>
     <main className="shell main">
       {page === 'coins' && <CoinsPage wallet={paidWallet} onWallet={setPaidWallet} onShop={() => navigate('shop')} onGarage={() => navigate('garage')}/>}

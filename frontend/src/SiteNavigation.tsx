@@ -9,7 +9,8 @@ type Props = {
   page: string;
   nickname: string;
   level: number;
-  coins: number;
+  earnedCoins: number;
+  paidCoins: number;
   onNavigate: (page: NavDestination) => void;
 };
 const links: Array<{page:NavDestination;label:string;icon:string}> = [
@@ -29,7 +30,7 @@ export function navActive(current:string, destination:NavDestination):boolean {
   if(destination==='friends')return ['friends','multiplayer','multiplayerRace'].includes(current);
   return current===destination;
 }
-export function SiteNavigation({page,nickname,level,coins,onNavigate}:Props) {
+export function SiteNavigation({page,nickname,level,earnedCoins,paidCoins,onNavigate}:Props) {
   const [moreOpen,setMoreOpen]=useState(false);
   const wrapRef=useRef<HTMLElement>(null);
   const navigate=(destination:NavDestination)=>{
@@ -77,13 +78,13 @@ export function SiteNavigation({page,nickname,level,coins,onNavigate}:Props) {
           {moreButton(false)}
         </nav>
         <div className="premium-user-tools">
-          <button type="button" className="premium-wallet" aria-label={coins+' зоос · Зоос цэнэглэх'} onClick={()=>navigate('coins')}><span aria-hidden="true">◈</span>
-            <strong>{coins.toLocaleString('mn-MN')}</strong><span aria-hidden="true">+</span>
+          <button type="button" className="premium-wallet" aria-label={paidCoins+' цэнэглэсэн зоос, '+earnedCoins+' тоглож олсон зоос · Цэнэглэх'} onClick={()=>navigate('coins')}><span aria-hidden="true">◈</span>
+            <strong>{paidCoins.toLocaleString('mn-MN')}</strong><small>ЦЭНЭГЛЭСЭН</small><span aria-hidden="true">+</span>
           </button>
           <button className="profile-chip premium-profile" type="button" onClick={()=>navigate('profile')}
             aria-label="Миний профайл" aria-current={page==='profile'?'page':undefined}>
             <span className="profile-avatar premium-avatar" aria-hidden="true">●</span>
-            <span className="profile-name">{nickname}<small>ТҮВШИН {level} · ◈ {coins}</small></span>
+            <span className="profile-name">{nickname}<small>ТҮВШИН {level} · ◈ {earnedCoins} тоглож олсон</small></span>
           </button>
         </div>
       </div>

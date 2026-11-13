@@ -29,7 +29,9 @@ export async function sessionDigest(token: string): Promise<string> {
 }
 
 export class RaceRankingStore {
-  constructor(private readonly sql: DB) {
+  constructor(private readonly sql: DB,
+    /** Durable Object production calls transactionSync; tests may use a fixture transaction. */
+    private readonly transaction: <T>(work: () => T) => T = work => work()) {
     this.sql.exec(`CREATE TABLE IF NOT EXISTS leaderboard_players (
       id TEXT PRIMARY KEY, guest_token TEXT UNIQUE NOT NULL, name TEXT NOT NULL,
       points INTEGER NOT NULL DEFAULT 0, races INTEGER NOT NULL DEFAULT 0,
@@ -178,6 +180,7 @@ export class RaceRankingStore {
   record(raceId: string, playerId: string | null, wpm: number, accuracy: number, finishedAt: number,
     humanOpponent = false): number {
     if (!playerId) return 0;
+    return this.transaction(() => {
     const p = first(this.sql.exec('SELECT * FROM leaderboard_players WHERE id=?', playerId));
     if (!p) return 0;
     if (first(this.sql.exec('SELECT race_id FROM leaderboard_races WHERE race_id=? AND player_id=?',raceId,playerId))) return 0;
@@ -196,6 +199,7 @@ export class RaceRankingStore {
       total_accuracy=total_accuracy+?, team_points=team_points+? WHERE id=?`,
       points,safeWpm,safeWpm,safeAccuracy,p.team_id?points:0,playerId);
     return points;
+    });
   }
   /** UTC Monday boundary is stable, documented, and calculated on the server. */
   static weekStart(at: number): number {
