@@ -4,7 +4,7 @@
 
 A Mongolian Cyrillic typing-race game, built with the same main stack as the author's `standoff-` project: **TypeScript, npm workspaces, React + Vite, Hono, Cloudflare Workers, Durable Objects and WebSockets**.
 
-**Status:** Solo, friend-room races and device-local cosmetic progression work in development. This is a **staging/unranked beta** with real Wire checkout and a protected paid wallet. The race-earned economy is still device-local; this is not yet a production-ranked or prize-money competition platform. All game code is on **main**; no pull request or merge step is needed.
+**Status:** Playable Cloudflare staging beta with live Quick Race, invite-only private rooms, server-owned earned XP/coins, persistent season rewards, daily and weekly beta leaderboards, plus a separate protected paid-wallet ledger. Offline Sprint/Daily practice continues to use device-local stats. This is **not** certified as production-ranked, tournament/prize-safe, or live merchant-verified. See [the required production go-live checklist](docs/PRODUCTION-GO-LIVE.md) before enabling a public paid launch.
 
 ## Features available now
 
@@ -12,11 +12,11 @@ A Mongolian Cyrillic typing-race game, built with the same main stack as the aut
 - Browser-local practice XP, earned coins, fixed-price cosmetics store, original six-car collection expansion (eleven total), equipped trails/titles/stickers and an eight-tier free seasonal reward pass.
 - Friend-only guest rooms, 2–6 players, 8-character invite code, Ready, countdown and real-time race progress.
 - Server-computed race progress, per-socket abuse limits and same-origin browser API protection.
-- Unit tests, TypeScript checks, Vite/Worker build, two Chromium E2E scenarios.
-- Race-earned shop/season progression is **not yet server-authoritative**. Purchased coins, supporter grants and paid debits use the server ledger; paid-exclusive race cosmetics are checked against receipts.
+- TypeScript, unit/SQLite integrity tests, native Cloudflare Worker runtime and a broad Chromium browser E2E suite; on `main`, the current staging pipeline also runs a live multiplayer WebSocket smoke test.
+- **Completed online Quick Races** mint account-bound earned XP/coins only from server-approved race events; daily quests and rotating season claims are transactional. Device-local Sprint/Daily practice remains explicitly separate and cannot mint online balances. Purchased coins, supporter grants and paid debits use a distinct protected receipt ledger.
 - One Cloudflare Worker hosts **both the game website and /api endpoints**, so no separate Cloudflare Pages deployment or CORS environment variables are needed.
 
-**Not included:** production ranked matches, prize tournaments, a paid battle pass, a server-owned earned economy, cross-instance race persistence, advanced bot detection, load certification and merchant refund/reporting automation. Account login/recovery, cookie-backed leaderboards, an in-process reconnect window and the paid purchase ledger are implemented.
+**Not yet certified:** prize tournaments, identity-proof ranked MMR, advanced anti-cheat, production-scale latency/load, live cross-device OAuth and merchant settlement/refund QA. Public and private race reconnect checkpoints, account sessions, signed payment receipts and the server-owned free economy have automated coverage, but live hardware/merchant acceptance remains external.
 
 ## Try it locally
 
@@ -43,7 +43,11 @@ Open **http://localhost:5173**. Solo play works without the API; multiplayer req
 
 To test with a friend locally: select **Найзуудтай уралдах**, create a room in browser A, enter the code in browser B, press **БЭЛЭН БОЛОХ** in both, and type after the three-second countdown. Browsers on different computers should use the deployed staging site instead.
 
-## Deploy to Cloudflare: easiest manual route
+## Production deployment and release gate
+
+The `main` workflow deploys **staging only**. Production uses an isolated Worker and its own SQLite Durable Object namespace, with an explicitly confirmed manual GitHub workflow and a production environment approval. Follow [Production go-live](docs/PRODUCTION-GO-LIVE.md) before attempting a production rollout. Staging users/orders are **not** automatically copied to production.
+
+## Deploy to Cloudflare: easiest manual staging route
 
 A **single Worker** deploys both the frontend files and the server API, including the Durable Object migration. The Worker will be called `mongolian-typeracer-staging`. Do **not** deploy the work-in-progress branch to a production custom domain.
 
