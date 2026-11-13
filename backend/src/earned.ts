@@ -20,7 +20,11 @@ export class EarnedProgressionStore {
     sql.exec(`CREATE TABLE IF NOT EXISTS earned_profiles(
       player_id TEXT PRIMARY KEY, xp INTEGER NOT NULL DEFAULT 0,
       coins INTEGER NOT NULL DEFAULT 200, races INTEGER NOT NULL DEFAULT 0,
-      season_xp INTEGER NOT NULL DEFAULT 0)`);
+      season_xp INTEGER NOT NULL DEFAULT 0,
+      car TEXT NOT NULL DEFAULT 'sunset',
+      trail TEXT NOT NULL DEFAULT 'none',
+      title TEXT NOT NULL DEFAULT 'rookie',
+      sticker TEXT NOT NULL DEFAULT 'none')`);
     sql.exec(`CREATE TABLE IF NOT EXISTS earned_races(
       race_id TEXT NOT NULL, player_id TEXT NOT NULL, xp INTEGER NOT NULL,
       coins INTEGER NOT NULL, season_xp INTEGER NOT NULL,
@@ -55,7 +59,9 @@ export class EarnedProgressionStore {
         accuracy:row.accuracy,finishedAt:row.finished_at}));
     return {xp:Number(player.xp),coins:Number(player.coins),races:Number(player.races),
       seasonXp:Number(player.season_xp),level:Math.floor(Number(player.xp)/300)+1,
-      owned,recent,source:'server' as const,starter:EARNED_STARTER_COINS};
+      owned,recent,source:'server' as const,starter:EARNED_STARTER_COINS,
+      equipped:{car:String(player.car),trail:String(player.trail),
+        title:String(player.title),sticker:String(player.sticker)}};
   }
   /** Only QuickMatchmaker calls this after an authoritative finished race.
    * Duplicate delivery, Worker retries and restarts cannot award the same race twice.
@@ -97,6 +103,20 @@ export class EarnedProgressionStore {
       return {profile:this.overview(id)};
     });
   }
+  equip(id:string,kind:string,itemId:string) {
+    return this.atomic(()=>{
+      if (!['car','trail','title','sticker'].includes(kind)) return {error:'invalid_item'};
+      const defaults:Record<string,string>={car:'sunset',trail:'none',title:'rookie',sticker:'none'};
+      if (itemId!==defaults[kind] && !SHOP.some(x=>x.kind===kind && x.id===itemId))
+        return {error:'invalid_item'};
+      const state=this.overview(id);
+      if (itemId!==defaults[kind]&&!state.owned.includes(kind+':'+itemId))
+        return {error:'not_owned'};
+      // Table column is selected only from the allowlist, never from raw request.
+      this.sql.exec('UPDATE earned_profiles SET '+kind+'=? WHERE player_id=?',itemId,id);
+      return {profile:this.overview(id)};
+    });
+  }
   /** OAuth merges identities only after trusted provider exchange. Drop duplicate
    * race/item events and grant the 200-coin starter allowance just once.
    */
@@ -112,6 +132,16 @@ export class EarnedProgressionStore {
         FROM earned_races WHERE player_id=?`,to,from);
       this.sql.exec(`INSERT OR IGNORE INTO earned_items(player_id,item_key,cost,purchased_at)
         SELECT ?,item_key,cost,purchased_at FROM earned_items WHERE player_id=?`,to,from);
+      const fromEquipment=first(this.sql,'SELECT car,trail,title,sticker FROM earned_profiles WHERE player_id=?',from);
+      if (fromEquipment) for (const [kind,defaultId] of Object.entries(
+        {car:'sunset',trail:'none',title:'rookie',sticker:'none'})) {
+        const selected=String(fromEquipment[kind]??defaultId);
+        if (selected!==defaultId &&
+            first(this.sql,'SELECT item_key FROM earned_items WHERE player_id=? AND item_key=?',
+              to,kind+':'+selected))
+          this.sql.exec('UPDATE earned_profiles SET '+kind+'=? WHERE player_id=? AND '+kind+'=?',
+            selected,to,defaultId);
+      }
       this.sql.exec('DELETE FROM earned_races WHERE player_id=?',from);
       this.sql.exec('DELETE FROM earned_items WHERE player_id=?',from);
       this.sql.exec('DELETE FROM earned_profiles WHERE player_id=?',from);
