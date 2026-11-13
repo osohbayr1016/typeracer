@@ -861,7 +861,9 @@ test('completed quickplay opens post-race standings and claims daily goals only 
   const input = page.getByRole('textbox',{name:'Шууд уралдааны бичих талбар'});
   await expect(input).toHaveAttribute('data-race-enabled', 'true', {timeout:13000});
   const prompt = (await page.locator('.quick-phrase').innerText()).replace(/\u00a0/g,' ').trim();
-  await input.pressSequentially(prompt,{delay:44});
+  // Human-plausible input: >210 WPM is intentionally rejected by the
+  // server-earned ledger and must not mint online quest rewards.
+  await input.pressSequentially(prompt,{delay:95});
   await expect(page).toHaveURL(/\/quick-results$/,{timeout:15000});
   await expect(page.getByTestId('quick-results')).toBeVisible();
   await expect(page.locator('.qr-standings li')).toHaveCount(5);
@@ -871,20 +873,24 @@ test('completed quickplay opens post-race standings and claims daily goals only 
   await expect(page.locator('.qr-stats-panel')).toBeVisible();
   const claim = page.locator('[data-quest-id="first-finish"] button');
   await expect(claim).toBeEnabled();
-  // Legacy daily quests credit ONLY the device-local practice ledger.
-  // They must not mint spendable online coins in the server-owned header.
+  // Daily quests now mint only server-verified rewards; browser storage must not change.
+  await expect(page.getByTestId('quick-daily-quests')).toContainText('СЕРВЕРТ ХАДГАЛСАН');
   const online = await (await page.request.get('/api/progression')).json() as {coins:number};
   await expect(page.locator('.profile-name small')).toContainText('◈ '+online.coins);
-  const header = await page.locator('.profile-name small').innerText();
   const localBefore = await page.evaluate(() =>
     (JSON.parse(localStorage.getItem('racer.profile.v1')||'{}') as {coins:number}).coins);
   await claim.click();
   await expect(claim).toBeDisabled();
   await expect(claim).toContainText('АВСАН');
-  await expect(page.locator('.profile-name small')).toHaveText(header);
+  await expect(page.locator('.profile-name small')).toContainText('◈ '+(online.coins+8));
   const localAfter = await page.evaluate(() =>
     (JSON.parse(localStorage.getItem('racer.profile.v1')||'{}') as {coins:number}).coins);
-  expect(localAfter).toBe(localBefore+8);
+  expect(localAfter).toBe(localBefore);
+  const claimed = await (await page.request.get('/api/progression')).json() as {
+    coins:number;daily:{quests:Array<{id:string;claimed:boolean}>}
+  };
+  expect(claimed.coins).toBe(online.coins+8);
+  expect(claimed.daily.quests.find(q=>q.id==='first-finish')?.claimed).toBe(true);
   await page.getByRole('button',{name:'НҮҮР ХУУДАС'}).click();
   await expect(page).toHaveURL(/\/$/);
   await page.goto('/profile');

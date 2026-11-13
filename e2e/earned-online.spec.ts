@@ -61,3 +61,17 @@ test('Shop UI purchases a cosmetic using server-earned coins without refreshing 
   const equipped=await (await page.request.get('/api/progression')).json();
   expect(equipped).toMatchObject({equipped:{title:'swift'},owned:['title:swift']});
 });
+
+test('online daily-quest claim is rejected until actual completed server races exist',async({page})=>{
+  await page.goto('/profile');
+  await expect(page.getByTestId('online-progress')).toContainText('СЕРВЕРТ ХАДГАЛАГДСАН');
+  const before=await (await page.request.get('/api/progression')).json() as {coins:number};
+  const unearned=await page.request.post('/api/progression/quests/claim',{data:{id:'first-finish',coins:9999}});
+  expect(unearned.status()).toBe(400);
+  expect(await unearned.json()).toMatchObject({error:'not_complete'});
+  const unknown=await page.request.post('/api/progression/quests/claim',{data:{id:'not-a-real-goal'}});
+  expect(unknown.status()).toBe(400);
+  expect(await unknown.json()).toMatchObject({error:'invalid_quest'});
+  const after=await (await page.request.get('/api/progression')).json() as {coins:number};
+  expect(after.coins).toBe(before.coins);
+});

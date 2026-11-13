@@ -9,6 +9,17 @@ type SQL = Pick<SqlStorage, 'exec'>;
 const first = (sql:SQL,query:string,...values:(string|number)[]) =>
   sql.exec(query,...values).toArray()[0] as Row | undefined;
 export const EARNED_STARTER_COINS=200;
+const DAY_MS=86_400_000;
+const MONGOLIA_OFFSET=8*3_600_000;
+/** The day boundary follows Ulaanbaatar (UTC+08) independently of Worker timezone. */
+export function earnedDayKey(at=Date.now()):string {
+  return new Date(at+MONGOLIA_OFFSET).toISOString().slice(0,10);
+}
+export const ONLINE_DAILY_QUESTS=[
+  {id:'first-finish',name:'Эхний бариа',detail:'Өнөөдөр нэг онлайн уралдаан дуусгах',target:1,coins:8},
+  {id:'precision',name:'Нямбай жолооч',detail:'95%-ийн нарийвчлалтай 3 онлайн уралдаан дуусгах',target:3,coins:12},
+  {id:'speed',name:'Хурдны сорилт',detail:'70 WPM-ээс хурдан 5 онлайн уралдаан дуусгах',target:5,coins:15}
+] as const;
 const SEASON_START=Date.parse('2026-10-01T00:00:00+08:00');
 const SEASON_END=Date.parse('2026-12-01T00:00:00+08:00');
 
@@ -31,6 +42,10 @@ export class EarnedProgressionStore {
       wpm INTEGER NOT NULL, accuracy INTEGER NOT NULL, finished_at INTEGER NOT NULL,
       PRIMARY KEY(race_id,player_id))`);
     sql.exec('CREATE INDEX IF NOT EXISTS earned_races_player_time ON earned_races(player_id,finished_at)');
+    sql.exec(`CREATE TABLE IF NOT EXISTS earned_quest_claims(
+      player_id TEXT NOT NULL, day TEXT NOT NULL, quest_id TEXT NOT NULL,
+      coins INTEGER NOT NULL, claimed_at INTEGER NOT NULL,
+      PRIMARY KEY(player_id,day,quest_id))`);
     sql.exec(`CREATE TABLE IF NOT EXISTS earned_items(
       player_id TEXT NOT NULL, item_key TEXT NOT NULL, cost INTEGER NOT NULL,
       purchased_at INTEGER NOT NULL, PRIMARY KEY(player_id,item_key))`);
@@ -45,10 +60,46 @@ export class EarnedProgressionStore {
       races=COALESCE((SELECT COUNT(*) FROM earned_races WHERE player_id=?),0),
       season_xp=COALESCE((SELECT SUM(season_xp) FROM earned_races WHERE player_id=?),0),
       coins=MAX(0,?+COALESCE((SELECT SUM(coins) FROM earned_races WHERE player_id=?),0)
+        +COALESCE((SELECT SUM(coins) FROM earned_quest_claims WHERE player_id=?),0)
         -COALESCE((SELECT SUM(cost) FROM earned_items WHERE player_id=?),0))
-      WHERE player_id=?`,id,id,id,EARNED_STARTER_COINS,id,id,id);
+      WHERE player_id=?`,id,id,id,EARNED_STARTER_COINS,id,id,id,id);
   }
-  overview(id:string) {
+  daily(id:string,at=Date.now()) {
+    this.ensure(id);
+    const day=earnedDayKey(at);
+    const start=Date.parse(day+'T00:00:00Z')-MONGOLIA_OFFSET;
+    const stats=first(this.sql,`SELECT COUNT(*) finished,
+      COALESCE(SUM(CASE WHEN accuracy>=95 THEN 1 ELSE 0 END),0) precision,
+      COALESCE(SUM(CASE WHEN wpm>=70 THEN 1 ELSE 0 END),0) speed
+      FROM earned_races
+      WHERE player_id=? AND finished_at>=? AND finished_at<?`,
+      id,start,start+DAY_MS)!;
+    const claimed=new Set(this.sql.exec(
+      'SELECT quest_id FROM earned_quest_claims WHERE player_id=? AND day=?',
+      id,day).toArray().map(x=>String(x.quest_id)));
+    const values:Record<string,number>={
+      'first-finish':Number(stats.finished),precision:Number(stats.precision),speed:Number(stats.speed)
+    };
+    return {day,quests:ONLINE_DAILY_QUESTS.map(quest=>{
+      const progress=Math.min(quest.target,values[quest.id]??0);
+      return {...quest,progress,done:progress>=quest.target,claimed:claimed.has(quest.id)};
+    })};
+  }
+  claimDaily(id:string,questId:string,at=Date.now()) {
+    return this.atomic(()=>{
+      const selected=ONLINE_DAILY_QUESTS.find(q=>q.id===questId);
+      if(!selected)return {error:'invalid_quest'};
+      const daily=this.daily(id,at);
+      const state=daily.quests.find(q=>q.id===questId)!;
+      if(state.claimed)return {error:'already_claimed'};
+      if(!state.done)return {error:'not_complete'};
+      this.sql.exec('INSERT INTO earned_quest_claims(player_id,day,quest_id,coins,claimed_at) VALUES(?,?,?,?,?)',
+        id,daily.day,questId,selected.coins,at);
+      this.reconcile(id);
+      return {profile:this.overview(id,at)};
+    });
+  }
+  overview(id:string,at=Date.now()) {
     this.ensure(id);
     const player=first(this.sql,'SELECT * FROM earned_profiles WHERE player_id=?',id)!;
     const owned=this.sql.exec('SELECT item_key FROM earned_items WHERE player_id=? ORDER BY purchased_at DESC',id)
@@ -59,7 +110,7 @@ export class EarnedProgressionStore {
         accuracy:row.accuracy,finishedAt:row.finished_at}));
     return {xp:Number(player.xp),coins:Number(player.coins),races:Number(player.races),
       seasonXp:Number(player.season_xp),level:Math.floor(Number(player.xp)/300)+1,
-      owned,recent,source:'server' as const,starter:EARNED_STARTER_COINS,
+      owned,recent,daily:this.daily(id,at),source:'server' as const,starter:EARNED_STARTER_COINS,
       equipped:{car:String(player.car),trail:String(player.trail),
         title:String(player.title),sticker:String(player.sticker)}};
   }
@@ -142,6 +193,9 @@ export class EarnedProgressionStore {
           this.sql.exec('UPDATE earned_profiles SET '+kind+'=? WHERE player_id=? AND '+kind+'=?',
             selected,to,defaultId);
       }
+      this.sql.exec(`INSERT OR IGNORE INTO earned_quest_claims(player_id,day,quest_id,coins,claimed_at)
+        SELECT ?,day,quest_id,coins,claimed_at FROM earned_quest_claims WHERE player_id=?`,to,from);
+      this.sql.exec('DELETE FROM earned_quest_claims WHERE player_id=?',from);
       this.sql.exec('DELETE FROM earned_races WHERE player_id=?',from);
       this.sql.exec('DELETE FROM earned_items WHERE player_id=?',from);
       this.sql.exec('DELETE FROM earned_profiles WHERE player_id=?',from);
