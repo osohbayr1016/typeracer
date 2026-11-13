@@ -144,17 +144,21 @@ app.get('/api/texts', c => {
   return c.json({ prompt: generatePassage({ mode, seed }), passages: passageCount() });
 });
 
-// Best-effort per-isolate abuse reduction. Deploy Cloudflare WAF rate limiting for global protection.
-const roomAttempts = new Map<string, { start: number; count: number }>();
+// Room creation is also rate-limited in the shared SQLite Durable Object.
 app.post('/api/rooms', async c => {
-  const ip = c.req.header('CF-Connecting-IP') || 'anonymous';
-  const now = Date.now();
-  if (roomAttempts.size > 2000) roomAttempts.clear();
-  const entry = roomAttempts.get(ip);
-  const next = !entry || now - entry.start > 60_000 ? { start: now, count: 1 } :
-    { start: entry.start, count: entry.count + 1 };
-  roomAttempts.set(ip, next);
-  if (next.count > 10) return c.json({ error: 'Too many rooms; try again later' }, 429);
+  const ns = c.env.RACE_ROOMS;
+  const global = ns.get(ns.idFromName('MONGOLIAN-QUICK-V1'));
+  const headers = new Headers();
+  const cfIp=c.req.header('CF-Connecting-IP');
+  if(cfIp)headers.set('CF-Connecting-IP',cfIp);
+  let check:Response;
+  try{check=await global.fetch('https://room.internal/abuse/rooms',{method:'POST',headers});}
+  catch{return c.json({error:'room_service_unavailable'},503);}
+  if(check.status===429)return new Response(check.body,{
+    status:429,headers:{'Content-Type':'application/json',
+      'Retry-After':check.headers.get('Retry-After')||'60',
+      'Cache-Control':'no-store'}});
+  if(!check.ok)return c.json({error:'room_service_unavailable'},503);
   const code = crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase();
   const id = c.env.RACE_ROOMS.idFromName(code);
   const created = await c.env.RACE_ROOMS.get(id).fetch('https://room.internal/create', { method: 'POST' });

@@ -104,7 +104,7 @@ export class RaceRoom {
     },Math.max(1,deadline-Date.now()));
   }
 
-  private async checkGlobalLimit(request:Request,scope:'checkout'|'recovery',
+  private async checkGlobalLimit(request:Request,scope:'checkout'|'recovery'|'rooms',
     threshold:number):Promise<Response|null>{
     const ip=request.headers.get('CF-Connecting-IP');
     // The connecting IP is injected by Cloudflare on production requests.
@@ -121,6 +121,10 @@ export class RaceRoom {
   }
   async fetch(request: Request): Promise<Response> {
     const path = new URL(request.url).pathname;
+    if(path==='/abuse/rooms' && request.method==='POST'){
+      const blocked=await this.checkGlobalLimit(request,'rooms',10);
+      return blocked??Response.json({ok:true},{headers:{'Cache-Control':'no-store'}});
+    }
     if (path.startsWith('/payments/')) {
       if(path==='/payments/checkout' && request.method==='POST'){
         const rejected=await this.checkGlobalLimit(request,'checkout',10);
