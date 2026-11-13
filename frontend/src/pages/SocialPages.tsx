@@ -50,6 +50,23 @@ export function ProfilePage({ profile, online, onlineError, nickname, best, onPl
           <div><span>ОЛСОН ЗООС</span><strong>◈ {localNumber(online.coins)}</strong></div>
           <div><span>БҮРТГЭГДСЭН ГАРАА</span><strong>{online.races}</strong></div>
         </div>
+        {online.stats && <div className="social-online-records" aria-label="Серверт бүртгэсэн хувийн үзүүлэлт">
+          <div><span>ОНЛАЙН ХУВИЙН РЕКОРД</span><strong>{online.stats.bestWpm}<small> WPM</small></strong></div>
+          <div><span>ОНЛАЙН ДУНДАЖ ХУРД</span><strong>{online.stats.avgWpm}<small> WPM</small></strong></div>
+          <div><span>ДУНДАЖ НАРИЙВЧЛАЛ</span><strong>{online.stats.avgAccuracy}%</strong></div>
+        </div>}
+        {online.recent.length>0 && <details className="social-online-history" data-testid="online-history">
+          <summary>СҮҮЛИЙН {Math.min(online.recent.length,8)} ОНЛАЙН ГАРАА <span aria-hidden="true">▾</span></summary>
+          <div className="social-online-history-list" role="list" aria-label="Серверт хадгалсан уралдааны түүх">
+            {online.recent.slice(0,8).map(race=><div key={race.raceId} role="listitem">
+              <time dateTime={new Date(race.finishedAt).toISOString()}>{new Date(race.finishedAt)
+                .toLocaleDateString('mn-MN',{timeZone:'Asia/Ulaanbaatar',month:'short',day:'numeric'})}</time>
+              <strong>{race.wpm} WPM</strong>
+              <span>{race.accuracy}%</span>
+              <span className="social-online-earned">+{race.xp} XP · ◈ +{race.coins}</span>
+            </div>)}
+          </div>
+        </details>}
         <p className="social-footnote">Эдгээр шагналыг сервер Quick Race-ийн дууссан гараанаас бүртгэнэ.
           Онлайн зоосоор Shop-оос худалдан авалт хийж болно. Хуучин хөтчийн XP, зоос автоматаар серверт шилжихгүй.</p>
       </> : <p className="social-footnote" role="status">{onlineError||'Онлайн бүртгэлийг ачаалж байна…'}</p>}
