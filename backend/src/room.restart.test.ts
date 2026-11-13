@@ -40,8 +40,8 @@ beforeEach(()=>{
     if(q.trim().toUpperCase().startsWith('SELECT '))return {toArray:()=>stmt.all(...vals)};
     stmt.run(...vals);return {toArray:()=>[]};
   }};
-  state=({storage:{sql,get:async (key:string) => key==='createdAt' ? created : undefined}}
-    as unknown as DurableObjectState);
+  const storageStub={sql,get:async (key:string) => key==='createdAt' ? created : undefined};
+  state={storage:storageStub} as unknown as DurableObjectState;
 });
 afterEach(()=>{
   vi.clearAllTimers();vi.useRealTimers();vi.unstubAllGlobals();db.close();
