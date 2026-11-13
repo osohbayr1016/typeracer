@@ -41,6 +41,34 @@ describe('beta human-v-human leaderboard isolation',()=>{
     expect(store.record('two-humans',id1,95,99,now,true)).toBe(0);
     expect(db.prepare('SELECT COUNT(*) AS n FROM leaderboard_pvp_races').get()?.n).toBe(2);
   });
+  it('weekly players, human PvP and teams share the Mongolia-local Monday boundary',async()=>{
+    const {store}=fixture();
+    const alice=await store.session(null);
+    const id=String(alice.player.id);
+    const created=store.createTeam(alice.player,'Mongol Racers','MGL');
+    expect(created).toHaveProperty('team');
+    const sunday=Date.parse('2026-10-11T15:59:59Z'); // local Sunday 23:59
+    const monday=Date.parse('2026-10-11T16:00:00Z'); // local Monday 00:00
+    store.record('end-of-sunday',id,80,95,sunday,true);
+    expect((store.leaderboard(sunday,20,0,'all') as {players:Array<{points:number}>})
+      .players[0].points).toBe(racingPoints(80,95,true));
+    store.record('first-monday',id,100,98,monday,true);
+    const week=store.leaderboard(monday,20,0,'all') as {
+      weekStart:number;players:Array<{points:number;races:number}>
+    };
+    expect(week.weekStart).toBe(monday);
+    expect(week.players[0]).toMatchObject({points:racingPoints(100,98,true),races:1});
+    const pvp=store.leaderboard(monday,20,0,'pvp') as {
+      weekStart:number;players:Array<{points:number;races:number}>
+    };
+    expect(pvp.weekStart).toBe(monday);
+    expect(pvp.players[0]).toMatchObject({points:racingPoints(100,98,true),races:1});
+    const teams=store.teams(monday) as {
+      weekStart:number;teams:Array<{points:number;races:number}>
+    };
+    expect(teams.weekStart).toBe(monday);
+    expect(teams.teams[0]).toMatchObject({points:racingPoints(100,98,true),races:1});
+  });
   it('starts empty after additive migration: old casual races are not mislabelled human PvP',async()=>{
     const {sql,store}=fixture();
     const alice=await store.session(null);

@@ -201,13 +201,15 @@ export class RaceRankingStore {
     return points;
     });
   }
-  /** UTC Monday boundary is stable, documented, and calculated on the server. */
+  /** Consistent with Daily Challenge and seasons: Monday 00:00 in Mongolia.
+   * Cloudflare Worker time is UTC; translate the civil calendar at UTC+08.
+   */
   static weekStart(at: number): number {
-    const d = new Date(at);
-    const day = d.getUTCDay();
-    d.setUTCDate(d.getUTCDate()-((day+6)%7));
-    d.setUTCHours(0,0,0,0);
-    return d.getTime();
+    const offset=8*60*60*1000;
+    const mongolian=new Date(at+offset);
+    const mondayOffset=(mongolian.getUTCDay()+6)%7;
+    return Date.UTC(mongolian.getUTCFullYear(),mongolian.getUTCMonth(),
+      mongolian.getUTCDate()-mondayOffset)-offset;
   }
   leaderboard(now=Date.now(),limit=50,offset=0,mode:'all'|'pvp'='all'): object {
     const since=RaceRankingStore.weekStart(now);
