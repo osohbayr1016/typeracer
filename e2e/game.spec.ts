@@ -888,7 +888,8 @@ test('completed quickplay opens post-race standings and claims daily goals only 
   await page.getByRole('button',{name:'НҮҮР ХУУДАС'}).click();
   await expect(page).toHaveURL(/\/$/);
   await page.goto('/profile');
-  await expect(page.locator('.social-stats-row')).toBeVisible();
+  await expect(page.getByTestId('online-progress')).toBeVisible();
+  await expect(page.locator('.social-stats-row')).toHaveCount(2);
 });
 
 test('mobile post-race styles and social pages avoid horizontal overflow', async ({ page }) => {

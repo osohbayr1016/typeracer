@@ -53,3 +53,11 @@ test('an open daily challenge resets to the new Mongolian day without refreshing
   await expect(page.locator('.sprint-phrase span.typed')).toHaveCount(0);
   await expect(page.getByTestId('sprint-countdown')).toContainText('30.0');
 });
+
+test('secondary routes load on demand and remain usable on direct navigation',async({page})=>{
+  for(const route of ['/play','/shop','/garage','/season','/leaderboard','/teams','/profile','/stats','/friends','/coins','/sprint','/daily']){
+    await page.goto(route);
+    await expect(page.getByRole('heading',{level:1}).first()).toBeVisible();
+    await expect(page.getByTestId('route-loading')).toHaveCount(0);
+  }
+});

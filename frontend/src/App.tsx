@@ -1,21 +1,21 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties } from 'react';
-import { CoinsPage } from './pages/CoinsPage';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties } from 'react';
+
 import { emptyWallet, paymentApi, paymentSession, withPaidInventory } from './payments';
 import { onlineProgressApi, type EarnedOnlineProfile } from './onlineProgress';
 import type { PaidWallet } from '@typeracer/shared';
 import { HomePage } from './pages/HomePage';
-import { SprintTypingPage } from './pages/SprintTypingPage';
+
 import { SiteNavigation } from './SiteNavigation';
 import { QuickRacePage, type QuickResult } from './pages/QuickRacePage';
-import { QuickRaceResultsPage } from './pages/QuickRaceResultsPage';
+
 import { type QuickRaceOutcome } from './pages/quickResultsModel';
-import { ProfilePage, StatsPage, FriendsPage } from './pages/SocialPages';
-import { GlobalLeaderboardPage, TeamsPage } from './pages/RankingsPages';
-import { PlayPage } from './pages/PlayPage';
-import { GaragePage } from './pages/GaragePage';
-import { ResultsPage } from './pages/ResultsPage';
-import { ShopPage } from './pages/ShopPage';
-import { SeasonPage } from './pages/SeasonPage';
+
+
+
+
+
+
+
 import { loadProfile, saveProfile, raceReward, awardQuickRace, buyItem, claimReward, claimAvailableRewards, equipItem,
   TITLE_NAMES, STICKER_SYMBOLS, claimDailyQuest, type DailyQuestId, type CosmeticKind, type Cosmetic,
   type Trail, type Title, type Sticker } from './progression';
@@ -25,6 +25,22 @@ import {
   accuracyPercent, characters, choosePrompt, generatePassage, normalizeText, progressPercent,
   PROMPTS, wordsPerMinute, type Language, type Prompt, type RoomSnapshot, type TextMode
 } from '@typeracer/shared';
+
+// Keep Home and live Quick Race on the startup bundle. Fetch secondary
+// routes only when visited; all remain first-class direct links.
+const CoinsPage = lazy(() => import('./pages/CoinsPage').then(m => ({default:m.CoinsPage})));
+const SprintTypingPage = lazy(() => import('./pages/SprintTypingPage').then(m => ({default:m.SprintTypingPage})));
+const QuickRaceResultsPage = lazy(() => import('./pages/QuickRaceResultsPage').then(m => ({default:m.QuickRaceResultsPage})));
+const ProfilePage = lazy(() => import('./pages/SocialPages').then(m => ({default:m.ProfilePage})));
+const StatsPage = lazy(() => import('./pages/SocialPages').then(m => ({default:m.StatsPage})));
+const FriendsPage = lazy(() => import('./pages/SocialPages').then(m => ({default:m.FriendsPage})));
+const GlobalLeaderboardPage = lazy(() => import('./pages/RankingsPages').then(m => ({default:m.GlobalLeaderboardPage})));
+const TeamsPage = lazy(() => import('./pages/RankingsPages').then(m => ({default:m.TeamsPage})));
+const PlayPage = lazy(() => import('./pages/PlayPage').then(m => ({default:m.PlayPage})));
+const GaragePage = lazy(() => import('./pages/GaragePage').then(m => ({default:m.GaragePage})));
+const ResultsPage = lazy(() => import('./pages/ResultsPage').then(m => ({default:m.ResultsPage})));
+const ShopPage = lazy(() => import('./pages/ShopPage').then(m => ({default:m.ShopPage})));
+const SeasonPage = lazy(() => import('./pages/SeasonPage').then(m => ({default:m.SeasonPage})));
 
 type Page = 'coins' | 'home' | 'play' | 'sprint' | 'daily' | 'quickRace' | 'quickResults' | 'profile' | 'leaderboard' | 'teams' | 'stats' | 'friends' | 'race' | 'garage' | 'results' | 'shop' | 'season' | 'multiplayer' | 'multiplayerRace';
 const PAGE_URLS: Record<Page, string> = {
@@ -414,6 +430,8 @@ export function App() {
       earnedCoins={online?.coins??profile.coins} paidCoins={paidWallet.balance}
       onNavigate={destination => navigate(destination)}/>
     <main className="shell main">
+      <Suspense fallback={<div className="route-loading" role="status" aria-live="polite"
+        data-testid="route-loading">ХУУДСЫГ АЧААЛЖ БАЙНА…</div>}>
       {page === 'coins' && <CoinsPage wallet={paidWallet} onWallet={setPaidWallet} onShop={() => navigate('shop')} onGarage={() => navigate('garage')}/>}
       {page === 'home' && <HomePage onPlay={() => navigate('play')} onQuickRace={() => navigate('quickRace')}
         onMultiplayer={() => navigate('friends')}
@@ -620,6 +638,7 @@ export function App() {
 
         <p className="help-note">Зочны уралдаан. Албан ёсны рейтинг, шагнал болон үр дүнгийн хадгалалт идэвхгүй.</p>
       </>}
+      </Suspense>
       <footer>© TypeRacer Mongolia <span>·</span> PLAY FAIR. TYPE FAST. <span>·</span> BETA</footer>
     </main>
   </div>;
