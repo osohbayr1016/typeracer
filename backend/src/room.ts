@@ -105,7 +105,8 @@ export class RaceRoom {
         const query = new URL(request.url).searchParams;
         const limit = Number(query.get('limit') ?? 50);
         const offset = Number(query.get('offset') ?? 0);
-        return Response.json(rank.leaderboard(Date.now(),Number.isFinite(limit)?limit:50,Number.isFinite(offset)?offset:0));
+        return Response.json(rank.leaderboard(Date.now(),Number.isFinite(limit)?limit:50,
+          Number.isFinite(offset)?offset:0,query.get('mode')==='pvp'?'pvp':'all'));
       }
       if (path === '/ranking/teams' && request.method === 'GET')
         return Response.json(rank.teams(Date.now()));

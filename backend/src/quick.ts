@@ -28,6 +28,7 @@ type QuickRace = {
   botJoinTimer: ReturnType<typeof setInterval> | null;
   botSequence: number;
   botOffset: number;
+  humanCountAtStart: number;
   broadcastTimer: ReturnType<typeof setTimeout> | null;
 };
 
@@ -104,6 +105,7 @@ export class QuickMatchmaker {
     const record: QuickCheckpoint = {
       id:race.id, prompt:race.prompt, phase:race.phase, startAt:race.startAt,
       queueEndsAt:race.queueEndsAt, botSequence:race.botSequence, botOffset:race.botOffset,
+      humanCountAtStart:race.humanCountAtStart,
       humans:[...race.humans].map(({socket,disconnectTimer,windowStart,windowCount,...h})=>h),
       bots:race.bots.map(b=>({...b}))
     };
@@ -126,6 +128,7 @@ export class QuickMatchmaker {
         humans:new Set(saved.humans.map(h=>({
           ...h,socket:null,disconnectTimer:null,windowStart:0,windowCount:0
         }))),bots:saved.bots,botSequence:saved.botSequence,botOffset:saved.botOffset,
+        humanCountAtStart:saved.humanCountAtStart??0,
         deadline:null,countdownTimer:null,tick:null,botJoinTimer:null,broadcastTimer:null
       };
       this.active.add(race);
@@ -252,7 +255,8 @@ export class QuickMatchmaker {
       queueEndsAt: Date.now() + QUICK_QUEUE_MS,
       deadline: null, countdownTimer: null, tick: null, broadcastTimer: null,
       botJoinTimer: null, botSequence: 0,
-      botOffset: Math.floor(Math.random() * QUICK_BOT_ROSTER.length)
+      botOffset: Math.floor(Math.random() * QUICK_BOT_ROSTER.length),
+      humanCountAtStart: 0
     };
     this.active.add(race);
     // Add one identifiable bot at a time so the lobby visibly fills, like people
@@ -308,6 +312,8 @@ export class QuickMatchmaker {
     }
     if (race.humans.size === 0) { this.dispose(race); return; }
     race.phase = 'racing';
+    // Count humans actually present at the green light, not lobby bots.
+    race.humanCountAtStart = race.humans.size;
     this.saveRace(race);
     this.broadcast(race);
     race.tick = setInterval(() => this.tickBots(race), 100);
@@ -381,7 +387,8 @@ export class QuickMatchmaker {
     // The only leaderboard writer is the authoritative Durable Object finish.
     // Guest clients cannot submit WPM, accuracy, points, or bots to this store.
     if (human.accountId) this.rankings?.record(race.id, human.accountId,
-      human.lastResult.wpm, human.lastResult.accuracy, human.completedAt);
+      human.lastResult.wpm, human.lastResult.accuracy, human.completedAt,
+      race.humanCountAtStart >= 2);
     this.saveRace(race);
     this.send(human.socket, human.lastResult);
   }

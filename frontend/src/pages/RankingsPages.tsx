@@ -6,7 +6,7 @@ import { raceStandings } from './quickResultsModel';
 import './RankingsPages.css';
 
 type PlayerRow = {rank:number;id:string;name:string;points:number;races:number;wpm:number;accuracy:number;bestWpm:number;teamTag:string|null;guest:boolean};
-type PlayerBoard = {period:string;total:number;offset:number;limit:number;players:PlayerRow[]};
+type PlayerBoard = {period:string;mode?:'all'|'pvp';total:number;offset:number;limit:number;players:PlayerRow[]};
 type TeamRow = {rank:number;id:string;name:string;tag:string;points:number;races:number;members:number};
 type TeamBoard = {period:string;teams:TeamRow[]};
 type MyTeam = {id:string;name:string;tag:string;captainId:string;joinCode?:string;members:Array<{id:string;name:string;points:number;races:number;bestWpm:number}>};
@@ -24,6 +24,7 @@ export function GlobalLeaderboardPage({outcome,profile,onPlay,onTeams}:{
 }) {
   const [tab,setTab]=useState<'global'|'match'|'personal'>('global');
   const [offset,setOffset]=useState(0);
+  const [humanOnly,setHumanOnly]=useState(false);
   const [board,setBoard]=useState<PlayerBoard|null>(null);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');
@@ -31,12 +32,13 @@ export function GlobalLeaderboardPage({outcome,profile,onPlay,onTeams}:{
     let alive=true;
     void (async()=>{
       setLoading(true);setError('');
-      try {const data=await fetchJSON<PlayerBoard>('/api/leaderboard?limit=20&offset='+offset);if(alive)setBoard(data);}
+      try {const data=await fetchJSON<PlayerBoard>('/api/leaderboard?limit=20&offset='+offset+
+        (humanOnly?'&mode=pvp':''));if(alive)setBoard(data);}
       catch(e){if(alive)setError(e instanceof Error?e.message:'Сүлжээний алдаа');}
       finally{if(alive)setLoading(false);}
     })();
     return ()=>{alive=false;};
-  },[offset]);
+  },[offset,humanOnly]);
   const standings=outcome?raceStandings(outcome):[];
   const personal=[...profile.history.filter(h=>h.id.startsWith('quick:'))].sort((a,b)=>b.wpm-a.wpm).slice(0,15);
   return <div className="social-page" data-testid="leaderboard-page">
@@ -49,7 +51,14 @@ export function GlobalLeaderboardPage({outcome,profile,onPlay,onTeams}:{
     </div>
     <section className="social-surface rank-surface">
       {tab==='global' && <>
-        <div className="social-card-heading"><h2>ДОЛОО ХОНОГИЙН ЧАНСАА</h2><span>{board?.total??'—'} ТОГЛОГЧ</span></div>
+        <div className="social-card-heading"><h2>{humanOnly?'ХҮН VS ХҮН · BETA':'ДОЛОО ХОНОГИЙН ЧАНСАА'}</h2><span>{board?.total??'—'} ТОГЛОГЧ</span></div>
+        <div className="rank-scope" role="group" aria-label="Уралдааны чансааны хүрээ">
+          <button type="button" aria-pressed={!humanOnly} onClick={()=>{setHumanOnly(false);setOffset(0);}}>БҮХ УРАЛДААН</button>
+          <button type="button" aria-pressed={humanOnly} onClick={()=>{setHumanOnly(true);setOffset(0);}}>ХҮН VS ХҮН · BETA</button>
+        </div>
+        <p className="rank-scope-note">{humanOnly
+          ? 'Энэ хүснэгтэд ногоон гэрэл асахад хоёр болон түүнээс олон хүн оролцсон шинэ уралдаанууд орно. Anti-cheat бүрэн баталгаажаагүй.'
+          : 'Ботууд уралдааны замд орж болно, гэхдээ чансаанд оноо авахгүй. Зочны уралдаанууд beta статустай.'}</p>
         {loading?<p role="status" className="social-empty">АЧААЛЖ БАЙНА…</p>:
           error?<p role="alert" className="rank-error">{error}</p>:
           board?.players.length?<div className="rank-overflow"><table className="rank-table" data-testid="global-points-table"><thead><tr>
@@ -59,7 +68,7 @@ export function GlobalLeaderboardPage({outcome,profile,onPlay,onTeams}:{
             <td>{row.teamTag??'—'}</td><td className="rank-points">{row.points.toLocaleString('mn-MN')}</td>
             <td>{row.races}</td><td>{row.wpm}</td><td>{row.accuracy}%</td>
           </tr>)}</tbody></table></div>
-            :<div className="social-empty">Энэ долоо хоногт дуусгасан уралдаан хараахан байхгүй.</div>}
+            :<div className="social-empty">{humanOnly?'Энэ долоо хоногт хүнтэй уралдаж дуусгасан гараа хараахан алга.':'Энэ долоо хоногт дуусгасан уралдаан хараахан байхгүй.'}</div>}
         <div className="rank-pager"><span>{board?.total?offset+1:0}–{Math.min(offset+20,board?.total??0)} / {board?.total??0}</span>
           <div><button type="button" disabled={offset===0||loading} onClick={()=>setOffset(Math.max(0,offset-20))}>← ӨМНӨХ</button>
           <button type="button" disabled={loading||offset+20>=(board?.total??0)} onClick={()=>setOffset(offset+20)}>ДАРААХ →</button></div>

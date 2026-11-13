@@ -43,6 +43,13 @@ export class RaceRankingStore {
       PRIMARY KEY (race_id, player_id)
     )`);
     this.sql.exec('CREATE INDEX IF NOT EXISTS leaderboard_races_time ON leaderboard_races(finished_at)');
+    // A separate ledger keeps human-v-human standings independent from bot-assisted
+    // casual matches; legacy races cannot be silently asserted as human PvP.
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS leaderboard_pvp_races (
+      race_id TEXT NOT NULL, player_id TEXT NOT NULL, finished_at INTEGER NOT NULL,
+      PRIMARY KEY(race_id,player_id)
+    )`);
+    this.sql.exec('CREATE INDEX IF NOT EXISTS leaderboard_pvp_time ON leaderboard_pvp_races(finished_at)');
     this.sql.exec(`CREATE TABLE IF NOT EXISTS leaderboard_teams (
       id TEXT PRIMARY KEY, name TEXT NOT NULL, tag TEXT NOT NULL UNIQUE,
       join_code TEXT NOT NULL UNIQUE, captain_id TEXT NOT NULL, created_at INTEGER NOT NULL
@@ -168,7 +175,8 @@ export class RaceRankingStore {
     this.sql.exec('UPDATE leaderboard_players SET name=? WHERE id=?', safePlayerName(name), player.id);
     return first(this.sql.exec('SELECT * FROM leaderboard_players WHERE id=?', player.id))!;
   }
-  record(raceId: string, playerId: string | null, wpm: number, accuracy: number, finishedAt: number): number {
+  record(raceId: string, playerId: string | null, wpm: number, accuracy: number, finishedAt: number,
+    humanOpponent = false): number {
     if (!playerId) return 0;
     const p = first(this.sql.exec('SELECT * FROM leaderboard_players WHERE id=?', playerId));
     if (!p) return 0;
@@ -180,6 +188,9 @@ export class RaceRankingStore {
     if (!points) return 0;
     this.sql.exec('INSERT INTO leaderboard_races(race_id,player_id,points,wpm,accuracy,finished_at,team_id) VALUES(?,?,?,?,?,?,?)',
       raceId,playerId,points,safeWpm,safeAccuracy,finishedAt,p.team_id);
+    if (humanOpponent) this.sql.exec(
+      'INSERT OR IGNORE INTO leaderboard_pvp_races(race_id,player_id,finished_at) VALUES(?,?,?)',
+      raceId,playerId,finishedAt);
     this.sql.exec(`UPDATE leaderboard_players SET points=points+?, races=races+1,
       best_wpm=MAX(best_wpm,?), total_wpm=total_wpm+?,
       total_accuracy=total_accuracy+?, team_points=team_points+? WHERE id=?`,
@@ -194,19 +205,24 @@ export class RaceRankingStore {
     d.setUTCHours(0,0,0,0);
     return d.getTime();
   }
-  leaderboard(now=Date.now(),limit=50,offset=0): object {
+  leaderboard(now=Date.now(),limit=50,offset=0,mode:'all'|'pvp'='all'): object {
     const since=RaceRankingStore.weekStart(now);
     const boundedLimit=Math.max(1,Math.min(100,limit)), boundedOffset=Math.max(0,Math.min(100_000,offset));
-    const total = Number(first(this.sql.exec('SELECT COUNT(DISTINCT player_id) AS total FROM leaderboard_races WHERE finished_at>=?',since))?.total ?? 0);
+    const humanJoin = mode === 'pvp'
+      ? ' JOIN leaderboard_pvp_races v ON v.race_id=e.race_id AND v.player_id=e.player_id'
+      : '';
+    const total = Number(first(this.sql.exec(
+      'SELECT COUNT(DISTINCT e.player_id) AS total FROM leaderboard_races e'+humanJoin+' WHERE e.finished_at>=?',since))?.total ?? 0);
     const rows=this.sql.exec(`SELECT p.id,p.name,p.races,p.best_wpm,p.total_wpm,p.total_accuracy,
        t.tag AS team_tag, SUM(e.points) AS points, COUNT(*) AS week_races,
        EXISTS(SELECT 1 FROM leaderboard_identities i WHERE i.player_id=p.id) AS verified,
        AVG(e.wpm) AS week_wpm, AVG(e.accuracy) AS week_accuracy
        FROM leaderboard_races e JOIN leaderboard_players p ON p.id=e.player_id
        LEFT JOIN leaderboard_teams t ON t.id=p.team_id
+       ${humanJoin}
        WHERE e.finished_at>=? GROUP BY p.id
        ORDER BY points DESC,week_accuracy DESC,p.id ASC LIMIT ? OFFSET ?`,since,boundedLimit,boundedOffset).toArray();
-    return {period:'week',weekStart:since,total,offset:boundedOffset,limit:boundedLimit,players:rows.map((r,i)=>({
+    return {period:'week',mode,weekStart:since,total,offset:boundedOffset,limit:boundedLimit,players:rows.map((r,i)=>({
       rank:boundedOffset+i+1,id:r.id,name:r.name,points:r.points,races:r.week_races,
       wpm:Math.round(Number(r.week_wpm)),accuracy:Math.round(Number(r.week_accuracy)),
       bestWpm:r.best_wpm,teamTag:r.team_tag,guest:Number(r.verified)===0
