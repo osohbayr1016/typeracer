@@ -611,7 +611,8 @@ test('battle pass claims all earned tiers once and keeps cars, coins and progres
   await expect(page.getByTestId('season-spotlight')).toContainText('Оддын зам');
   await expect(page.locator('.battle-progress-panel')).toContainText('1,500 XP');
   await page.getByRole('button', { name: /УРАЛДАХ/ }).last().click();
-  await expect(page).toHaveURL(/\/play$/);
+  // Season pass now launches live Quick Race in one action.
+  await expect(page).toHaveURL(/\/quick-race$/);
 });
 
 test('claiming one season reward preserves other available rewards and accessible claim-all action', async ({page}) => {
