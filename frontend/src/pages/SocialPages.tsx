@@ -18,7 +18,12 @@ export function ProfilePage({ profile, online, onlineError, nickname, best, onPl
   onNameChange: (value:string) => void; onStats: () => void; onSeason: () => void;
   online: EarnedOnlineProfile | null; onlineError?:string;
 }) {
-  const level = playerLevel(profile.xp);
+  const localLevel=playerLevel(profile.xp);
+  const level=online?.level??localLevel;
+  const displayedCar=online?.equipped.car && online.equipped.car in CARS
+    ? online.equipped.car as keyof typeof CARS : profile.car;
+  const displayedTitle=online?.equipped.title && online.equipped.title in TITLE_NAMES
+    ? online.equipped.title as keyof typeof TITLE_NAMES : profile.title;
   const recent = orderedHistory(profile);
   return <div className="social-page" data-testid="profile-page">
     <header className="social-heading"><span className="social-eyebrow">МИНИЙ ПРОФАЙЛ</span><h1>ПРОФАЙЛ</h1></header>
@@ -28,15 +33,15 @@ export function ProfilePage({ profile, online, onlineError, nickname, best, onPl
         <label htmlFor="profile-nickname">ТОГЛОГЧИЙН НЭР</label>
         <input id="profile-nickname" maxLength={20} value={nickname} onChange={e=>onNameChange(e.target.value)}
           aria-label="Тоглогчийн нэр" />
-        <span>{TITLE_NAMES[profile.title]} · ТҮВШИН {level}</span>
+        <span>{TITLE_NAMES[displayedTitle]} · {online?'ОНЛАЙН ':'ДАСГАЛЫН '}ТҮВШИН {level}</span>
       </div>
-      <img src={CARS[profile.car].icon} alt={CARS[profile.car].label} className="social-profile-car"/>
+      <img src={CARS[displayedCar].icon} alt={CARS[displayedCar].label} className="social-profile-car"/>
     </section>
     <AuthPanel/>
     <section className="social-surface" aria-label="Серверт хадгалсан онлайн ахиц" data-testid="online-progress">
       <div className="social-card-heading">
         <h2>ОНЛАЙН УРАЛДААНЫ АХИЦ</h2>
-        <span>{online?'СЕРВЕРТ ХАДГАЛАГДСАН':'СИНК ХИЙХ БОЛОМЖГҮЙ'}</span>
+        <span>{online?'СЕРВЕРТ ХАДГАЛАГДСАН':onlineError?'ХОЛБОЛТ ТАСАРСАН':'АЧААЛЖ БАЙНА'}</span>
       </div>
       {online ? <>
         <div className="social-stats-row">
@@ -49,26 +54,26 @@ export function ProfilePage({ profile, online, onlineError, nickname, best, onPl
           Онлайн зоосоор Shop-оос худалдан авалт хийж болно. Хуучин хөтчийн XP, зоос автоматаар серверт шилжихгүй.</p>
       </> : <p className="social-footnote" role="status">{onlineError||'Онлайн бүртгэлийг ачаалж байна…'}</p>}
     </section>
-    <div className="social-stats-row">
-      <div><span>ХУВИЙН РЕКОРД</span><strong>{best}<small> WPM</small></strong></div>
-      <div><span>НИЙТ ГАРАА</span><strong>{localNumber(profile.races)}</strong></div>
+    <div className="social-stats-row" aria-label="Энэ төхөөрөмжийн дасгалын статистик">
+      <div><span>ЭНЭ ХӨТЧИЙН РЕКОРД</span><strong>{best}<small> WPM</small></strong></div>
+      <div><span>ДАСГАЛЫН ГАРАА</span><strong>{localNumber(profile.races)}</strong></div>
       <div><span>ДАРААЛСАН ӨДӨР</span><strong>{quickDayStreak(profile)}<small> өдөр</small></strong></div>
-      <div><span>ЗООС</span><strong>◈ {localNumber(profile.coins)}</strong></div>
+      <div><span>ЭНЭ ХӨТЧИЙН ЗООС</span><strong>◈ {localNumber(profile.coins)}</strong></div>
     </div>
     <div className="social-two-grid">
       <section className="social-surface">
         <div className="social-card-heading"><h2>МИНИЙ МАШИН</h2><button type="button" onClick={onGarage}>ГАРАЖ ↗</button></div>
-        <div className="social-owned-car"><img src={CARS[profile.car].icon} alt={CARS[profile.car].label}/><strong>{CARS[profile.car].label}</strong></div>
+        <div className="social-owned-car"><img src={CARS[displayedCar].icon} alt={CARS[displayedCar].label}/><strong>{CARS[displayedCar].label}</strong></div>
       </section>
       <section className="social-surface">
-        <div className="social-card-heading"><h2>АХИЦ</h2><button type="button" onClick={onSeason}>BATTLE PASS ↗</button></div>
-        <div className="social-progress-info"><span>ТҮВШИН {level}</span><strong>{profile.xp%300}/300 XP</strong></div>
+        <div className="social-card-heading"><h2>ЭНЭ ХӨТЧИЙН ДАСГАЛЫН АХИЦ</h2><button type="button" onClick={onSeason}>BATTLE PASS ↗</button></div>
+        <div className="social-progress-info"><span>ТҮВШИН {localLevel}</span><strong>{profile.xp%300}/300 XP</strong></div>
         <div className="social-meter"><span style={{width:(profile.xp%300)/3+'%'}}/></div>
         <div className="social-progress-info"><span>СҮҮЛИЙН УРАЛДААН</span><strong>{recent[0]?.wpm ?? '—'} WPM</strong></div>
         <button type="button" className="social-inline-cta" onClick={onStats}>СТАТИСТИК ХАРАХ →</button>
       </section>
     </div>
-    <div className="social-bottom-actions"><button type="button" className="social-primary" onClick={onPlay}>▶ УРАЛДАХ</button><span>Зочны профайл · Энэ хөтөчид хадгалагдана</span></div>
+    <div className="social-bottom-actions"><button type="button" className="social-primary" onClick={onPlay}>▶ УРАЛДАХ</button><span>{online?'Онлайн шагнал серверт, дасгалын ахиц энэ хөтөчид хадгалагдана.':'Дасгалын ахиц энэ хөтөчид хадгалагдана.'}</span></div>
   </div>;
 }
 
@@ -79,7 +84,7 @@ export function StatsPage({profile,best,onPlay}:Pick<BaseProps,'profile'|'best'|
   const maxWpm = Math.max(1,...history.map(h=>h.wpm));
   const percent = avg(quick.map(h=>h.accuracy));
   return <div className="social-page" data-testid="stats-page">
-    <header className="social-heading"><span className="social-eyebrow">МИНИЙ ГҮЙЦЭТГЭЛ</span><h1>СТАТИСТИК</h1></header>
+    <header className="social-heading"><span className="social-eyebrow">ЭНЭ ТӨХӨӨРӨМЖИЙН ДАСГАЛЫН ГҮЙЦЭТГЭЛ</span><h1>СТАТИСТИК</h1></header>
     <div className="social-stats-row">
       <div><span>РЕКОРД</span><strong>{best}<small> WPM</small></strong></div>
       <div><span>ДУНДАЖ ХУРД</span><strong>{avg(speeds)}<small> WPM</small></strong></div>

@@ -71,9 +71,11 @@ export function QuickRaceResultsPage({
   const standings = raceStandings(outcome);
   const finished = result.place !== null;
   const entry = profile.history.find(history => history.id === 'quick:' + result.raceId);
-  // Earned XP and credited coins come from the deduplicated device-local ledger.
-  const earnedXp = entry?.earnedXp ?? 0;
-  const earnedCoins = entry?.earnedCoins ?? 0;
+  // The online receipt is the trusted server ledger. Until it arrives, show
+  // only a device-local estimate and never label that estimate verified.
+  const receipt=online?.recent.find(row=>row.raceId===result.raceId);
+  const earnedXp = receipt?.xp ?? entry?.earnedXp ?? 0;
+  const earnedCoins = receipt?.coins ?? entry?.earnedCoins ?? 0;
   const level = playerLevel(profile.xp);
   const currentLevelXp = profile.xp % 300;
   const pass = seasonProgress(profile, at);
@@ -125,9 +127,10 @@ export function QuickRaceResultsPage({
               <div><span>ХУГАЦАА</span><strong>{(result.elapsedMs / 1000).toFixed(1)}с</strong></div>
               <div><span>ХУВИЙН РЕКОРД</span><strong>{best} <small>WPM</small></strong></div>
             </div>
-            <div className="qr-earned" aria-label="Энэ уралдааны бодитой бүртгэгдсэн шагнал">
-              <div><span>ОЛСОН XP</span><strong>+{earnedXp} XP</strong></div>
-              <div><span>ОЛСОН ЗООС</span><strong>◈ +{earnedCoins}</strong></div>
+            <div className="qr-earned"
+              aria-label={receipt?'Серверт баталгаажсан уралдааны шагнал':'Энэ төхөөрөмжийн уралдааны шагналын тооцоо'}>
+              <div><span>{receipt?'СЕРВЕРТ ХАДГАЛСАН XP':'ДАСГАЛЫН XP'}</span><strong>+{earnedXp} XP</strong></div>
+              <div><span>{receipt?'ОНЛАЙН ЗООС':'ДАСГАЛЫН ЗООС'}</span><strong>◈ +{earnedCoins}</strong></div>
             </div>
           </div>
         </section>
