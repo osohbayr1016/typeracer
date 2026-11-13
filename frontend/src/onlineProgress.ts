@@ -1,5 +1,6 @@
 export type EarnedOnlineProfile = {
   xp:number; coins:number; races:number; seasonXp:number; level:number;
+  stats?:{bestWpm:number;avgWpm:number;avgAccuracy:number;lastRacedAt:number|null};
   owned:string[]; source:'server'; starter:number;
   season:{id:string;number:number;name:string;from:number;until:number;
     xp:number;remainingDays:number;rewards:Array<{
