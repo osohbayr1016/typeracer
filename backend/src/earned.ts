@@ -77,6 +77,7 @@ export class EarnedProgressionStore {
       wpm INTEGER NOT NULL, accuracy INTEGER NOT NULL, finished_at INTEGER NOT NULL,
       PRIMARY KEY(race_id,player_id))`);
     sql.exec('CREATE INDEX IF NOT EXISTS earned_races_player_time ON earned_races(player_id,finished_at)');
+    sql.exec('CREATE INDEX IF NOT EXISTS earned_races_time ON earned_races(finished_at)');
     sql.exec(`CREATE TABLE IF NOT EXISTS earned_quest_claims(
       player_id TEXT NOT NULL, day TEXT NOT NULL, quest_id TEXT NOT NULL,
       coins INTEGER NOT NULL, claimed_at INTEGER NOT NULL,
@@ -103,6 +104,35 @@ export class EarnedProgressionStore {
         +COALESCE((SELECT SUM(coins) FROM earned_season_claims WHERE player_id=?),0)
         -COALESCE((SELECT SUM(cost) FROM earned_items WHERE player_id=?),0))
       WHERE player_id=?`,id,id,id,EARNED_STARTER_COINS,id,id,id,id,id);
+  }
+  /** Public, beta daily standings from the SAME verified race-event ledger
+   * used for spendable online XP. Device-local practice never enters this list.
+   */
+  dailyLeaderboard(at=Date.now(),limit=20,offset=0) {
+    const day=earnedDayKey(at);
+    const start=Date.parse(day+'T00:00:00Z')-MONGOLIA_OFFSET;
+    const take=Number.isFinite(limit)?Math.max(1,Math.min(50,Math.floor(limit))):20;
+    const skip=Number.isFinite(offset)?Math.max(0,Math.min(500,Math.floor(offset))):0;
+    const total=Number(first(this.sql,`SELECT COUNT(DISTINCT e.player_id) AS n
+      FROM earned_races e JOIN leaderboard_players p ON p.id=e.player_id
+      WHERE e.finished_at>=? AND e.finished_at<?`,start,start+DAY_MS)?.n??0);
+    const rows=this.sql.exec(`SELECT p.id,p.name,t.tag AS team_tag,
+      COUNT(*) AS races,SUM(e.xp) AS points,
+      MAX(e.wpm) AS best_wpm,AVG(e.wpm) AS avg_wpm,
+      AVG(e.accuracy) AS avg_accuracy,
+      EXISTS(SELECT 1 FROM leaderboard_identities i WHERE i.player_id=p.id) AS verified
+      FROM earned_races e JOIN leaderboard_players p ON p.id=e.player_id
+      LEFT JOIN leaderboard_teams t ON t.id=p.team_id
+      WHERE e.finished_at>=? AND e.finished_at<?
+      GROUP BY p.id ORDER BY points DESC,avg_accuracy DESC,p.id ASC LIMIT ? OFFSET ?`,
+      start,start+DAY_MS,take,skip).toArray();
+    return {period:'day' as const,mode:'daily' as const,day,nextResetAt:start+DAY_MS,
+      total,offset:skip,limit:take,players:rows.map((row,i)=>({
+        rank:skip+i+1,id:String(row.id),name:String(row.name),points:Number(row.points),
+        races:Number(row.races),wpm:Math.round(Number(row.avg_wpm)),
+        accuracy:Math.round(Number(row.avg_accuracy)),bestWpm:Number(row.best_wpm),
+        teamTag:row.team_tag==null?null:String(row.team_tag),guest:Number(row.verified)===0
+      }))};
   }
   daily(id:string,at=Date.now()) {
     this.ensure(id);
