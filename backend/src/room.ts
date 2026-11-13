@@ -40,6 +40,31 @@ export class RaceRoom {
       return this.payments.fetch(request);
     }
     if (path === '/quickplay') return this.quickService().fetch(request);
+    if (path.startsWith('/progression')) {
+      const service=this.quickService();
+      const player=await service.rankings!.fromCookie(request.headers.get('Cookie'));
+      if (!player) return Response.json({error:'session_required'},{status:401});
+      const id=String(player.id);
+      const earned=service.earned!;
+      if (path==='/progression' && request.method==='GET')
+        return Response.json(earned.overview(id),{headers:{'Cache-Control':'no-store'}});
+      if ((path==='/progression/items' || path==='/progression/equip') && request.method==='POST') {
+        let input:Record<string,unknown>;
+        try {
+          const raw=await request.text();
+          if (raw.length>512) return Response.json({error:'payload_too_large'},{status:413});
+          input=JSON.parse(raw) as Record<string,unknown>;
+          if (!input || typeof input!=='object')throw Error('invalid');
+        } catch {return Response.json({error:'invalid_request'},{status:400});}
+        if (typeof input.kind!=='string'||typeof input.id!=='string')
+          return Response.json({error:'invalid_request'},{status:400});
+        const result=path==='/progression/items'
+          ? earned.buy(id,input.kind,input.id)
+          : earned.equip(id,input.kind,input.id);
+        return Response.json(result,{status:'error' in result?result.error==='already_owned'?409:400:200});
+      }
+      return new Response('Method not allowed',{status:405});
+    }
     if (path.startsWith('/ranking/') || path.startsWith('/oauth/') || path.startsWith('/account')) {
       const rank = this.quickService().rankings!;
       const cookie = request.headers.get('Cookie');
@@ -93,7 +118,10 @@ export class RaceRoom {
           const result=await rank.completeOAuth(cookie,provider,input.state,input.providerSubject,input.displayName);
           if (!result) return Response.json({error:'Expired or invalid OAuth state'},{status:403});
           this.payments ??= new PaymentService(this.state.storage.sql, rank, this.env);
-          this.state.storage.transactionSync(() => this.payments!.mergeAccount(result.previousPlayerId, String(result.player.id)));
+          this.state.storage.transactionSync(() => {
+            this.payments!.mergeAccount(result.previousPlayerId, String(result.player.id));
+            this.quickService().earned!.mergeAccount(result.previousPlayerId, String(result.player.id), true);
+          });
           const headers=new Headers({'Content-Type':'application/json','Cache-Control':'no-store'});
           const secure=new URL(request.url).searchParams.get('secure')==='1';
           headers.append('Set-Cookie','tr_guest='+result.newToken+'; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000'+(secure?'; Secure':''));

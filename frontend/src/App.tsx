@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties } from 'react';
 import { CoinsPage } from './pages/CoinsPage';
 import { emptyWallet, paymentApi, paymentSession, withPaidInventory } from './payments';
+import { onlineProgressApi, type EarnedOnlineProfile } from './onlineProgress';
 import type { PaidWallet } from '@typeracer/shared';
 import { HomePage } from './pages/HomePage';
 import { SprintTypingPage } from './pages/SprintTypingPage';
@@ -16,7 +17,8 @@ import { ResultsPage } from './pages/ResultsPage';
 import { ShopPage } from './pages/ShopPage';
 import { SeasonPage } from './pages/SeasonPage';
 import { loadProfile, saveProfile, raceReward, awardQuickRace, buyItem, claimReward, claimAvailableRewards, equipItem,
-  TITLE_NAMES, STICKER_SYMBOLS, claimDailyQuest, type DailyQuestId, type CosmeticKind, type Cosmetic } from './progression';
+  TITLE_NAMES, STICKER_SYMBOLS, claimDailyQuest, type DailyQuestId, type CosmeticKind, type Cosmetic,
+  type Trail, type Title, type Sticker } from './progression';
 import { CARS, raceCarIcon, type Skin } from './pages/cars';
 import { readRaceClock, useRaceStart, type ServerClock } from './pages/useRaceStart';
 import {
@@ -100,22 +102,46 @@ export function App() {
   const [quickOutcome, setQuickOutcome] = useState<QuickRaceOutcome | null>(null);
   const [paidWallet, setPaidWallet] = useState<PaidWallet>(emptyWallet);
   const [paidBusy, setPaidBusy] = useState(false);
+  const [online, setOnline] = useState<EarnedOnlineProfile | null>(null);
+  const [onlineBusy, setOnlineBusy] = useState(false);
+  const [onlineError, setOnlineError] = useState('');
   const [accountRevision, setAccountRevision] = useState(0);
   useEffect(() => {
-    const changed = () => { setPaidWallet(emptyWallet()); setAccountRevision(value => value + 1); };
+    const changed = () => {
+      setPaidWallet(emptyWallet()); setOnline(null); setProfile(loadProfile());
+      setAccountRevision(value => value + 1);
+    };
     window.addEventListener('racer-account-changed', changed);
     return () => window.removeEventListener('racer-account-changed', changed);
   }, []);
   const [paidError, setPaidError] = useState('');
-  const displayProfile = withPaidInventory(profile, paidWallet);
+  // Local legacy rewards are retained, never credited as server-owned currency.
+  const displayProfile = withPaidInventory({
+    ...profile, owned:[...new Set([...profile.owned,...(online?.owned??[])])],
+    car:online?.equipped.car && online.equipped.car!=='sunset' ? online.equipped.car as Skin : profile.car,
+    trail:online?.equipped.trail && online.equipped.trail!=='none' ? online.equipped.trail as Trail : profile.trail,
+    title:online?.equipped.title && online.equipped.title!=='rookie' ? online.equipped.title as Title : profile.title,
+    sticker:online?.equipped.sticker && online.equipped.sticker!=='none' ? online.equipped.sticker as Sticker : profile.sticker
+  }, paidWallet);
+  const shopProfile = online ? {
+    ...displayProfile,xp:online.xp,coins:online.coins,
+    owned:[...new Set([...online.owned,...paidWallet.owned])]
+  } : displayProfile;
   useEffect(() => {
     let alive = true;
     void paymentSession().then(() => paymentApi<PaidWallet>('wallet'))
       .then(wallet => { if (alive) setPaidWallet(wallet); }).catch(() => {});
     return () => { alive = false; };
   }, [page, accountRevision]);
+  useEffect(() => {
+    let active=true;
+    void paymentSession().then(()=>onlineProgressApi<EarnedOnlineProfile>())
+      .then(value=>{if(active){setOnline(value);setOnlineError('');}})
+      .catch(()=>{if(active){setOnline(null);setOnlineError('Онлайн ахиц түр боломжгүй. Хөтчийн шагнал серверт шилжихгүй.');}});
+    return ()=>{active=false;};
+  }, [page,accountRevision]);
   const xp = profile.xp;
-  const skin = profile.car;
+  const skin = displayProfile.car;
   const inputRef = useRef<HTMLInputElement>(null);
   const [nickname, setNickname] = useState(() => {
     try { return localStorage.getItem('racer.nickname')?.slice(0, 20) || 'Зочин'; } catch { return 'Зочин'; }
@@ -217,7 +243,29 @@ export function App() {
     updateTypingValue(event.target.value);
   }
   function handleEquip(kind: CosmeticKind, id: string) {
-    setProfile(p => equipItem(withPaidInventory(p, paidWallet), kind, id));
+    const defaults:{[K in CosmeticKind]:string}={
+      car:'sunset',trail:'none',title:'rookie',sticker:'none'
+    };
+    const serverOwned=!!online&&(online.owned.includes(kind+':'+id)||id===defaults[kind]);
+    if (serverOwned) {
+      setOnlineBusy(true);setOnlineError('');
+      void onlineProgressApi<{profile:EarnedOnlineProfile}>('/equip',{kind,id})
+        .then(value=>{
+          setOnline(value.profile);
+          // Keep the browser's last visible selection but do not duplicate
+          // server-owned assets into its editable local inventory.
+          setProfile(p=>({...p,[kind]:id}));
+        })
+        .catch(error=>setOnlineError((error as Error).message))
+        .finally(()=>setOnlineBusy(false));
+      return;
+    }
+    setProfile(p=>equipItem(withPaidInventory(p,paidWallet),kind,id));
+    if (online && online.equipped[kind]!==defaults[kind]) {
+      void onlineProgressApi<{profile:EarnedOnlineProfile}>('/equip',{
+        kind,id:defaults[kind]
+      }).then(value=>setOnline(value.profile)).catch(()=>{});
+    }
   }
   async function handlePaidBuy(item: Cosmetic) {
     if (paidBusy) return;
@@ -228,7 +276,19 @@ export function App() {
     } catch (error) { setPaidError((error as Error).message); }
     finally { setPaidBusy(false); }
   }
-  function handleBuy(item: Cosmetic) { setProfile(p => buyItem(p, item.kind, item.id)); }
+  async function handleBuy(item: Cosmetic) {
+    if (!online) { setProfile(p=>buyItem(p,item.kind,item.id)); return; }
+    if (onlineBusy) return;
+    setOnlineBusy(true);setOnlineError('');
+    try {
+      const result=await onlineProgressApi<{profile:EarnedOnlineProfile}>('/items',{
+        kind:item.kind,id:item.id
+      });
+      setOnline(result.profile);
+    } catch(error) {
+      setOnlineError((error as Error).message);
+    } finally {setOnlineBusy(false);}
+  }
   function handleClaim(tier: number) { setProfile(p => claimReward(p, tier)); }
   function handleClaimAll() { setProfile(p => claimAvailableRewards(p)); }
   function handleQuestClaim(id: DailyQuestId) { setProfile(p => claimDailyQuest(p, id)); }
@@ -350,8 +410,8 @@ export function App() {
   }
 
   return <div className="app-shell" style={{ '--accent': CARS[skin].color } as CSSProperties}>
-    <SiteNavigation page={page} nickname={nickname} level={level}
-      earnedCoins={profile.coins} paidCoins={paidWallet.balance}
+    <SiteNavigation page={page} nickname={nickname} level={online?.level??level}
+      earnedCoins={online?.coins??profile.coins} paidCoins={paidWallet.balance}
       onNavigate={destination => navigate(destination)}/>
     <main className="shell main">
       {page === 'coins' && <CoinsPage wallet={paidWallet} onWallet={setPaidWallet} onShop={() => navigate('shop')} onGarage={() => navigate('garage')}/>}
@@ -365,7 +425,7 @@ export function App() {
         onCreateRoom={() => { navigate('multiplayer'); void createRoom(); }}
         onJoinRoom={room => { navigate('multiplayer'); setJoinCode(room); connectRoom(room); }}
         onGarage={() => navigate('garage')} onSprint={() => navigate('sprint')} onDaily={() => navigate('daily')}/>}
-      {page === 'profile' && <ProfilePage profile={profile} nickname={nickname} best={best}
+      {page === 'profile' && <ProfilePage profile={profile} online={online} onlineError={onlineError} nickname={nickname} best={best}
         onNameChange={updateNickname} onPlay={() => navigate('quickRace')}
         onGarage={() => navigate('garage')} onSeason={() => navigate('season')} onStats={() => navigate('stats')}/>}
       {page === 'stats' && <StatsPage profile={profile} best={best} onPlay={() => navigate('quickRace')}/>}
@@ -385,6 +445,7 @@ export function App() {
         onFinish={outcome => { setQuickOutcome(outcome); navigate('quickResults'); }}
         onReward={(result: QuickResult) => {
           setProfile(prev => awardQuickRace(prev, { ...result, at: Date.now() }));
+          void onlineProgressApi<EarnedOnlineProfile>().then(setOnline).catch(() => {});
           if (result.place !== null && result.wpm > best) {
             setBest(result.wpm);
             try { localStorage.setItem('racer.best', String(result.wpm)); } catch { /* storage disabled */ }
@@ -392,7 +453,8 @@ export function App() {
         }}/>} 
       {page === 'garage' && <GaragePage profile={displayProfile} onEquip={handleEquip} onPlay={() => navigate('play')}
         onShop={() => navigate('shop')} onSeason={() => navigate('season')}/>}
-      {page === 'shop' && <ShopPage profile={displayProfile} onBuy={handleBuy}
+      {page === 'shop' && <ShopPage profile={shopProfile} onlineWallet={!!online}
+        freeBusy={onlineBusy} freeError={onlineError} onBuy={item=>void handleBuy(item)}
         paidCoins={paidWallet.balance} paidBusy={paidBusy} paidError={paidError} onPaidBuy={item => void handlePaidBuy(item)} onTopUp={() => navigate('coins')}
         onEquip={item => handleEquip(item.kind, item.id)} onRace={() => navigate('play')}/>}
       {page === 'season' && <SeasonPage profile={profile} onClaim={handleClaim} onClaimAll={handleClaimAll}

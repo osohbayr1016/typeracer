@@ -522,7 +522,8 @@ test('rarity shop has six distinct tiers, 18 original vehicle assets and respons
   }
 });
 
-test('collection purchase spends coins once, equips in garage and level-gates legendary cars', async ({page}) => {
+test('legacy offline collection purchase remains available without server economy', async ({page}) => {
+  await page.route('**/api/progression',route=>route.fulfill({status:503,json:{error:'offline'}}));
   await page.goto('/shop');
   await page.evaluate(() => localStorage.setItem('racer.profile.v1', JSON.stringify({xp:0,coins:50000,owned:[]})));
   await page.reload();
@@ -541,7 +542,8 @@ test('collection purchase spends coins once, equips in garage and level-gates le
   await expect(page.locator('.garage-feature h2')).toContainText('Шонхор GT');
 });
 
-test('level 35 veteran may buy and equip a legendary car, accessible on shop and garage', async ({page}) => {
+test('offline legacy level 35 can still use local-only cars without upgrading balances', async ({page}) => {
+  await page.route('**/api/progression',route=>route.fulfill({status:503,json:{error:'offline'}}));
   await page.goto('/shop');
   await page.evaluate(() => localStorage.setItem('racer.profile.v1', JSON.stringify({xp:10200,coins:8000,owned:[]})));
   await page.reload();
@@ -869,12 +871,20 @@ test('completed quickplay opens post-race standings and claims daily goals only 
   await expect(page.locator('.qr-stats-panel')).toBeVisible();
   const claim = page.locator('[data-quest-id="first-finish"] button');
   await expect(claim).toBeEnabled();
-  const before = await page.locator('.profile-name small').innerText();
+  // Legacy daily quests credit ONLY the device-local practice ledger.
+  // They must not mint spendable online coins in the server-owned header.
+  const online = await (await page.request.get('/api/progression')).json() as {coins:number};
+  await expect(page.locator('.profile-name small')).toContainText('◈ '+online.coins);
+  const header = await page.locator('.profile-name small').innerText();
+  const localBefore = await page.evaluate(() =>
+    (JSON.parse(localStorage.getItem('racer.profile.v1')||'{}') as {coins:number}).coins);
   await claim.click();
   await expect(claim).toBeDisabled();
   await expect(claim).toContainText('АВСАН');
-  const after = await page.locator('.profile-name small').innerText();
-  expect(after).not.toBe(before);
+  await expect(page.locator('.profile-name small')).toHaveText(header);
+  const localAfter = await page.evaluate(() =>
+    (JSON.parse(localStorage.getItem('racer.profile.v1')||'{}') as {coins:number}).coins);
+  expect(localAfter).toBe(localBefore+8);
   await page.getByRole('button',{name:'НҮҮР ХУУДАС'}).click();
   await expect(page).toHaveURL(/\/$/);
   await page.goto('/profile');
