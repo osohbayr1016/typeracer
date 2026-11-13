@@ -12,7 +12,7 @@ test('server-owned online rewards and shop purchases survive reload and cannot b
   const attempt=await page.request.post('/api/progression/award',{data:{
     raceId:'11111111-1111-4111-8111-111111111111',coins:100000,wpm:200,accuracy:100
   }});
-  expect(attempt.status()).toBe(405);
+  expect(attempt.status()).toBe(404);
   const forgedPrice=await page.request.post('/api/progression/items',{data:{
     kind:'car',id:'falcon',price:0,coins:999999
   }});
