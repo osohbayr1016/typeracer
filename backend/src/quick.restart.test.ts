@@ -100,7 +100,7 @@ describe('SQLite durable quick-match crash recovery',()=>{
     const letters=characters(live.prompt.text);
     for(let index=0;index<letters.length;index++){
       first.socket.receive({type:'key',key:letters[index],matchId:live.matchId,seq:index+1});
-      if(index%20===19) vi.advanceTimersByTime(1000);
+      if(index%12===11) vi.advanceTimersByTime(1000);
     }
     const completed=first.socket.latest('quick-result') as {raceId:string;place:number;wpm:number}|undefined;
     expect(completed?.raceId).toBe(live.matchId);
