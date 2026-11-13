@@ -183,7 +183,7 @@ test('solo opponents are labelled practice pace ghosts, garage progression is no
   await expect(page.getByText('ЗОРИЛТОТ ХУРД · БОДИТ ТОГЛОГЧ БИШ')).toHaveCount(2);
   await page.goto('/garage');
   await expect(page.getByRole('button', { name: /Ногоон оч/ })).toBeDisabled();
-  await expect(page.getByRole('button', { name: /Сүүдэр/ })).toBeDisabled();
+  await expect(page.getByRole('button', { name: /^Сүүдэр 650 XP$/ })).toBeDisabled();
   await expect(page.locator('.garage-page-grid .garage-car-tile')).toHaveCount(35);
 });
 
@@ -583,7 +583,7 @@ test('battle pass presents next milestone, 8 readable rewards and original shop 
   }
   await page.getByRole('button', { name: /ДЭЛГҮҮР ҮЗЭХ/ }).click();
   await expect(page).toHaveURL(/\/shop$/);
-  await expect(page.locator('.shop-item-grid .shop-collectible')).toHaveCount(27);
+  await expect(page.locator('.shop-item-grid .shop-collectible')).toHaveCount(33);
   await expect(page.locator('[data-item-id="dragon"]')).toBeVisible();
 });
 
@@ -668,7 +668,7 @@ test('all 29 user-supplied vehicles serve distinct transparent full and compact 
   await expect(page.getByTestId('shop-tier-explanation')).toContainText('ЗООС');
   await expect(page.locator('.shop-rarity-tabs .rarity-filter')).toHaveCount(6);
   await page.locator('.shop-rarity-tabs .rarity-legendary').click();
-  await expect(page.locator('.shop-item-grid .shop-collectible')).toHaveCount(3);
+  await expect(page.locator('.shop-item-grid .shop-collectible')).toHaveCount(4);
   await expect.poll(()=>page.locator('.shop-item-grid img').evaluateAll(imgs=>
     imgs.every(img=>(img as HTMLImageElement).complete&&(img as HTMLImageElement).naturalWidth>0)),{timeout:7000}).toBe(true);
 });
