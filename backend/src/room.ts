@@ -4,10 +4,15 @@ import {
 } from '@typeracer/shared';
 import { acceptKeystroke, safePlayerName } from './logic';
 import { QuickMatchmaker } from './quick';
+import { PrivateCheckpointStore, type PrivateCheckpoint } from './privateCheckpoint';
 import { PaymentService, type PaymentEnv } from './payments';
 
 type Message = { type: 'ready' } | { type: 'key'; key: string } | { type: 'rematch'; matchId: string };
-type Player = Racer & { socket: WebSocket; windowStart: number; windowCount: number };
+type Player = Racer & {
+  socket: WebSocket | null; resumeToken: string; disconnectedAt: number | null;
+  windowStart: number; windowCount: number;
+};
+export const PRIVATE_RECONNECT_GRACE_MS=15_000;
 type Phase = RoomSnapshot['phase'];
 const CAR_IDS = ['mint','sunset','purple','lime','phantom','steppe','thunder','midnight','khan','dawn','cosmic', 'falcon', 'nomad', 'rover', 'sunflare', 'dune', 'cobalt', 'glacier', 'fox', 'streak', 'ghost', 'onyx', 'meteor', 'temple', 'nebula', 'eagle', 'royal', 'aurora-x', 'dragon'] as const;
 const TRAIL_IDS = ['none','ember','steppe','ice','aurora','gold'] as const;
@@ -23,6 +28,11 @@ export class RaceRoom {
     return this.quick ??= new QuickMatchmaker(this.state.storage);
   }
   private sockets = new Map<WebSocket, Player>();
+  private racers = new Map<string, Player>();
+  private checkpoint: PrivateCheckpointStore | null;
+  private restored = false;
+  private roomExpiresAt=Date.now()+3_600_000;
+  private cleanupTimer: ReturnType<typeof setTimeout> | null=null;
   private prompt = generatePassage({ mode: 'story' });
   private phase: Phase = 'waiting';
   private startAt: number | null = null;
@@ -31,7 +41,66 @@ export class RaceRoom {
   private pendingBroadcast: ReturnType<typeof setTimeout> | null = null;
 
   private payments: PaymentService | null = null;
-  constructor(private readonly state: DurableObjectState, private env: PaymentEnv) {}
+  constructor(private readonly state: DurableObjectState, private env: PaymentEnv) {
+    // The legacy unit fixture has no SQLite. Production DOs always do.
+    this.checkpoint=state.storage.sql
+      ? new PrivateCheckpointStore(state.storage.sql) : null;
+  }
+
+  /** Restore only serializable state, never a stale socket. Preserves original
+   * match, timer and caret across a Durable Object isolate replacement.
+   */
+  private restorePrivate(createdAt:number):void {
+    if (this.restored)return;
+    this.restored=true;
+    this.roomExpiresAt=createdAt+3_600_000;
+    const record=this.checkpoint?.load();
+    if (!record)return;
+    this.prompt=record.prompt;
+    this.matchId=record.matchId;
+    this.phase=record.phase;
+    this.startAt=record.startAt;
+    for(const p of record.racers){
+      this.racers.set(p.id,{...p,socket:null,disconnectedAt:Date.now()});
+    }
+    if (this.phase==='countdown' && this.startAt!==null)
+      this.timer=setTimeout(()=>this.beginRace(),Math.max(0,this.startAt-Date.now()));
+    if (this.phase==='racing' && this.startAt!==null)
+      this.timer=setTimeout(()=>this.finish(),Math.max(0,this.startAt+RACE_DURATION_MS-Date.now()));
+    this.scheduleCleanup();
+  }
+  private savePrivate():void {
+    if (!this.checkpoint)return;
+    const racers=[...this.racers.values()].map(({socket,...p})=>p);
+    const record:PrivateCheckpoint={matchId:this.matchId,prompt:this.prompt,
+      startAt:this.startAt,phase:this.phase,racers};
+    this.checkpoint.save(record,this.roomExpiresAt);
+  }
+  /** Disconnected racers retain their positions briefly for a token-based
+   * reconnect. Expire stale slots to avoid locking a lobby forever.
+   */
+  private scheduleCleanup():void {
+    if (this.cleanupTimer!==null){clearTimeout(this.cleanupTimer);this.cleanupTimer=null;}
+    const missing=[...this.racers.values()].filter(p=>p.socket===null && p.disconnectedAt!==null);
+    if(!missing.length)return;
+    const deadline=Math.min(...missing.map(p=>(p.disconnectedAt as number)+PRIVATE_RECONNECT_GRACE_MS));
+    this.cleanupTimer=setTimeout(()=>{
+      this.cleanupTimer=null;
+      const now=Date.now();
+      for(const p of this.racers.values()){
+        if(p.socket===null && p.disconnectedAt!==null &&
+            now-p.disconnectedAt>=PRIVATE_RECONNECT_GRACE_MS)this.racers.delete(p.id);
+      }
+      if(this.phase==='countdown'&&this.racers.size<2){
+        if(this.timer)clearTimeout(this.timer);
+        this.timer=null;this.phase='waiting';this.startAt=null;
+        for(const p of this.racers.values())p.ready=false;
+      }
+      this.savePrivate();
+      this.broadcast();
+      this.scheduleCleanup();
+    },Math.max(1,deadline-Date.now()));
+  }
 
   async fetch(request: Request): Promise<Response> {
     const path = new URL(request.url).pathname;
@@ -186,33 +255,49 @@ export class RaceRoom {
     if (!createdAt || Date.now() - createdAt > 3_600_000) {
       return new Response('Room not found or expired', { status: 404 });
     }
+    this.restorePrivate(createdAt);
     if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') {
       return new Response('WebSocket upgrade required', { status: 426 });
     }
-    if (this.phase !== 'waiting' || this.sockets.size >= ROOM_CAPACITY) {
-      return new Response('Room is busy or full', { status: 409 });
-    }
     const url = new URL(request.url);
+    const candidate=url.searchParams.get('resume');
+    const resumed=!!candidate && /^[a-f0-9-]{36}$/i.test(candidate) &&
+      [...this.racers.values()].find(p=>p.resumeToken===candidate &&
+        (p.disconnectedAt===null || Date.now()-p.disconnectedAt<PRIVATE_RECONNECT_GRACE_MS));
+    if (!resumed && (this.phase!=='waiting'||this.racers.size>=ROOM_CAPACITY))
+      return new Response('Room is busy or full', { status: 409 });
     const name = safePlayerName(url.searchParams.get('name') || '');
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
-    const player: Player = {
+    const player: Player = resumed || {
       id: crypto.randomUUID(), name, progress: 0, mistakes: 0, strokes: 0,
       ready: false, completedAt: null,
       car: safeCosmetic(url.searchParams.get('car'), CAR_IDS, 'sunset'),
       trail: safeCosmetic(url.searchParams.get('trail'), TRAIL_IDS, 'none'),
       sticker: safeCosmetic(url.searchParams.get('sticker'), STICKER_IDS, 'none'),
       title: safeCosmetic(url.searchParams.get('title'), TITLE_IDS, 'rookie'),
-      socket: server,
+      resumeToken:crypto.randomUUID(),disconnectedAt:null,socket:null,
       windowStart: 0, windowCount: 0
     };
+    if(player.socket){
+      const stale=player.socket;
+      this.sockets.delete(stale);
+      try{stale.close(4000,'Session resumed');}catch{/* replaced */}
+    }
+    player.socket=server;
+    player.disconnectedAt=null;
     server.accept();
+    this.racers.set(player.id,player);
     this.sockets.set(server, player);
     server.addEventListener('message', (event: MessageEvent) => this.receive(player, event.data));
     server.addEventListener('close', () => this.leave(server));
     server.addEventListener('error', () => this.leave(server));
-    this.send(server, { type: 'welcome', id: player.id });
+    this.savePrivate();
+    this.scheduleCleanup();
+    this.send(server, { type: 'welcome', id: player.id,
+      resumeToken:player.resumeToken,resumed:!!resumed });
     this.broadcast();
+    if (this.phase==='finished')this.sendResult(player);
     return new Response(null, { status: 101, webSocket: client });
   }
 
