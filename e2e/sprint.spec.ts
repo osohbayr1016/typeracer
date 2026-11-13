@@ -34,3 +34,18 @@ test('home has a one-click speed practice entry without breaking the original on
   await page.locator('.home-hero').getByRole('button',{name:/ТОГЛОХ/}).click();
   await expect(page).toHaveURL(/\/play$/);
 });
+
+
+test('an open daily challenge resets to the new Mongolian day without refreshing', async ({page}) => {
+  await page.clock.install({time: new Date('2026-11-13T15:59:40Z')});
+  await page.goto('/daily');
+  await expect(page.locator('.sprint-kicker')).toContainText('2026-11-13');
+  const input=page.getByRole('textbox',{name:'Хурдны шалгалтын бичих талбар'});
+  const letter=await page.locator('.sprint-phrase span').first().textContent();
+  await input.fill(letter!);
+  await expect(page.locator('.sprint-phrase span.typed')).toHaveCount(1);
+  await page.clock.fastForward(60_000);
+  await expect(page.locator('.sprint-kicker')).toContainText('2026-11-14');
+  await expect(page.locator('.sprint-phrase span.typed')).toHaveCount(0);
+  await expect(page.getByTestId('sprint-countdown')).toContainText('30.0');
+});
