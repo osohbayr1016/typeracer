@@ -44,6 +44,7 @@ export const QUICK_MAX_HUMANS = 5;
  * Competitive leaderboard points are a separate server-calculated metric. */
 export const QUICK_PRIZES = [30, 27, 24, 21, 18] as const;
 export const QUICK_BOT_JOIN_MS = 650;
+/** Bots fill the visible grid but must not close the five-second human queue. */
 /** Grace period for a disconnected public-race player in the current Durable Object instance. */
 export const QUICK_RECONNECT_GRACE_MS = 15_000;
 
@@ -87,12 +88,26 @@ export function quickPlacement(player: Racer, opponents: Racer[]): number {
 export function quickPrize(place: number, finished: boolean): number {
   return finished ? QUICK_PRIZES[place - 1] ?? 0 : 0;
 }
+/** PvP beta: count only live, distinct human accounts at the start signal.
+ * Two tabs on the same account cannot create a human-vs-human match.
+ */
+export function connectedHumanCount(entries: Iterable<{
+  id: string; accountId: string | null; socket: {readyState: number} | null;
+}>): number {
+  const humans = new Set<string>();
+  for (const player of entries) {
+    if (player.socket?.readyState !== 1) continue;
+    humans.add(player.accountId ? 'account:' + player.accountId : 'guest:' + player.id);
+  }
+  return humans.size;
+}
 
 export class QuickMatchmaker {
   readonly rankings: RaceRankingStore | null;
   readonly checkpoints: QuickCheckpointStore | null;
   constructor(private storage?: DurableObjectStorage) {
-    this.rankings = storage ? new RaceRankingStore(storage.sql) : null;
+    this.rankings = storage ? new RaceRankingStore(storage.sql,
+      storage.transactionSync ? operation => storage.transactionSync(operation) : undefined) : null;
     this.checkpoints = storage ? new QuickCheckpointStore(storage.sql) : null;
   }
   private pending: QuickRace | null = null;
@@ -279,9 +294,8 @@ export class QuickMatchmaker {
     });
     this.saveRace(race);
     this.broadcast(race);
-    // Once the five-player grid is full, move straight to the ONLY visible
-    // countdown. Do not keep a separate "search timeout" running on screen.
-    if (autoStart && race.humans.size + race.bots.length === QUICK_LANES) this.startCountdown(race);
+    // Retain the original deadline to allow later humans to replace bots.
+    void autoStart;
   }
 
   private startCountdown(race: QuickRace): void {
@@ -313,7 +327,7 @@ export class QuickMatchmaker {
     if (race.humans.size === 0) { this.dispose(race); return; }
     race.phase = 'racing';
     // Count humans actually present at the green light, not lobby bots.
-    race.humanCountAtStart = race.humans.size;
+    race.humanCountAtStart = connectedHumanCount(race.humans);
     this.saveRace(race);
     this.broadcast(race);
     race.tick = setInterval(() => this.tickBots(race), 100);

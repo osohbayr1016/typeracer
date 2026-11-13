@@ -1,8 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { QUICK_BOT_JOIN_MS, QUICK_BOT_ROSTER, QUICK_LANES, QUICK_MAX_HUMANS,
-  QUICK_PRIZES, quickBotForSlot, quickPlacement, quickPrize } from './quick';
+  QUICK_PRIZES, quickBotForSlot, quickPlacement, quickPrize, connectedHumanCount } from './quick';
 
 describe('five-racer quick lobby mechanics', () => {
+  it('requires online unique accounts; duplicate tabs and disconnect grace are not PvP',()=>{
+    const up={readyState:1},down={readyState:3};
+    const racers=[
+      {id:'a',accountId:'same',socket:up},
+      {id:'b',accountId:'same',socket:up},
+      {id:'c',accountId:'other',socket:down}
+    ];
+    expect(connectedHumanCount(racers)).toBe(1);
+    expect(connectedHumanCount([...racers,{id:'d',accountId:'another',socket:up}])).toBe(2);
+    expect(connectedHumanCount([{id:'guest1',accountId:null,socket:up},
+      {id:'guest2',accountId:null,socket:up}])).toBe(2);
+  });
+
   it('has enough distinct original bot identities to fill an otherwise empty five-racer queue', () => {
     expect(QUICK_LANES).toBe(5);
     expect(QUICK_MAX_HUMANS).toBe(5);
