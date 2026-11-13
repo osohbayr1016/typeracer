@@ -44,3 +44,16 @@ test('logout isolates server-earned inventory and does not leak prior session ba
   const fresh=await (await page.request.get('/api/progression')).json();
   expect(fresh).toMatchObject({coins:200,owned:[],xp:0,races:0});
 });
+
+test('Shop UI purchases a cosmetic using server-earned coins without refreshing the page',async({page})=>{
+  await page.goto('/shop');
+  await expect(page.locator('.coin-counter')).toContainText('СЕРВЕРИЙН УРАЛДААНЫ ЗООС');
+  const card=page.locator('.shop-item-grid article').filter({hasText:'Түргэн хуруу'}).first();
+  await expect(card).toBeVisible();
+  await card.getByRole('button',{name:'◈ ХУДАЛДАН АВАХ'}).click();
+  await expect(page.locator('.coin-counter')).toContainText('10');
+  await expect(card.getByRole('button',{name:'Машинд суух / Зүүх'})).toBeVisible();
+  await page.reload();
+  await expect(page.locator('.coin-counter')).toContainText('10');
+  await expect(card.getByRole('button',{name:'Машинд суух / Зүүх'})).toBeVisible();
+});
