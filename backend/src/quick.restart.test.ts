@@ -60,7 +60,7 @@ async function enter(service:QuickMatchmaker,token?:string,cookie?:string){
   return {
     socket,
     welcome:socket.latest('welcome') as {id:string;resumeToken:string;resumed:boolean},
-    state:socket.latest('state') as {matchId:string;startAt:number;prompt:{text:string};players:Array<{id:string;progress:number;inputSeq:number}>}
+    state:socket.latest('state') as {matchId:string;startAt:number;phase:string;prompt:{text:string};players:Array<{id:string;progress:number;inputSeq:number}>}
   };
 }
 describe('SQLite durable quick-match crash recovery',()=>{
