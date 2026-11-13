@@ -223,7 +223,15 @@ export class EarnedProgressionStore {
       .map(row=>({raceId:row.race_id,xp:row.xp,coins:row.coins,wpm:row.wpm,
         accuracy:row.accuracy,finishedAt:row.finished_at}));
     const season=this.season(id,at);
-    return {xp:Number(player.xp),coins:Number(player.coins),races:Number(player.races),
+    const raceStats=first(this.sql,`SELECT COALESCE(MAX(wpm),0) AS best_wpm,
+      COALESCE(ROUND(AVG(wpm)),0) AS avg_wpm,
+      COALESCE(ROUND(AVG(accuracy)),0) AS avg_accuracy,
+      MAX(finished_at) AS last_raced_at
+      FROM earned_races WHERE player_id=?`,id)!;
+    const stats={bestWpm:Number(raceStats.best_wpm),avgWpm:Number(raceStats.avg_wpm),
+      avgAccuracy:Number(raceStats.avg_accuracy),
+      lastRacedAt:raceStats.last_raced_at===null?null:Number(raceStats.last_raced_at)};
+    return {xp:Number(player.xp),coins:Number(player.coins),races:Number(player.races),stats,
       seasonXp:season.xp,season,level:Math.floor(Number(player.xp)/300)+1,
       owned,recent,daily:this.daily(id,at),source:'server' as const,starter:EARNED_STARTER_COINS,
       equipped:{car:String(player.car),trail:String(player.trail),
