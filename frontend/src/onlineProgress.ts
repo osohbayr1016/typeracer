@@ -1,6 +1,7 @@
 export type EarnedOnlineProfile = {
   xp:number; coins:number; races:number; seasonXp:number; level:number;
   owned:string[]; source:'server'; starter:number;
+  equipped:{car:string;trail:string;title:string;sticker:string};
   recent:Array<{raceId:string;xp:number;coins:number;wpm:number;accuracy:number;finishedAt:number}>;
 };
 export async function onlineProgressApi<T>(path='',body?:object):Promise<T> {

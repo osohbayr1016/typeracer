@@ -73,6 +73,7 @@ app.get('/api/payments/orders/:id', c => paymentProxy(c, 'orders/' + encodeURICo
 app.post('/api/webhooks/wire', c => paymentProxy(c, 'webhook'));
 app.get('/api/progression',c=>publicRanking(c,'/progression'));
 app.post('/api/progression/items',c=>publicRanking(c,'/progression/items'));
+app.post('/api/progression/equip',c=>publicRanking(c,'/progression/equip'));
 app.get('/api/account',c=>publicRanking(c,'/account?secure='+(new URL(c.req.url).protocol==='https:'?'1':'0')));
 app.get('/api/auth/providers',c=>c.json({
   google:providerReady(c.env,'google'),facebook:providerReady(c.env,'facebook')

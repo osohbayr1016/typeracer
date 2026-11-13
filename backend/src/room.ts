@@ -48,7 +48,7 @@ export class RaceRoom {
       const earned=service.earned!;
       if (path==='/progression' && request.method==='GET')
         return Response.json(earned.overview(id),{headers:{'Cache-Control':'no-store'}});
-      if (path==='/progression/items' && request.method==='POST') {
+      if ((path==='/progression/items' || path==='/progression/equip') && request.method==='POST') {
         let input:Record<string,unknown>;
         try {
           const raw=await request.text();
@@ -58,7 +58,9 @@ export class RaceRoom {
         } catch {return Response.json({error:'invalid_request'},{status:400});}
         if (typeof input.kind!=='string'||typeof input.id!=='string')
           return Response.json({error:'invalid_request'},{status:400});
-        const result=earned.buy(id,input.kind,input.id);
+        const result=path==='/progression/items'
+          ? earned.buy(id,input.kind,input.id)
+          : earned.equip(id,input.kind,input.id);
         return Response.json(result,{status:'error' in result?result.error==='already_owned'?409:400:200});
       }
       return new Response('Method not allowed',{status:405});
