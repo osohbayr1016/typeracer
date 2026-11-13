@@ -193,6 +193,8 @@ export function App() {
   const [myId, setMyId] = useState('');
   const [raceResult, setRaceResult] = useState<number | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
+  const privateRetryRef=useRef<ReturnType<typeof setTimeout>|null>(null);
+  const privateReconnectAttempts=useRef(0);
   const onlineInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -200,7 +202,12 @@ export function App() {
     const id = window.setInterval(() => setNow(Date.now()), 125);
     return () => window.clearInterval(id);
   }, [page, startedAt, finishedAt]);
-  useEffect(() => () => socketRef.current?.close(), []);
+  useEffect(() => () => {
+    if(privateRetryRef.current!==null)clearTimeout(privateRetryRef.current);
+    const socket=socketRef.current;
+    socketRef.current=null;
+    socket?.close();
+  }, []);
   useEffect(() => {
     if (page !== 'multiplayerRace' || snapshot?.phase !== 'racing') return;
     const id = window.setInterval(() => setNow(Date.now()), 125);
@@ -345,19 +352,34 @@ export function App() {
     } catch(error){setOnlineError((error as Error).message);}
     finally {setOnlineBusy(false);}
   }
-  function disconnect() {
-    socketRef.current?.close(); socketRef.current = null;
+  function disconnect(clearResume=true) {
+    if(privateRetryRef.current!==null){clearTimeout(privateRetryRef.current);privateRetryRef.current=null;}
+    const previous=socketRef.current;
+    socketRef.current=null;
+    previous?.close();
+    if(clearResume && code){
+      try{
+        sessionStorage.removeItem('typeracer.private.'+code+'.resume');
+        sessionStorage.removeItem('typeracer.private.active');
+      }catch{/* storage unavailable */}
+    }
     setStatus('disconnected'); setSnapshot(null); setCode(''); setMyId(''); setRaceResult(null);
     onlineSnapshotRef.current = null; setOnlineClock(null);
   }
-  function connectRoom(roomCode: string) {
+  function connectRoom(roomCode: string,recovering=false) {
     const clean = roomCode.trim().toUpperCase();
     if (!roomCodePattern.test(clean)) { setError('Өрөөний код 8 тэмдэгттэй байх ёстой.'); return; }
-    disconnect(); setCode(clean); setError(''); setStatus('connecting');
+    if(!recovering){disconnect(false);privateReconnectAttempts.current=0;}
+    else if(privateRetryRef.current!==null){clearTimeout(privateRetryRef.current);privateRetryRef.current=null;}
+    setCode(clean); setError(recovering?'Холболтыг сэргээж байна…':''); setStatus('connecting');
     const base = API_BASE || window.location.origin;
-    const url = base.replace(/^http/, 'ws') + '/api/rooms/' + clean + '/ws?' +
-      new URLSearchParams({ name: nickname, car: profile.car, trail: profile.trail,
-        sticker: profile.sticker, title: profile.title }).toString();
+    const params=new URLSearchParams({ name: nickname, car: profile.car, trail: profile.trail,
+      sticker: profile.sticker, title: profile.title });
+    try {
+      const token=sessionStorage.getItem('typeracer.private.'+clean+'.resume');
+      if(token && /^[a-f0-9-]{36}$/i.test(token))params.set('resume',token);
+    }catch{/* browser storage disabled */}
+    const url = base.replace(/^http/, 'ws') + '/api/rooms/' + clean + '/ws?' + params.toString();
     let socket: WebSocket;
     try { socket = new WebSocket(url); }
     catch { setError('Сервертэй холбогдож чадсангүй.'); setStatus('disconnected'); return; }
@@ -365,8 +387,19 @@ export function App() {
     socket.onopen = () => { setStatus('connected'); setError(''); };
     socket.onmessage = event => {
       try {
-        const value = JSON.parse(event.data) as RoomSnapshot | { type: 'welcome'; id: string } | { type: 'result'; wpm: number };
-        if (value.type === 'welcome') setMyId(value.id);
+        const value = JSON.parse(event.data) as RoomSnapshot |
+          { type:'welcome'; id:string; resumeToken?:string; resumed?:boolean } |
+          { type: 'result'; wpm: number };
+        if (value.type === 'welcome') {
+          setMyId(value.id);
+          if(value.resumeToken){
+            try{
+              sessionStorage.setItem('typeracer.private.'+clean+'.resume',value.resumeToken);
+              sessionStorage.setItem('typeracer.private.active',clean);
+            }catch{/* browser storage disabled */}
+          }
+          if(value.resumed)setError('Өмнөх гарааг амжилттай сэргэлээ.');
+        }
         if (value.type === 'state') {
           if (!onlineSnapshotRef.current || value.startAt !== onlineSnapshotRef.current.startAt)
             setOnlineClock({ serverNow: value.serverNow ?? Date.now(), receivedAt: performance.now() });
@@ -380,9 +413,32 @@ export function App() {
         if (value.type === 'result') setRaceResult(value.wpm);
       } catch { setError('Серверийн хариу ойлгомжгүй байна.'); }
     };
-    socket.onclose = () => { if (socketRef.current === socket) setStatus('disconnected'); };
-    socket.onerror = () => setError('Холболт тасарсан эсвэл өрөө дүүрсэн байна. API серверээ шалгана уу.');
+    socket.onclose = () => {
+      if(socketRef.current!==socket)return;
+      setStatus('disconnected');
+      if(!window.location.pathname.startsWith('/multiplayer'))return;
+      const attempt=++privateReconnectAttempts.current;
+      if(attempt>5){setError('Өрөөтэй холбогдож чадсангүй. Дахин нэгдэх эсвэл шинэ өрөө үүсгэнэ үү.');return;}
+      setError('Холболт тасарлаа. Автоматаар дахин холбогдож байна…');
+      privateRetryRef.current=setTimeout(()=>{
+        privateRetryRef.current=null;
+        if(socketRef.current===socket)connectRoom(clean,true);
+      },Math.min(6000,400*2**(attempt-1)));
+    };
+    socket.onerror = () => setError('Өрөөний холболт түр тасарсан байна. Сэргээхийг оролдож байна…');
   }
+  useEffect(()=>{
+    if(routeFromLocation()!=='multiplayerRace')return;
+    // Deferring to a zero-delay macrotask survives React StrictMode's
+    // setup/cleanup replay without connecting an orphan lobby slot.
+    let timer:ReturnType<typeof setTimeout>|null=null;
+    try{
+      const saved=sessionStorage.getItem('typeracer.private.active');
+      if(saved && roomCodePattern.test(saved))
+        timer=setTimeout(()=>connectRoom(saved,true),0);
+    }catch{/* sessionStorage unavailable */}
+    return ()=>{if(timer!==null)clearTimeout(timer);};
+  },[]);
   async function createRoom() {
     setError('');
     try {
