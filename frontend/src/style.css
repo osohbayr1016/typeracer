@@ -346,3 +346,8 @@ footer span { color: var(--orange); padding: 0 12px; }
 .lobby-intro h3, .room-info strong {
   font-family: var(--font-display);
 }
+
+/* Secondary screens load asynchronously; reserve space to avoid content jumps. */
+.route-loading {display:grid;place-items:center;min-height:40svh;padding:35px 12px;text-align:center;
+  font:800 14px var(--font-body);letter-spacing:.5px;color:#bbcec7;}
+@media (prefers-reduced-motion:reduce) {.route-loading {animation:none;}}
