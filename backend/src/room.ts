@@ -304,8 +304,10 @@ export class RaceRoom {
   private snapshot(): RoomSnapshot {
     return {
       type: 'state', phase: this.phase, prompt: this.prompt, matchId: this.matchId, serverNow: Date.now(),
-      players: [...this.sockets.values()].map(({ id, name, progress, mistakes, strokes, ready, completedAt, car, trail, sticker, title }) =>
-        ({ id, name, progress, mistakes, strokes, ready, completedAt, car, trail, sticker, title })),
+      players: [...this.racers.values()].map(({ id, name, progress, mistakes, strokes, ready, completedAt,
+        car, trail, sticker, title, socket }) =>
+        ({ id, name, progress, mistakes, strokes, ready, completedAt, car, trail, sticker, title,
+          connected:socket?.readyState===WebSocket.OPEN })),
       startAt: this.startAt, durationMs: RACE_DURATION_MS
     };
   }
@@ -315,6 +317,7 @@ export class RaceRoom {
     catch { this.leave(socket); }
   }
   private broadcast(): void {
+    this.savePrivate();
     const state = this.snapshot();
     for (const socket of this.sockets.keys()) this.send(socket, state);
   }
@@ -327,19 +330,17 @@ export class RaceRoom {
     }, 50);
   }
   private leave(socket: WebSocket): void {
-    if (!this.sockets.delete(socket)) return;
-    if (this.phase === 'countdown' && this.sockets.size < 2) {
-      if (this.timer) clearTimeout(this.timer);
-      this.timer = null;
-      this.phase = 'waiting';
-      this.startAt = null;
-      for (const player of this.sockets.values()) player.ready = false;
-    }
-    if (this.sockets.size === 0 && this.timer) { clearTimeout(this.timer); this.timer = null; }
-    if (this.sockets.size === 0 && this.phase !== 'waiting') {
-      this.phase = 'finished';
-    }
+    const player=this.sockets.get(socket);
+    if (!player)return;
+    this.sockets.delete(socket);
+    if(player.socket!==socket)return; // old socket was replaced on resume
+    player.socket=null;
+    player.disconnectedAt=Date.now();
+    // Keep countdown/racing clocks running so a reconnect preserves the same
+    // race. The slot expires after grace; a disconnected participant cannot
+    // permanently occupy a lobby.
     this.broadcast();
+    this.scheduleCleanup();
   }
   private receive(player: Player, data: unknown): void {
     if (typeof data !== 'string' || data.length > 160) return;
@@ -353,7 +354,7 @@ export class RaceRoom {
       this.matchId = crypto.randomUUID();
       this.phase = 'waiting';
       this.startAt = null;
-      for (const racer of this.sockets.values()) {
+      for (const racer of this.racers.values()) {
         racer.ready = racer === player;
         racer.progress = racer.mistakes = racer.strokes = 0;
         racer.completedAt = null;
@@ -384,8 +385,9 @@ export class RaceRoom {
     player.mistakes = next.mistakes;
     player.strokes = next.strokes;
     if (player.progress === characters(this.prompt.text).length) player.completedAt = now;
+    this.savePrivate(); // accepted keystrokes survive a mid-race Worker restart
     this.queueBroadcast();
-    if ([...this.sockets.values()].every(p => p.completedAt !== null)) this.finish();
+    if (this.racers.size>=2 && [...this.racers.values()].every(p => p.completedAt !== null)) this.finish();
   }
   private beginRace(): void {
     if (this.phase !== 'countdown' || this.startAt === null) return;
@@ -407,13 +409,15 @@ export class RaceRoom {
     if (this.pendingBroadcast) clearTimeout(this.pendingBroadcast);
     this.pendingBroadcast = null;
     this.broadcast();
-    const start = this.startAt || Date.now();
-    for (const player of this.sockets.values()) {
-      this.send(player.socket, {
-        type: 'result',
-        wpm: wordsPerMinute(player.progress, (player.completedAt || Date.now()) - start),
-        verified: false
-      });
-    }
+    for (const player of this.racers.values())this.sendResult(player);
+  }
+  private sendResult(player: Player): void {
+    if (!player.socket)return;
+    const start=this.startAt || Date.now();
+    this.send(player.socket,{
+      type:'result',
+      wpm:wordsPerMinute(player.progress,(player.completedAt || Date.now())-start),
+      verified:false
+    });
   }
 }
