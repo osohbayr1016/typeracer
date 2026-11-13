@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test('coin button opens a real payment page and honestly reports unconfigured local credentials', async ({page}) => {
   await page.goto('/');
-  await page.getByRole('button', { name: /зоос · Зоос цэнэглэх/ }).click();
+  await page.getByRole('button', { name: /цэнэглэсэн зоос.*тоглож олсон зоос.*Цэнэглэх/i }).click();
   await expect(page).toHaveURL(/\/coins$/);
   await expect(page.getByRole('heading', { name: 'ЗООС ЦЭНЭГЛЭХ.' })).toBeVisible();
   await page.getByText('100 ₮-ийн холболтын туршилт', {exact:true}).click();
