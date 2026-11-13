@@ -165,6 +165,7 @@ export function App() {
       setSeasonClock(Date.now());
       void onlineProgressApi<EarnedOnlineProfile>().then(setOnline).catch(()=>{});
     };
+    refresh();
     const timer=window.setInterval(refresh,60_000);
     window.addEventListener('focus',refresh);
     document.addEventListener('visibilitychange',refresh);
