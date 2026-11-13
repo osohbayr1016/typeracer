@@ -22,6 +22,11 @@ type Props = {
 };
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 const RESUME_KEY = 'typeracer.quick.resume.v1';
+const FOCUS_KEY = 'typeracer.quick.focus.v1';
+function initialFocus():boolean {
+  try {return window.localStorage.getItem(FOCUS_KEY)==='1';}
+  catch{return false;}
+}
 const BOT_CARS: Skin[] = ['mint','steppe','thunder'];
 /** The finish moment stays on the track briefly (place, speed, prize) before the full results page opens. */
 export const FINISH_HOLD_MS = 1500;
@@ -68,6 +73,7 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
   const [clock, setClock] = useState<ServerClock | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [focusPreferred,setFocusPreferred] = useState(initialFocus);
   const [prediction, setPrediction] = useState<TypingProgress | null>(null);
   const [syncSlow, setSyncSlow] = useState(false);
   const reliableInput = useRef<ReliableRaceInput | null>(null);
@@ -92,6 +98,11 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
     }, 450);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    try {window.localStorage.setItem(FOCUS_KEY,focusPreferred?'1':'0');}
+    catch {/* storage is optional */}
+  },[focusPreferred]);
 
   useEffect(() => {
     const viewport = window.visualViewport;
@@ -262,6 +273,15 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
   const humans = snapshot?.players.filter(p => !p.bot).length ?? 0;
   const letterCount = snapshot ? characters(snapshot.prompt.text).length : 1;
   const underway = snapshot?.phase === 'racing' || snapshot?.phase === 'finished';
+  const focusActive=focusPreferred && snapshot?.phase==='racing' && !result;
+  function toggleFocus() {
+    setFocusPreferred(previous=>!previous);
+    // Clicking a control must not make the racer lose their keyboard input.
+    if (snapshot?.phase==='racing' && !window.matchMedia('(pointer: coarse)').matches)
+      requestAnimationFrame(()=>{
+        document.querySelector<HTMLInputElement>('.quick-type-input')?.focus({preventScroll:true});
+      });
+  }
   const myRank = snapshot && self ? liveRank(self, snapshot.players) : null;
   const myPlace = snapshot && self ? finishPlace(self, snapshot.players) : null;
   const secondsToStart = snapshot?.phase === 'countdown' && snapshot.startAt
@@ -278,15 +298,22 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
   const canAcceptKey = useCallback(() => connection === 'connected' && !result &&
     raceCanType(latestSnapshot.current?.phase, latestSnapshot.current?.startAt, readRaceClock(clock)), [connection, result, clock]);
 
-  return <div className="quick-page" data-testid="quick-race" data-start-signal={signal} data-keyboard-open={keyboardOpen}>
+  return <div className="quick-page" data-testid="quick-race" data-start-signal={signal}
+    data-keyboard-open={keyboardOpen} data-focus={focusActive} data-focus-preferred={focusPreferred}>
     <header className="quick-topline">
       <button className="back-link" onClick={onBack}>← БУЦАХ</button>
       <div className="quick-page-id">
         <strong>ШУУД УРАЛДААН</strong><span>5 ТОГЛОГЧ · МОНГОЛ ХЭЛ</span>
       </div>
-      <span className={'quick-connection'+(connection === 'error' ? ' offline' : '')}>
-        {connection === 'connected' ? (syncSlow ? '● СИНК ХИЙЖ БАЙНА' : '● ОНЛАЙН') : connection === 'error' ? '● ТАСАРСАН' : '○ ХОЛБОГДОЖ БАЙНА'}
-      </span>
+      <div className="quick-top-actions">
+        <button type="button" className="quick-focus-toggle" data-testid="quick-focus-toggle"
+          aria-pressed={focusPreferred} aria-label="Зөвхөн өөрийн зам болон бичих текстэд төвлөрөх"
+          title="Фокус: өрсөлдөгчдийн мөрийг уралдааны үеэр түр нууна"
+          onClick={toggleFocus}>{focusPreferred?'✓ ФОКУС':'ФОКУС'}</button>
+        <span className={'quick-connection'+(connection === 'error' ? ' offline' : '')}>
+          {connection === 'connected' ? (syncSlow ? '● СИНК ХИЙЖ БАЙНА' : '● ОНЛАЙН') : connection === 'error' ? '● ТАСАРСАН' : '○ ХОЛБОГДОЖ БАЙНА'}
+        </span>
+      </div>
     </header>
 
     {connection === 'error' && !result && <section className="quick-state-panel" role="alert">
@@ -348,7 +375,7 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
         <button type="button" className="quick-finish-open" onClick={() => finishNow.current?.()}>ҮР ДҮН ХАРАХ → <kbd>Enter</kbd></button>
       </div>}
       <div className="quick-track-head">
-        <span>УРАЛДАГЧИД</span>
+        <span>{focusActive?'МИНИЙ ЗАМ · ФОКУС':'УРАЛДАГЧИД'}</span>
         <strong>{filled} / 5 · {humans} ХҮН · {filled - humans} БОТ</strong>
       </div>
       <div className="quick-lanes">

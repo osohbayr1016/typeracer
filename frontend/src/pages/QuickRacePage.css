@@ -273,3 +273,35 @@
   .quick-page[data-keyboard-open='true'] .quick-type-input {min-height:48px;}
   .quick-page[data-keyboard-open='true'] .quick-ready-hint {font-size:12px;}
 }
+
+/* Optional Focus: keeps the player's own car and typing panel visible.
+ * Never modifies the authoritative player list, match clock, or race scoring.
+ * The full results and other opponents return once the race is finished. */
+.quick-top-actions{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.quick-focus-toggle{min-height:42px;padding:8px 14px;border:1px solid #657b72;border-radius:6px;
+  background:#1c2825;color:#daebe1;font:850 12px var(--font-body);letter-spacing:.045em;cursor:pointer}
+.quick-focus-toggle:hover,.quick-focus-toggle:focus-visible{border-color:#a8eac2;color:#fff;outline-offset:3px}
+.quick-focus-toggle[aria-pressed='true']{background:#d1f0dc;border-color:#d1f0dc;color:#193b2a}
+.quick-page[data-focus='true'] .quick-lane:not(.me){display:none}
+.quick-page[data-focus='true'] .quick-lane.me{height:68px;border-bottom:0}
+.quick-page[data-focus='true'] .quick-lane.me .quick-road{height:63px}
+.quick-page[data-focus='true'] .quick-type-panel{padding:22px}
+.quick-page[data-focus='true'] .quick-phrase{font-size:clamp(19px,2.2vw,26px);
+  max-height:min(39svh,310px);line-height:1.65}
+@media(max-width:700px){
+  .quick-top-actions{gap:5px}
+  .quick-focus-toggle{min-height:44px;padding:9px 11px;font-size:11px}
+  .quick-lane-meta>div strong{font-size:11px}
+  .quick-lane-meta small{font-size:10px}
+  .quick-track-head,.quick-track-head strong{font-size:11px}
+  .quick-type-source{font-size:11px}
+  .quick-page[data-focus='true'] .quick-lane.me{height:52px}
+  .quick-page[data-focus='true'] .quick-lane.me .quick-road{height:50px}
+  .quick-page[data-focus='true'] .quick-type-panel{padding:13px}
+  .quick-page[data-focus='true'] .quick-phrase{font-size:clamp(18px,4.8vw,22px);
+    max-height:clamp(115px,28svh,210px);line-height:1.5}
+  .quick-page[data-focus='true'][data-keyboard-open='true'] .quick-phrase{
+    min-height:100px;max-height:clamp(100px,25svh,190px)}
+}
+@media(max-width:400px){.quick-top-actions .quick-connection{font-size:9px}}
+@media(prefers-reduced-motion:reduce){.quick-focus-toggle{transition:none}}
