@@ -74,8 +74,10 @@ describe('SQLite durable quick-match crash recovery',()=>{
       first.socket.receive({type:'key',key:letters[index],matchId:live.matchId,seq:index+1});
     }
     first.socket.close();
-    // Process exit removes in-memory timers and sockets; SQLite stays alive.
+    // Simulate isolate destruction without moving the authoritative server clock.
+    const crashAt=Date.now();
     vi.clearAllTimers();
+    vi.setSystemTime(crashAt);
     const restored=new QuickMatchmaker(storage);
     const resumed=await enter(restored,first.welcome.resumeToken);
     expect(resumed.welcome).toMatchObject({id:first.welcome.id,resumed:true});
@@ -88,9 +90,6 @@ describe('SQLite durable quick-match crash recovery',()=>{
     const after=resumed.socket.latest('state') as typeof resumed.state;
     const stored=JSON.parse(String(db.prepare('SELECT payload FROM quick_checkpoints WHERE id=?')
       .get(live.matchId)?.payload)) as {phase:string;humans:Array<{inputSeq:number;progress:number}>};
-    console.info('RESTART-DEBUG',JSON.stringify({phase:after.phase,startAt:live.startAt,now:Date.now(),
-      stored:stored.humans[0],ack:resumed.socket.latest('input-ack'),resumeWelcome:resumed.welcome,
-      matchId:live.matchId,after:after.players.find(p=>p.id===first.welcome.id)}));
     expect({phase:after.phase,storedPhase:stored.phase,storedHuman:stored.humans[0],
       latestAck:resumed.socket.latest('input-ack'),latestState:after.players.find(p=>p.id===first.welcome.id)})
       .toMatchObject({phase:'racing',storedPhase:'racing',storedHuman:{progress:4,inputSeq:4},
@@ -117,7 +116,9 @@ describe('SQLite durable quick-match crash recovery',()=>{
       .get(live.matchId)?.n);
     expect(count()).toBe(1);
     first.socket.close();
+    const crashAt=Date.now();
     vi.clearAllTimers();
+    vi.setSystemTime(crashAt);
     const next=new QuickMatchmaker(storage);
     const resumed=await enter(next,first.welcome.resumeToken,'tr_guest='+account.newToken);
     expect(resumed.welcome).toMatchObject({id:first.welcome.id,resumed:true});
