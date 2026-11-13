@@ -62,6 +62,10 @@ app.post('/api/payments/items', c => paymentProxy(c, 'items'));
 app.get('/api/payments/orders/:id', c => paymentProxy(c, 'orders/' + encodeURIComponent(c.req.param('id'))));
 app.post('/api/webhooks/wire', c => paymentProxy(c, 'webhook'));
 app.get('/api/progression',c=>publicRanking(c,'/progression'));
+app.get('/api/leaderboard/daily',c=>{
+  const query=new URL(c.req.url).searchParams;
+  return publicRanking(c,'/progression/daily-leaderboard?'+query.toString());
+});
 app.post('/api/progression/items',c=>publicRanking(c,'/progression/items'));
 app.post('/api/progression/equip',c=>publicRanking(c,'/progression/equip'));
 app.post('/api/progression/quests/claim',c=>publicRanking(c,'/progression/quests/claim'));
