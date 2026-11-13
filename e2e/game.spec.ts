@@ -873,12 +873,20 @@ test('completed quickplay opens post-race standings and claims daily goals only 
   await expect(page.locator('.qr-stats-panel')).toBeVisible();
   const claim = page.locator('[data-quest-id="first-finish"] button');
   await expect(claim).toBeEnabled();
-  const before = await page.locator('.profile-name small').innerText();
+  // Legacy daily quests credit ONLY the device-local practice ledger.
+  // They must not mint spendable online coins in the server-owned header.
+  const online = await (await page.request.get('/api/progression')).json() as {coins:number};
+  await expect(page.locator('.profile-name small')).toContainText('◈ '+online.coins);
+  const header = await page.locator('.profile-name small').innerText();
+  const localBefore = await page.evaluate(() =>
+    (JSON.parse(localStorage.getItem('racer.profile.v1')||'{}') as {coins:number}).coins);
   await claim.click();
   await expect(claim).toBeDisabled();
   await expect(claim).toContainText('АВСАН');
-  const after = await page.locator('.profile-name small').innerText();
-  expect(after).not.toBe(before);
+  await expect(page.locator('.profile-name small')).toHaveText(header);
+  const localAfter = await page.evaluate(() =>
+    (JSON.parse(localStorage.getItem('racer.profile.v1')||'{}') as {coins:number}).coins);
+  expect(localAfter).toBe(localBefore+8);
   await page.getByRole('button',{name:'НҮҮР ХУУДАС'}).click();
   await expect(page).toHaveURL(/\/$/);
   await page.goto('/profile');
