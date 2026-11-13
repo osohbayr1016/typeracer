@@ -129,6 +129,12 @@ describe('SQLite durable quick-match crash recovery',()=>{
     const count=()=>Number(db.prepare('SELECT COUNT(*) AS n FROM leaderboard_races WHERE race_id=?')
       .get(live.matchId)?.n);
     expect(count()).toBe(1);
+    const online=original.earned!.overview(String(account.player.id));
+    expect(online.races).toBe(1);
+    expect(online.xp).toBeGreaterThan(0);
+    expect(online.coins).toBe(200+(first.socket.latest('quick-result') as {coins:number}).coins);
+    expect(Number(db.prepare('SELECT COUNT(*) AS n FROM earned_races WHERE race_id=?')
+      .get(live.matchId)?.n)).toBe(1);
     first.socket.close();
     const crashAt=Date.now();
     vi.clearAllTimers();
@@ -139,6 +145,7 @@ describe('SQLite durable quick-match crash recovery',()=>{
     const recovered=resumed.socket.latest('quick-result') as {raceId:string;place:number;wpm:number}|undefined;
     expect(recovered).toMatchObject({raceId:completed!.raceId,place:completed!.place,wpm:completed!.wpm});
     expect(count()).toBe(1);
+    expect(next.earned!.overview(String(account.player.id))).toEqual(online);
     vi.advanceTimersByTime(16000);
     const afterExpiry=await enter(new QuickMatchmaker(storage),first.welcome.resumeToken);
     expect(afterExpiry.welcome.resumed).toBe(false);
