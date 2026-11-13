@@ -6,7 +6,8 @@ import { raceStandings } from './quickResultsModel';
 import './RankingsPages.css';
 
 type PlayerRow = {rank:number;id:string;name:string;points:number;races:number;wpm:number;accuracy:number;bestWpm:number;teamTag:string|null;guest:boolean};
-type PlayerBoard = {period:string;mode?:'all'|'pvp';total:number;offset:number;limit:number;players:PlayerRow[]};
+type PlayerBoard = {period:string;mode?:'all'|'pvp'|'daily';day?:string;
+  nextResetAt?:number;total:number;offset:number;limit:number;players:PlayerRow[]};
 type TeamRow = {rank:number;id:string;name:string;tag:string;points:number;races:number;members:number};
 type TeamBoard = {period:string;teams:TeamRow[]};
 type MyTeam = {id:string;name:string;tag:string;captainId:string;joinCode?:string;members:Array<{id:string;name:string;points:number;races:number;bestWpm:number}>};
@@ -25,6 +26,8 @@ export function GlobalLeaderboardPage({outcome,profile,onPlay,onTeams}:{
   const [tab,setTab]=useState<'global'|'match'|'personal'>('global');
   const [offset,setOffset]=useState(0);
   const [humanOnly,setHumanOnly]=useState(false);
+  const [dailyOnly,setDailyOnly]=useState(false);
+  const [refresh,setRefresh]=useState(0);
   const [board,setBoard]=useState<PlayerBoard|null>(null);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');
@@ -32,18 +35,32 @@ export function GlobalLeaderboardPage({outcome,profile,onPlay,onTeams}:{
     let alive=true;
     void (async()=>{
       setLoading(true);setError('');
-      try {const data=await fetchJSON<PlayerBoard>('/api/leaderboard?limit=20&offset='+offset+
-        (humanOnly?'&mode=pvp':''));if(alive)setBoard(data);}
+      try {
+        const path=dailyOnly
+          ? '/api/leaderboard/daily?limit=20&offset='+offset
+          : '/api/leaderboard?limit=20&offset='+offset+(humanOnly?'&mode=pvp':'');
+        const data=await fetchJSON<PlayerBoard>(path);
+        if(alive)setBoard(data);
+      }
       catch(e){if(alive)setError(e instanceof Error?e.message:'Сүлжээний алдаа');}
       finally{if(alive)setLoading(false);}
     })();
     return ()=>{alive=false;};
-  },[offset,humanOnly]);
+  },[offset,humanOnly,dailyOnly,refresh]);
+  useEffect(()=>{
+    if(!dailyOnly)return;
+    const update=()=>{if(!document.hidden)setRefresh(v=>v+1);};
+    const timer=window.setInterval(update,60_000);
+    document.addEventListener('visibilitychange',update);
+    return ()=>{window.clearInterval(timer);document.removeEventListener('visibilitychange',update);};
+  },[dailyOnly]);
   const standings=outcome?raceStandings(outcome):[];
   const personal=[...profile.history.filter(h=>h.id.startsWith('quick:'))].sort((a,b)=>b.wpm-a.wpm).slice(0,15);
   return <div className="social-page" data-testid="leaderboard-page">
-    <header className="social-heading"><span className="social-eyebrow">ДОЛОО ХОНОГ · СЕРВЕРТ БҮРТГЭСЭН BETA</span><h1>ЧАНСАА</h1></header>
-    <div className="rank-summary"><strong>POINTS</strong><span>WPM + нарийвчлалаас сервер оноо бодно. Ботууд орохгүй.</span><button type="button" onClick={onTeams}>БАГИЙН ЧАНСАА ↗</button></div>
+    <header className="social-heading"><span className="social-eyebrow">{dailyOnly?'ӨНӨӨДӨР · МОНГОЛЫН ЦАГ':'ДОЛОО ХОНОГ'} · СЕРВЕРТ БҮРТГЭСЭН BETA</span><h1>ЧАНСАА</h1></header>
+    <div className="rank-summary"><strong>{dailyOnly?'ӨДРИЙН XP':'POINTS'}</strong><span>{dailyOnly
+      ? 'Зөвхөн серверийн баталгаажуулсан онлайн Quick Race-ийн XP. Хөтчийн дасгалууд орохгүй.'
+      : 'WPM + нарийвчлалаас сервер оноо бодно. Ботууд орохгүй.'}</span><button type="button" onClick={onTeams}>БАГИЙН ЧАНСАА ↗</button></div>
     <div className="social-tabs" role="group" aria-label="Чансааны төрөл">
       <button type="button" className={tab==='global'?'active':''} onClick={()=>setTab('global')}>БҮХ ТОГЛОГЧ</button>
       <button type="button" className={tab==='match'?'active':''} onClick={()=>setTab('match')}>СҮҮЛИЙН ГАРАА</button>
@@ -51,24 +68,30 @@ export function GlobalLeaderboardPage({outcome,profile,onPlay,onTeams}:{
     </div>
     <section className="social-surface rank-surface">
       {tab==='global' && <>
-        <div className="social-card-heading"><h2>{humanOnly?'ХҮН VS ХҮН · BETA':'ДОЛОО ХОНОГИЙН ЧАНСАА'}</h2><span>{board?.total??'—'} ТОГЛОГЧ</span></div>
+        <div className="social-card-heading"><h2>{dailyOnly?'ӨНӨӨДРИЙН ОНЛАЙН XP':humanOnly?'ХҮН VS ХҮН · BETA':'ДОЛОО ХОНОГИЙН ЧАНСАА'}</h2><span>{board?.total??'—'} ТОГЛОГЧ</span></div>
         <div className="rank-scope" role="group" aria-label="Уралдааны чансааны хүрээ">
-          <button type="button" aria-pressed={!humanOnly} onClick={()=>{setHumanOnly(false);setOffset(0);}}>БҮХ УРАЛДААН</button>
-          <button type="button" aria-pressed={humanOnly} onClick={()=>{setHumanOnly(true);setOffset(0);}}>ХҮН VS ХҮН · BETA</button>
+          <button type="button" aria-pressed={!humanOnly&&!dailyOnly} onClick={()=>{setHumanOnly(false);setDailyOnly(false);setOffset(0);}}>7 ХОНОГ</button>
+          <button type="button" aria-pressed={humanOnly&&!dailyOnly} onClick={()=>{setHumanOnly(true);setDailyOnly(false);setOffset(0);}}>ХҮН VS ХҮН · BETA</button>
+          <button type="button" aria-pressed={dailyOnly} onClick={()=>{setHumanOnly(false);setDailyOnly(true);setOffset(0);}}>ӨНӨӨДӨР · XP</button>
+          <button type="button" className="rank-refresh" onClick={()=>setRefresh(v=>v+1)} disabled={loading} aria-label="Чансааг шинэчлэх">↻ ШИНЭЧЛЭХ</button>
         </div>
-        <p className="rank-scope-note">{humanOnly
-          ? 'Энэ хүснэгтэд ногоон гэрэл асахад хоёр болон түүнээс олон хүн оролцсон шинэ уралдаанууд орно. Anti-cheat бүрэн баталгаажаагүй.'
-          : 'Ботууд уралдааны замд орж болно, гэхдээ чансаанд оноо авахгүй. Зочны уралдаанууд beta статустай.'}</p>
+        <p className="rank-scope-note">{dailyOnly
+          ? 'Өдөр бүр Улаанбаатарын цагаар 00:00-д шинэчлэгдэнэ. Онлайн дууссан гараанаас XP тооцно; anti-cheat beta хэвээр.'
+          : humanOnly
+            ? 'Энэ хүснэгтэд ногоон гэрэл асахад хоёр болон түүнээс олон хүн оролцсон шинэ уралдаанууд орно. Anti-cheat бүрэн баталгаажаагүй.'
+            : 'Ботууд уралдааны замд орж болно, гэхдээ чансаанд оноо авахгүй. Зочны уралдаанууд beta статустай.'}</p>
         {loading?<p role="status" className="social-empty">АЧААЛЖ БАЙНА…</p>:
           error?<p role="alert" className="rank-error">{error}</p>:
           board?.players.length?<div className="rank-overflow"><table className="rank-table" data-testid="global-points-table"><thead><tr>
-            <th>#</th><th>ТОГЛОГЧ</th><th>БАГ</th><th>ОНОО</th><th>ГАРАА</th><th>WPM</th><th>НАРИЙВЧЛАЛ</th>
+            <th>#</th><th>ТОГЛОГЧ</th><th>БАГ</th><th>{dailyOnly?'ОНЛАЙН XP':'ОНОО'}</th><th>ГАРАА</th><th>WPM</th><th>НАРИЙВЧЛАЛ</th>
           </tr></thead><tbody>{board.players.map(row=><tr key={row.id}>
             <td className="rank-position">{String(row.rank).padStart(2,'0')}</td><td><strong>{row.name}</strong><small>{row.guest?'ЗОЧИН':'ХОЛБОСОН ACCOUNT'}</small></td>
             <td>{row.teamTag??'—'}</td><td className="rank-points">{row.points.toLocaleString('mn-MN')}</td>
             <td>{row.races}</td><td>{row.wpm}</td><td>{row.accuracy}%</td>
           </tr>)}</tbody></table></div>
-            :<div className="social-empty">{humanOnly?'Энэ долоо хоногт хүнтэй уралдаж дуусгасан гараа хараахан алга.':'Энэ долоо хоногт дуусгасан уралдаан хараахан байхгүй.'}</div>}
+            :<div className="social-empty">{dailyOnly?'Өнөөдөр серверт баталгаажсан дууссан уралдаан алга.':humanOnly
+              ?'Энэ долоо хоногт хүнтэй уралдаж дуусгасан гараа хараахан алга.'
+              :'Энэ долоо хоногт дуусгасан уралдаан хараахан байхгүй.'}</div>}
         <div className="rank-pager"><span>{board?.total?offset+1:0}–{Math.min(offset+20,board?.total??0)} / {board?.total??0}</span>
           <div><button type="button" disabled={offset===0||loading} onClick={()=>setOffset(Math.max(0,offset-20))}>← ӨМНӨХ</button>
           <button type="button" disabled={loading||offset+20>=(board?.total??0)} onClick={()=>setOffset(offset+20)}>ДАРААХ →</button></div>
@@ -85,7 +108,9 @@ export function GlobalLeaderboardPage({outcome,profile,onPlay,onTeams}:{
       </ol>:<div className="social-empty">Таны хувийн рекорд хараахан бүртгэгдээгүй.</div>)}
     </section>
     <div className="social-bottom-actions"><button type="button" className="social-primary" onClick={onPlay}>▶ УРАЛДАХ</button>
-      <span>Бодит серверийн оноо · UTC Даваа гарагт долоо хоног шинээр эхэлнэ. Зочны аккаунтуудын anti-cheat одоогоор хязгаарлагдмал.</span></div>
+      <span>{dailyOnly
+        ?'Өдрийн XP Улаанбаатарын цагаар шинэчлэгдэнэ · Зочны аккаунтуудын anti-cheat одоогоор хязгаарлагдмал.'
+        :'Бодит серверийн оноо · UTC Даваа гарагт долоо хоног шинээр эхэлнэ. Зочны аккаунтуудын anti-cheat одоогоор хязгаарлагдмал.'}</span></div>
   </div>;
 }
 
