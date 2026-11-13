@@ -1,0 +1,42 @@
+.online-season{max-width:1190px;margin:0 auto;padding:18px 0 48px;color:#eff3ed}
+.online-season-head{display:flex;gap:28px;align-items:end;justify-content:space-between;margin-bottom:24px}
+.online-season-head h1{margin:8px 0 10px;font:900 clamp(30px,4.6vw,65px)/1.05 var(--font-display);letter-spacing:-.035em}
+.online-season-head h1 em{font-style:normal;color:#f99f7c}
+.online-season-head p{color:#b4c4bf;line-height:1.5;max-width:640px}
+.online-season-head>.primary-button{flex-shrink:0}
+.online-season-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.online-season-metrics>div{padding:18px;border:1px solid #4b5652;border-radius:8px;background:#202b2b;display:flex;flex-direction:column;gap:12px}
+.online-season-metrics span{font-size:11px;font-weight:850;color:#b0c3ba;letter-spacing:.07em}
+.online-season-metrics strong{font:900 clamp(21px,2.4vw,34px)/1 var(--font-display);font-variant-numeric:tabular-nums}
+.online-season-metrics small{font:700 13px var(--font-body);color:#9eafa8}
+.online-season-meter{height:10px;overflow:hidden;background:#101919;border:1px solid #4b5652;border-radius:15px;margin:12px 0 26px}
+.online-season-meter>span{display:block;height:100%;background:linear-gradient(90deg,#77d39b,#f1ba6d);transition:width .2s ease}
+.online-season-feature{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);background:#e9efdf;color:#21322c;border-radius:12px;overflow:hidden;min-height:315px}
+.online-season-feature-art{position:relative;background:radial-gradient(circle at 55% 70%,#a4bfa7,#597d71);display:grid;place-items:center;min-height:280px;overflow:hidden}
+.online-season-feature-art img{width:min(94%,480px);max-height:265px;object-fit:contain;filter:drop-shadow(0 19px 14px #17332966)}
+.online-season-feature-art>span{font-size:110px;color:#fff8dd;text-shadow:0 12px 20px #1e362e44}
+.online-season-feature-info{padding:clamp(24px,3vw,42px);display:flex;flex-direction:column;align-items:start;justify-content:center}
+.online-season-feature-info h2{font:900 clamp(27px,3vw,42px)/1.04 var(--font-display);margin:10px 0}
+.online-season-feature-info p{line-height:1.5;color:#41574d}
+.online-season-feature-info button{margin:12px 0}
+.online-season-help{font-size:12px;max-width:420px}
+.online-season-claimed{padding:16px 20px;background:#d3e7d0;color:#28653f;margin:12px 0;border-radius:8px}
+.online-season-rewards h2{font:900 23px var(--font-display);margin:30px 0 14px}
+.online-season-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.online-season-tier{display:flex;flex-direction:column;align-items:start;gap:10px;padding:18px;border-radius:10px;border:2px solid #52605a;background:#202c2a;color:#eef5eb;min-width:0;min-height:172px;text-align:left;cursor:pointer}
+.online-season-tier.selected{border-color:#ffc58e;background:#2e3d36}
+.online-season-tier.ready{box-shadow:inset 0 0 0 1px #79caa2}
+.online-season-tier.claimed{background:#1c362d}
+.online-season-tier>span{font-size:11px;color:#cbdad2;font-weight:850;letter-spacing:.08em}
+.online-season-tier>strong{font-size:19px;line-height:1.2}
+.online-season-tier>small{margin-top:auto;font-size:12px;color:#b2c3ba}
+.online-season-tier>em{font-style:normal;font-size:11px;font-weight:850;color:#f6c69b}
+.online-season-tier.claimed>em{color:#94dbac}
+.online-season-footer{display:flex;align-items:center;gap:20px;justify-content:space-between;margin-top:22px;padding:18px;border:1px solid #46544e;border-radius:8px;font-size:12px;color:#abbfb6}
+.online-season-footer button{background:transparent;color:#ecdfbd;border:1px solid #668574;border-radius:5px;padding:10px 14px;cursor:pointer}
+.online-season-unavailable{padding:80px 20px;min-height:55svh;text-align:center}
+.online-season-unavailable h1{font:900 45px var(--font-display)}
+.online-season-unavailable p{margin:12px 0 25px}
+@media(max-width:800px){.online-season-metrics,.online-season-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.online-season-feature{grid-template-columns:1fr}}
+@media(max-width:580px){.online-season-head{align-items:start;flex-direction:column}.online-season-head h1{font-size:34px}.online-season-metrics>div{padding:13px}.online-season-metrics strong{font-size:22px}.online-season-feature-art{min-height:205px}.online-season-tier{min-height:150px;padding:12px}.online-season-tier strong{font-size:15px}.online-season-footer{flex-direction:column;align-items:start}}
+@media(prefers-reduced-motion:reduce){.online-season-meter>span{transition:none}}

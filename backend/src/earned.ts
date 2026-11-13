@@ -15,6 +15,41 @@ const MONGOLIA_OFFSET=8*3_600_000;
 export function earnedDayKey(at=Date.now()):string {
   return new Date(at+MONGOLIA_OFFSET).toISOString().slice(0,10);
 }
+export const ONLINE_SEASON_TIERS=[350,850,1650,2800,4200,5900,8000,10500] as const;
+export type OnlineSeasonDescriptor={id:string;number:number;name:string;from:number;until:number};
+/** One season every two calendar months beginning 2026-10-01 in Mongolia.
+ * Dynamic calendar arithmetic means 2027+ does not require a redeploy.
+ */
+export function onlineSeasonAt(at=Date.now()):OnlineSeasonDescriptor {
+  const local=new Date(at+MONGOLIA_OFFSET);
+  const months=(local.getUTCFullYear()-2026)*12+local.getUTCMonth()-9;
+  const index=Math.max(0,Math.floor(months/2));
+  const number=index+1;
+  const from=Date.UTC(2026,9+index*2,1)-MONGOLIA_OFFSET;
+  const until=Date.UTC(2026,11+index*2,1)-MONGOLIA_OFFSET;
+  const name=number===1?'ЭХНИЙ ГАРАА':number===2?'ӨВЛИЙН ГАРАА':'ШИНЭ ГАРАА';
+  return {id:'season-'+String(number).padStart(2,'0'),number,name,from,until};
+}
+const seasonCars=[
+  ['falcon','midnight','dragon'],
+  ['nomad','streak','aurora-x'],
+  ['rover','ghost','royal'],
+  ['sunflare','onyx','eagle'],
+  ['dune','meteor','nebula']
+] as const;
+export function onlineSeasonRewards(number:number){
+  const pool=seasonCars[Math.max(0,number-2)%seasonCars.length];
+  const sticker=number%2===0?'bolt':'horse';
+  const trail=['ice','ember','steppe'][(number-2+3)%3];
+  return ONLINE_SEASON_TIERS.map((xp,i)=>{
+    const itemKey=i===1?'sticker:'+sticker:i===2?'car:'+pool[0]:
+      i===4?'trail:'+trail:i===5?'title:swift':
+      i===6?'car:'+pool[1]:i===7?'car:'+pool[2]:null;
+    const item=itemKey?SHOP.find(x=>x.kind+':'+x.id===itemKey):null;
+    return {tier:i+1,xp,coins:i===0?120:i===3?350:0,
+      itemKey,name:item?.name??(i===0?'120 зоос':'350 зоос')};
+  });
+}
 export const ONLINE_DAILY_QUESTS=[
   {id:'first-finish',name:'Эхний бариа',detail:'Өнөөдөр нэг онлайн уралдаан дуусгах',target:1,coins:8},
   {id:'precision',name:'Нямбай жолооч',detail:'95%-ийн нарийвчлалтай 3 онлайн уралдаан дуусгах',target:3,coins:12},
@@ -46,6 +81,10 @@ export class EarnedProgressionStore {
       player_id TEXT NOT NULL, day TEXT NOT NULL, quest_id TEXT NOT NULL,
       coins INTEGER NOT NULL, claimed_at INTEGER NOT NULL,
       PRIMARY KEY(player_id,day,quest_id))`);
+    sql.exec(`CREATE TABLE IF NOT EXISTS earned_season_claims(
+      player_id TEXT NOT NULL, season_id TEXT NOT NULL, tier INTEGER NOT NULL,
+      coins INTEGER NOT NULL, item_key TEXT, claimed_at INTEGER NOT NULL,
+      PRIMARY KEY(player_id,season_id,tier))`);
     sql.exec(`CREATE TABLE IF NOT EXISTS earned_items(
       player_id TEXT NOT NULL, item_key TEXT NOT NULL, cost INTEGER NOT NULL,
       purchased_at INTEGER NOT NULL, PRIMARY KEY(player_id,item_key))`);
@@ -61,8 +100,9 @@ export class EarnedProgressionStore {
       season_xp=COALESCE((SELECT SUM(season_xp) FROM earned_races WHERE player_id=?),0),
       coins=MAX(0,?+COALESCE((SELECT SUM(coins) FROM earned_races WHERE player_id=?),0)
         +COALESCE((SELECT SUM(coins) FROM earned_quest_claims WHERE player_id=?),0)
+        +COALESCE((SELECT SUM(coins) FROM earned_season_claims WHERE player_id=?),0)
         -COALESCE((SELECT SUM(cost) FROM earned_items WHERE player_id=?),0))
-      WHERE player_id=?`,id,id,id,EARNED_STARTER_COINS,id,id,id,id);
+      WHERE player_id=?`,id,id,id,EARNED_STARTER_COINS,id,id,id,id,id);
   }
   daily(id:string,at=Date.now()) {
     this.ensure(id);
@@ -99,6 +139,50 @@ export class EarnedProgressionStore {
       return {profile:this.overview(id,at)};
     });
   }
+  season(id:string,at=Date.now()) {
+    this.ensure(id);
+    const active=onlineSeasonAt(at);
+    const total=first(this.sql,
+      'SELECT COALESCE(SUM(xp),0) amount FROM earned_races WHERE player_id=? AND finished_at>=? AND finished_at<?',
+      id,active.from,active.until)!;
+    const xp=Number(total.amount);
+    const claimed=new Set(this.sql.exec(
+      'SELECT tier FROM earned_season_claims WHERE player_id=? AND season_id=?',
+      id,active.id).toArray().map(row=>Number(row.tier)));
+    return {...active,xp,remainingDays:Math.max(0,Math.ceil((active.until-at)/DAY_MS)),
+      rewards:onlineSeasonRewards(active.number).map(reward=>({...reward,
+        claimed:claimed.has(reward.tier),
+        claimable:active.number>=2 && xp>=reward.xp && !claimed.has(reward.tier)
+      }))};
+  }
+  claimSeason(id:string,tier:number,at=Date.now()) {
+    return this.atomic(()=>{
+      const season=this.season(id,at);
+      if(season.number<2)return {error:'legacy_season'};
+      const reward=season.rewards.find(q=>q.tier===tier);
+      if(!reward)return {error:'invalid_tier'};
+      if(reward.claimed)return {error:'already_claimed'};
+      if(!reward.claimable)return {error:'not_complete'};
+      let coins=reward.coins;
+      let itemKey=reward.itemKey;
+      if(itemKey){
+        const alreadyOwned=first(this.sql,
+          'SELECT item_key FROM earned_items WHERE player_id=? AND item_key=?',id,itemKey);
+        if(alreadyOwned) {
+          const catalog=SHOP.find(item=>item.kind+':'+item.id===itemKey);
+          coins=Math.round((catalog?.price??0)/2);
+          itemKey=null;
+        } else {
+          this.sql.exec('INSERT OR IGNORE INTO earned_items(player_id,item_key,cost,purchased_at) VALUES(?,?,?,?)',
+            id,itemKey,0,at);
+        }
+      }
+      this.sql.exec('INSERT INTO earned_season_claims(player_id,season_id,tier,coins,item_key,claimed_at) VALUES(?,?,?,?,?,?)',
+        id,season.id,tier,coins,itemKey,at);
+      this.reconcile(id);
+      return {profile:this.overview(id,at)};
+    });
+  }
   overview(id:string,at=Date.now()) {
     this.ensure(id);
     const player=first(this.sql,'SELECT * FROM earned_profiles WHERE player_id=?',id)!;
@@ -108,8 +192,9 @@ export class EarnedProgressionStore {
       FROM earned_races WHERE player_id=? ORDER BY finished_at DESC LIMIT 20`,id).toArray()
       .map(row=>({raceId:row.race_id,xp:row.xp,coins:row.coins,wpm:row.wpm,
         accuracy:row.accuracy,finishedAt:row.finished_at}));
+    const season=this.season(id,at);
     return {xp:Number(player.xp),coins:Number(player.coins),races:Number(player.races),
-      seasonXp:Number(player.season_xp),level:Math.floor(Number(player.xp)/300)+1,
+      seasonXp:season.xp,season,level:Math.floor(Number(player.xp)/300)+1,
       owned,recent,daily:this.daily(id,at),source:'server' as const,starter:EARNED_STARTER_COINS,
       equipped:{car:String(player.car),trail:String(player.trail),
         title:String(player.title),sticker:String(player.sticker)}};
@@ -196,6 +281,11 @@ export class EarnedProgressionStore {
       this.sql.exec(`INSERT OR IGNORE INTO earned_quest_claims(player_id,day,quest_id,coins,claimed_at)
         SELECT ?,day,quest_id,coins,claimed_at FROM earned_quest_claims WHERE player_id=?`,to,from);
       this.sql.exec('DELETE FROM earned_quest_claims WHERE player_id=?',from);
+      this.sql.exec(`INSERT OR IGNORE INTO earned_season_claims(
+        player_id,season_id,tier,coins,item_key,claimed_at)
+        SELECT ?,season_id,tier,coins,item_key,claimed_at
+        FROM earned_season_claims WHERE player_id=?`,to,from);
+      this.sql.exec('DELETE FROM earned_season_claims WHERE player_id=?',from);
       this.sql.exec('DELETE FROM earned_races WHERE player_id=?',from);
       this.sql.exec('DELETE FROM earned_items WHERE player_id=?',from);
       this.sql.exec('DELETE FROM earned_profiles WHERE player_id=?',from);

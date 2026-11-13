@@ -49,7 +49,7 @@ export class RaceRoom {
       if (path==='/progression' && request.method==='GET')
         return Response.json(earned.overview(id),{headers:{'Cache-Control':'no-store'}});
       if ((path==='/progression/items' || path==='/progression/equip' ||
-          path==='/progression/quests/claim') && request.method==='POST') {
+          path==='/progression/quests/claim' || path==='/progression/season/claim') && request.method==='POST') {
         let input:Record<string,unknown>;
         try {
           const raw=await request.text();
@@ -57,6 +57,11 @@ export class RaceRoom {
           input=JSON.parse(raw) as Record<string,unknown>;
           if (!input || typeof input!=='object')throw Error('invalid');
         } catch {return Response.json({error:'invalid_request'},{status:400});}
+        if (path==='/progression/season/claim') {
+          if(!Number.isInteger(input.tier))return Response.json({error:'invalid_tier'},{status:400});
+          const result=earned.claimSeason(id,input.tier as number);
+          return Response.json(result,{status:'error' in result ? result.error==='already_claimed'?409:400:200});
+        }
         if (typeof input.id!=='string'||(path!=='/progression/quests/claim'&&typeof input.kind!=='string'))
           return Response.json({error:'invalid_request'},{status:400});
         const result=path==='/progression/quests/claim'
