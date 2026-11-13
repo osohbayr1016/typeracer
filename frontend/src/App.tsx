@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties } from 'react';
 import { CoinsPage } from './pages/CoinsPage';
 import { emptyWallet, paymentApi, paymentSession, withPaidInventory } from './payments';
+import { onlineProgressApi, type EarnedOnlineProfile } from './onlineProgress';
 import type { PaidWallet } from '@typeracer/shared';
 import { HomePage } from './pages/HomePage';
 import { SprintTypingPage } from './pages/SprintTypingPage';
@@ -100,20 +101,39 @@ export function App() {
   const [quickOutcome, setQuickOutcome] = useState<QuickRaceOutcome | null>(null);
   const [paidWallet, setPaidWallet] = useState<PaidWallet>(emptyWallet);
   const [paidBusy, setPaidBusy] = useState(false);
+  const [online, setOnline] = useState<EarnedOnlineProfile | null>(null);
+  const [onlineBusy, setOnlineBusy] = useState(false);
+  const [onlineError, setOnlineError] = useState('');
   const [accountRevision, setAccountRevision] = useState(0);
   useEffect(() => {
-    const changed = () => { setPaidWallet(emptyWallet()); setAccountRevision(value => value + 1); };
+    const changed = () => {
+      setPaidWallet(emptyWallet()); setOnline(null); setAccountRevision(value => value + 1);
+    };
     window.addEventListener('racer-account-changed', changed);
     return () => window.removeEventListener('racer-account-changed', changed);
   }, []);
   const [paidError, setPaidError] = useState('');
-  const displayProfile = withPaidInventory(profile, paidWallet);
+  // Local legacy rewards are retained, never credited as server-owned currency.
+  const displayProfile = withPaidInventory({
+    ...profile, owned:[...new Set([...profile.owned,...(online?.owned??[])])]
+  }, paidWallet);
+  const shopProfile = online ? {
+    ...displayProfile,xp:online.xp,coins:online.coins,
+    owned:[...new Set([...online.owned,...paidWallet.owned])]
+  } : displayProfile;
   useEffect(() => {
     let alive = true;
     void paymentSession().then(() => paymentApi<PaidWallet>('wallet'))
       .then(wallet => { if (alive) setPaidWallet(wallet); }).catch(() => {});
     return () => { alive = false; };
   }, [page, accountRevision]);
+  useEffect(() => {
+    let active=true;
+    void paymentSession().then(()=>onlineProgressApi<EarnedOnlineProfile>())
+      .then(value=>{if(active){setOnline(value);setOnlineError('');}})
+      .catch(()=>{if(active){setOnline(null);setOnlineError('Онлайн ахиц түр боломжгүй. Хөтчийн шагнал серверт шилжихгүй.');}});
+    return ()=>{active=false;};
+  }, [page,accountRevision]);
   const xp = profile.xp;
   const skin = profile.car;
   const inputRef = useRef<HTMLInputElement>(null);
@@ -213,7 +233,13 @@ export function App() {
     updateTypingValue(event.target.value);
   }
   function handleEquip(kind: CosmeticKind, id: string) {
-    setProfile(p => equipItem(withPaidInventory(p, paidWallet), kind, id));
+    setProfile(p => {
+      const enriched=withPaidInventory({
+        ...p, owned:[...new Set([...p.owned,...(online?.owned??[])])]
+      },paidWallet);
+      const next=equipItem(enriched,kind,id);
+      return {...next,owned:p.owned};
+    });
   }
   async function handlePaidBuy(item: Cosmetic) {
     if (paidBusy) return;
@@ -224,7 +250,19 @@ export function App() {
     } catch (error) { setPaidError((error as Error).message); }
     finally { setPaidBusy(false); }
   }
-  function handleBuy(item: Cosmetic) { setProfile(p => buyItem(p, item.kind, item.id)); }
+  async function handleBuy(item: Cosmetic) {
+    if (!online) { setProfile(p=>buyItem(p,item.kind,item.id)); return; }
+    if (onlineBusy) return;
+    setOnlineBusy(true);setOnlineError('');
+    try {
+      const result=await onlineProgressApi<{profile:EarnedOnlineProfile}>('/items',{
+        kind:item.kind,id:item.id
+      });
+      setOnline(result.profile);
+    } catch(error) {
+      setOnlineError((error as Error).message);
+    } finally {setOnlineBusy(false);}
+  }
   function handleClaim(tier: number) { setProfile(p => claimReward(p, tier)); }
   function handleClaimAll() { setProfile(p => claimAvailableRewards(p)); }
   function handleQuestClaim(id: DailyQuestId) { setProfile(p => claimDailyQuest(p, id)); }
@@ -342,8 +380,8 @@ export function App() {
   }
 
   return <div className="app-shell" style={{ '--accent': CARS[skin].color } as CSSProperties}>
-    <SiteNavigation page={page} nickname={nickname} level={level}
-      earnedCoins={profile.coins} paidCoins={paidWallet.balance}
+    <SiteNavigation page={page} nickname={nickname} level={online?.level??level}
+      earnedCoins={online?.coins??profile.coins} paidCoins={paidWallet.balance}
       onNavigate={destination => navigate(destination)}/>
     <main className="shell main">
       {page === 'coins' && <CoinsPage wallet={paidWallet} onWallet={setPaidWallet} onShop={() => navigate('shop')} onGarage={() => navigate('garage')}/>}
@@ -357,7 +395,7 @@ export function App() {
         onCreateRoom={() => { navigate('multiplayer'); void createRoom(); }}
         onJoinRoom={room => { navigate('multiplayer'); setJoinCode(room); connectRoom(room); }}
         onGarage={() => navigate('garage')} onSprint={() => navigate('sprint')} onDaily={() => navigate('daily')}/>}
-      {page === 'profile' && <ProfilePage profile={profile} nickname={nickname} best={best}
+      {page === 'profile' && <ProfilePage profile={profile} online={online} onlineError={onlineError} nickname={nickname} best={best}
         onNameChange={updateNickname} onPlay={() => navigate('quickRace')}
         onGarage={() => navigate('garage')} onSeason={() => navigate('season')} onStats={() => navigate('stats')}/>}
       {page === 'stats' && <StatsPage profile={profile} best={best} onPlay={() => navigate('quickRace')}/>}
@@ -377,6 +415,7 @@ export function App() {
         onFinish={outcome => { setQuickOutcome(outcome); navigate('quickResults'); }}
         onReward={(result: QuickResult) => {
           setProfile(prev => awardQuickRace(prev, { ...result, at: Date.now() }));
+          void onlineProgressApi<EarnedOnlineProfile>().then(setOnline).catch(() => {});
           if (result.place !== null && result.wpm > best) {
             setBest(result.wpm);
             try { localStorage.setItem('racer.best', String(result.wpm)); } catch { /* storage disabled */ }
@@ -384,7 +423,8 @@ export function App() {
         }}/>} 
       {page === 'garage' && <GaragePage profile={displayProfile} onEquip={handleEquip} onPlay={() => navigate('play')}
         onShop={() => navigate('shop')} onSeason={() => navigate('season')}/>}
-      {page === 'shop' && <ShopPage profile={displayProfile} onBuy={handleBuy}
+      {page === 'shop' && <ShopPage profile={shopProfile} onlineWallet={!!online}
+        freeBusy={onlineBusy} freeError={onlineError} onBuy={item=>void handleBuy(item)}
         paidCoins={paidWallet.balance} paidBusy={paidBusy} paidError={paidError} onPaidBuy={item => void handlePaidBuy(item)} onTopUp={() => navigate('coins')}
         onEquip={item => handleEquip(item.kind, item.id)} onRace={() => navigate('play')}/>}
       {page === 'season' && <SeasonPage profile={profile} onClaim={handleClaim} onClaimAll={handleClaimAll}
