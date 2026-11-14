@@ -26,6 +26,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
+          package-manager-cache: false
       - name: Require production Cloudflare credentials
         env:
           CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
