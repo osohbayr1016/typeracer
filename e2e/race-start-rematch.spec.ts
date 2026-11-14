@@ -3,6 +3,8 @@ import { test, expect } from '@playwright/test';
 test('mobile can prepare its keyboard, ignore early input, and type on green despite clock skew and a late phase packet', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 700 }, isMobile: true, hasTouch: true });
   const page = await context.newPage();
+  let playerId = '';
+  let serverProgress = 0;
   await page.addInitScript(() => {
     const realNow = Date.now.bind(Date);
     Date.now = () => realNow() + 20 * 60_000;
@@ -17,8 +19,14 @@ test('mobile can prepare its keyboard, ignore early input, and type on green des
     const server = socket.connectToServer();
     server.onMessage(message => {
       const data = JSON.parse(String(message));
+      if (data.type === 'welcome') playerId = String(data.id);
+      if (data.type === 'state' && playerId && Array.isArray(data.players)) {
+        const racer = data.players.find((p: {id:string;progress:number}) => p.id === playerId);
+        if (racer && typeof racer.progress === 'number')
+          serverProgress = Math.max(serverProgress, racer.progress);
+      }
       // Keep the old countdown phase on screen through the first green keystroke.
-      if (data.type === 'state' && data.phase === 'racing') setTimeout(() => socket.send(message), 600);
+      if (data.type === 'state' && data.phase === 'racing') setTimeout(() => socket.send(message), 1500);
       else socket.send(message);
     });
   });
@@ -33,9 +41,15 @@ test('mobile can prepare its keyboard, ignore early input, and type on green des
     await input.pressSequentially(text[0]);
     await expect(input).toHaveValue('');
     await expect(page.locator('.quick-phrase .typed')).toHaveCount(0);
-    await expect(page.getByTestId('race-start-lights')).toHaveAttribute('data-signal', 'red');
+    // Red/yellow are each only visible for one second. Check the MutationObserver
+    // history instead of requiring the DOM to still show a transient color after
+    // unrelated slow browser/keyboard actions on CI.
+    const sawLight = (signal: string) => page.evaluate(value =>
+      (window as unknown as {lightEvents: Array<{signal:string}>}).lightEvents
+        .some(event => event.signal === value), signal);
+    await expect.poll(() => sawLight('red'), { timeout: 13000 }).toBe(true);
     await page.setViewportSize({ width: 390, height: 380 });
-    await expect(page.getByTestId('race-start-lights')).toHaveAttribute('data-signal', 'yellow');
+    await expect.poll(() => sawLight('yellow'), { timeout: 5000 }).toBe(true);
     await expect(page.getByTestId('race-start-lights')).toHaveAttribute('data-signal', 'green');
     await expect(page.getByTestId('quick-phase')).toHaveAttribute('data-phase', 'countdown');
     await expect(input).toBeFocused();
@@ -43,7 +57,10 @@ test('mobile can prepare its keyboard, ignore early input, and type on green des
     expect(bounds!.y + bounds!.height).toBeLessThan(380);
     await input.pressSequentially(text[0]);
     await expect(page.locator('.quick-phrase .typed')).toHaveCount(1);
-    await expect(page.locator('.quick-lane.me b')).not.toHaveText('0%');
+    // UI percentages round to an integer; one accepted character in a
+    // 201–205-character story legitimately still renders 0%. Assert the actual
+    // server progress from its WebSocket state frames instead.
+    await expect.poll(() => serverProgress, { timeout: 10000 }).toBeGreaterThan(0);
     await expect(page.getByTestId('race-start-lights')).toHaveCount(0);
     const events = await page.evaluate(() => (window as unknown as { lightEvents: Array<{ signal: string; at: number }> }).lightEvents);
     expect(events.map(e => e.signal)).toEqual(['red', 'yellow', 'green', 'off']);
