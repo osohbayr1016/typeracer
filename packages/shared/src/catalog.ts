@@ -51,3 +51,12 @@ export const CAR_IDS: string[] = [...new Set<string>([
   ...STARTER_CAR_IDS,
   ...SHOP.filter(item => item.kind === 'car').map(item => item.id)
 ])];
+
+/** Public/default cars are guest-safe. All other collectible skins require
+ * server-owned earned or paid inventory (never localStorage or a URL claim).
+ */
+export function authorizedRaceCar(candidate: string | null, owned: readonly string[]): string {
+  if (!candidate || !CAR_IDS.includes(candidate)) return 'sunset';
+  if ((STARTER_CAR_IDS as readonly string[]).includes(candidate)) return candidate;
+  return owned.includes('car:' + candidate) ? candidate : 'sunset';
+}

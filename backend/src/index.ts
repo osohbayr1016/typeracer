@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { PROMPTS, ROOM_CAPACITY, generatePassage, passageCount, premiumCosmeticAllowed } from '@typeracer/shared';
+import { PROMPTS, ROOM_CAPACITY, generatePassage, passageCount, premiumCosmeticAllowed, authorizedRaceCar } from '@typeracer/shared';
 import { validRoomCode } from './logic';
 import { originAllowed } from './origin';
 import { strictHttpsOrigin } from './oauth-origin';
@@ -183,11 +183,21 @@ app.get('/api/rooms/:code/ws', async c => {
   }
   const id = c.env.RACE_ROOMS.idFromName(code);
   const url = new URL(c.req.url);
-  const appearance = ['trail','title','sticker'].filter(kind => !premiumCosmeticAllowed(kind, url.searchParams.get(kind) ?? '', []));
+  // Public starter cars are available to guests. Other online cars require
+  // receipts or server-earned inventory from the shared coordinator.
+  const appearance = ['car','trail','title','sticker'].filter(kind =>
+    kind === 'car'
+      ? url.searchParams.has('car') && authorizedRaceCar(url.searchParams.get('car'), []) !== url.searchParams.get('car')
+      : !premiumCosmeticAllowed(kind, url.searchParams.get(kind) ?? '', []));
   if (appearance.length) {
     const response = await paymentProxy(c, 'appearance');
     const owned = response.ok ? (await response.json() as {owned:string[]}).owned : [];
-    for (const kind of appearance) if (!premiumCosmeticAllowed(kind, url.searchParams.get(kind)!, owned)) url.searchParams.delete(kind);
+    for (const kind of appearance) {
+      const requested = url.searchParams.get(kind);
+      const valid = kind === 'car' ? authorizedRaceCar(requested, owned) === requested :
+        premiumCosmeticAllowed(kind, requested ?? '', owned);
+      if (!valid) url.searchParams.delete(kind);
+    }
   }
   return c.env.RACE_ROOMS.get(id).fetch(url.href, {headers:c.req.raw.headers});
 });

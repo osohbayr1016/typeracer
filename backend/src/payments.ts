@@ -44,6 +44,19 @@ export function purchasedInventory(sql: SqlStorage, playerId: string): string[] 
   return [...new Set([...items, ...granted])];
 }
 
+/** Shared read-only appearance entitlements for public and private races.
+ * Offline practice inventory is deliberately not accepted as server ownership.
+ * Keep legacy paid grants and newly-earned rewards intact.
+ */
+export function ownedAppearance(sql: SqlStorage, playerId: string): string[] {
+  const paid = purchasedInventory(sql, playerId);
+  if (!first(sql.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='earned_items'")))
+    return paid;
+  const earned = sql.exec('SELECT item_key FROM earned_items WHERE player_id=?', playerId)
+    .toArray().map(row => String(row.item_key));
+  return [...new Set([...paid, ...earned])];
+}
+
 /** Uses the existing SQLite coordinator; no D1 binding or destructive migration. */
 export class PaymentService {
   // Workerd brand-checks fetch receivers; an arrow keeps the global call unbound.
@@ -206,7 +219,7 @@ export class PaymentService {
       const player = await this.rank.fromCookie(request.headers.get('Cookie'));
       if (!player) return Response.json({ error: 'session_required' }, { status: 401 });
       const playerId = String(player.id);
-      if (path === '/payments/appearance') return Response.json({ owned: purchasedInventory(this.sql, playerId) });
+      if (path === '/payments/appearance') return Response.json({ owned: ownedAppearance(this.sql, playerId) });
       if (path === '/payments/wallet') {
         if (this.ready()) {
           const pending = this.sql.exec("SELECT * FROM payment_orders WHERE player_id=? AND credited=0 AND intent_id IS NOT NULL AND status!='canceled' ORDER BY created_at DESC LIMIT 5", playerId).toArray();
