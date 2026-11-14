@@ -3,20 +3,22 @@ import { test, expect } from '@playwright/test';
 test('mobile can prepare its keyboard, ignore early input, and type on green despite clock skew and a late phase packet', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 700 }, isMobile: true, hasTouch: true });
   const page = await context.newPage();
+  let playerId = '';
+  let serverProgress = 0;
   await page.addInitScript(() => {
     const realNow = Date.now.bind(Date);
     Date.now = () => realNow() + 20 * 60_000;
-    const events: Array<{ signal: string; at: number }> = [];
-    (window as unknown as { lightEvents: typeof events }).lightEvents = events;
-    new MutationObserver(() => {
-      const signal = document.querySelector('[data-testid="race-start-lights"]')?.getAttribute('data-signal') ?? 'off';
-      if (signal !== (events.at(-1)?.signal ?? 'off')) events.push({ signal, at: performance.now() });
-    }).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-signal'] });
   });
   await page.routeWebSocket('**/api/quickplay/ws*', socket => {
     const server = socket.connectToServer();
     server.onMessage(message => {
       const data = JSON.parse(String(message));
+      if (data.type === 'welcome') playerId = String(data.id);
+      if (data.type === 'state' && playerId && Array.isArray(data.players)) {
+        const racer = data.players.find((p: {id:string;progress:number}) => p.id === playerId);
+        if (racer && typeof racer.progress === 'number')
+          serverProgress = Math.max(serverProgress,racer.progress);
+      }
       // Keep the old countdown phase on screen through the first green keystroke.
       if (data.type === 'state' && data.phase === 'racing') setTimeout(() => socket.send(message), 600);
       else socket.send(message);
@@ -42,6 +44,9 @@ test('mobile can prepare its keyboard, ignore early input, and type on green des
     await expect(input).toHaveAttribute('data-race-enabled', 'true', { timeout: 15000 });
     await input.pressSequentially(text[0]);
     await expect(page.locator('.quick-phrase .typed')).toHaveCount(1);
+    // The visual lane may round 1/205 characters to 0%; require an actual
+    // server progress event rather than a rounded percentage or local prediction.
+    await expect.poll(() => serverProgress, {timeout:10000}).toBeGreaterThan(0);
     await expect(page.getByTestId('race-start-lights')).toHaveCount(0, { timeout: 5000 });
   } finally { await context.close(); }
 });
