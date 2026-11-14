@@ -103,7 +103,8 @@ test('main Play starts live matchmaking, adds bots and awards a finished match',
   await expect(input).toHaveAttribute('data-race-enabled', 'true', { timeout: 13000 });
   const prompt = (await page.locator('.quick-phrase').innerText()).replace(/\u00a0/g, ' ').trim();
   expect(prompt).toMatch(/[ӨөҮү]/);
-  await input.pressSequentially(prompt, { delay: 44 });
+  // Stay below the server's 210 WPM reward-integrity ceiling (44ms is >270 WPM).
+  await input.pressSequentially(prompt, { delay: 85 });
   await expect(page.locator('.qr-results')).toBeVisible({ timeout: 15000 });
   await expect(page.locator('.qr-earned')).toContainText(/◈ \+(30|27|24|21|18)\b/); // any finishing-place prize: a 100 WPM bot can beat a slow CI runner
   await expect(page).toHaveURL(/\/quick-results$/);
@@ -211,7 +212,8 @@ test('finishing one public race earns XP but cannot instantly unlock the battle 
   const input = page.getByRole('textbox', { name: 'Шууд уралдааны бичих талбар' });
   await expect(input).toHaveAttribute('data-race-enabled', 'true', { timeout: 13000 });
   const prompt = (await page.locator('.quick-phrase').innerText()).replace(/\u00a0/g,' ').trim();
-  await input.pressSequentially(prompt, { delay: 44 });
+  // Stay below the server's 210 WPM reward-integrity ceiling (44ms is >270 WPM).
+  await input.pressSequentially(prompt, { delay: 85 });
   await expect(page.locator('.qr-results')).toBeVisible({timeout:15000});
   await page.goto('/season');
   const firstTier = page.locator('.season-tier').first();
