@@ -3,6 +3,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { COIN_PACKS } from '@typeracer/shared';
 import { PaymentService, verifyWireSignature } from './payments';
 import { RaceRankingStore } from './rankings';
+import { EarnedProgressionStore } from './earned';
 
 const databases: DatabaseSync[] = [];
 const cookie = (token: string) => 'tr_guest=' + token;
@@ -118,6 +119,26 @@ describe('Wire checkout and durable paid coins', () => {
     expect((await f.request('items', { itemKey: 'sticker:horse' })).status).toBe(409);
     const other = await f.rank.session(null);
     expect((await f.request('items', { itemKey: 'trail:ember' }, other.newToken)).status).toBe(409);
+  });
+  it('cannot bypass earned XP level gates by purchasing a locked car with paid coins', async () => {
+    const f = await fixture();
+    await f.request('checkout', input());
+    f.setState('succeeded');
+    await f.request('wallet');
+    f.db.exec('UPDATE payment_orders SET coins=10000');
+    const playerId = String(f.account.player.id);
+    const first = await f.request('items', { itemKey: 'car:dragon' });
+    expect(first.status).toBe(403);
+    expect(await first.json()).toMatchObject({ error: 'level_required' });
+    expect(f.service.wallet(playerId)).toMatchObject({ balance: 10000, owned: [] });
+    // Real online progress uses earned_profiles; editable client level is ignored.
+    new EarnedProgressionStore(f.sql);
+    f.db.prepare('INSERT INTO earned_profiles(player_id,xp) VALUES(?,?)').run(playerId, 10200);
+    const unlocked = await f.request('items', { itemKey: 'car:dragon' });
+    expect(unlocked.status).toBe(200);
+    expect(await unlocked.json()).toMatchObject({ balance: 5000, owned: ['car:dragon'] });
+    expect((await f.request('items', { itemKey: 'car:dragon' })).status).toBe(200);
+    expect(f.service.wallet(playerId).balance).toBe(5000);
   });
   it('rejects forged/stale webhook signatures and verifies payment with Wire before crediting', async () => {
     const f = await fixture(); await f.request('checkout', input());
