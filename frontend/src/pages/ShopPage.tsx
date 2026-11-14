@@ -189,7 +189,7 @@ export function ShopPage({ profile, onBuy, onEquip, onRace, paidCoins = 0, paidB
         className={'shop-preview-dialog '+classFor(preview)} data-testid="shop-car-preview">
         <div className="shop-preview-head">
           <span className="shop-eyebrow">МАШИНЫ ДЭЛГЭРЭНГҮЙ</span>
-          <button type="button" className="shop-preview-close" aria-label="Хаах" autoFocus
+          <button type="button" className="shop-preview-close" aria-label="Хаах"
             onClick={() => setPreview(null)}>✕</button>
         </div>
         <div className="shop-preview-stage shop-car-art">
