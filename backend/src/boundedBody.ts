@@ -9,7 +9,7 @@ export type BoundedText =
 export async function readBoundedText(request:Request,maxBytes:number):Promise<BoundedText> {
   if(!Number.isSafeInteger(maxBytes)||maxBytes<0)throw Error('Invalid request body limit');
   const declared=request.headers.get('Content-Length');
-  if(declared!==null && /^\\d+$/.test(declared) && Number(declared)>maxBytes)
+  if(declared!==null && /^\d+$/.test(declared) && Number(declared)>maxBytes)
     return {ok:false,reason:'too_large'};
   if(!request.body)return {ok:true,text:''};
   const reader=request.body.getReader();
