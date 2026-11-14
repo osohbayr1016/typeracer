@@ -168,7 +168,7 @@ export function awardQuickRace(p: Profile, score: {
   const key = 'quick:' + score.raceId;
   if (!/^[0-9a-f-]{36}$/i.test(score.raceId) || p.history.some(entry => entry.id === key) ||
       score.place === null || score.place < 1 || score.place > 5 || !Number.isInteger(score.coins) ||
-      score.coins < 0 || score.coins > 30 || score.elapsedMs <= 0 || score.wpm < 0 ||
+      score.coins <= 0 || score.coins > 30 || score.elapsedMs <= 0 || score.wpm < 0 ||
       !Number.isFinite(score.wpm) || score.accuracy < 0 || score.accuracy > 100) return p;
   const awarded = raceReward(p, score);
   return { ...awarded, coins: p.coins + score.coins, history: [

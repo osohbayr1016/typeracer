@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { QUICK_BOT_JOIN_MS, QUICK_BOT_ROSTER, QUICK_LANES, QUICK_MAX_HUMANS,
-  QUICK_PRIZES, quickBotForSlot, quickPlacement, quickPrize, connectedHumanCount } from './quick';
+  QUICK_PRIZES, quickBotForSlot, quickPlacement, quickPrize, quickAwardCoins, connectedHumanCount } from './quick';
 
 describe('five-racer quick lobby mechanics', () => {
   it('requires online unique accounts; duplicate tabs and disconnect grace are not PvP',()=>{
@@ -37,6 +37,14 @@ describe('five-racer quick lobby mechanics', () => {
       expect(quickPrize(place, false)).toBe(0);
     }
     expect(quickPrize(6, false)).toBe(0);
+  });
+  it('shows no phantom prize for a finish ineligible for authoritative XP/coins', () => {
+    expect(quickAwardCoins(1,true,80,95)).toBe(30);
+    expect(quickAwardCoins(3,true,80,70)).toBe(24);
+    expect(quickAwardCoins(1,true,80,69)).toBe(0);
+    expect(quickAwardCoins(1,true,211,95)).toBe(0);
+    expect(quickAwardCoins(1,true,Number.NaN,95)).toBe(0);
+    expect(quickAwardCoins(1,false,80,95)).toBe(0);
   });
   it('places racers by server-recorded completedAt and does not rank bots as players', () => {
     const racer = (id: string, at: number | null) => ({
