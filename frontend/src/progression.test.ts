@@ -1,9 +1,18 @@
 import { describe, it, expect } from 'vitest';
+import { CAR_IDS, STARTER_CAR_IDS } from '@typeracer/shared';
+import { CARS, carKeys } from './pages/cars';
 import { buyItem, claimReward, equipItem, isOwned, raceReward, starterProfile, SEASON, SHOP, NEW_CAR_COLLECTION, playerLevel, shopRotation,
   isLevelUnlocked, COLLECTION_RARITIES, seasonProgress, claimAvailableRewards, SEASON_REWARDS,
   awardQuickRace, claimDailyQuest, dailyQuests, mongoliaDayKey, quickDayStreak } from './progression';
 
 describe('Mongolian device-local cosmetic economy', () => {
+  it('keeps public/private race vehicle allowlists aligned to actual frontend artwork and shop', () => {
+    expect(new Set(CAR_IDS).size).toBe(CAR_IDS.length);
+    expect(new Set(CAR_IDS)).toEqual(new Set(carKeys));
+    for (const id of STARTER_CAR_IDS) expect(CAR_IDS).toContain(id);
+    for (const car of SHOP.filter(item => item.kind === 'car')) expect(CAR_IDS).toContain(car.id);
+    for (const id of CAR_IDS) expect(CARS[id as keyof typeof CARS].icon).toBe('/cars/' + id + '.webp');
+  });
   it('buys one deterministic shop item once and equips only what is owned', () => {
     const original = starterProfile();
     expect(isOwned(original, 'car', 'steppe')).toBe(false);

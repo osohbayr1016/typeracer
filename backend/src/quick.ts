@@ -1,6 +1,6 @@
 import {
   generatePassage, characters, RACE_DURATION_MS, START_COUNTDOWN_MS, wordsPerMinute,
-  advanceTyping, typingKey, premiumCosmeticAllowed, type Prompt, type Racer, type RoomSnapshot
+  advanceTyping, typingKey, premiumCosmeticAllowed, CAR_IDS, type Prompt, type Racer, type RoomSnapshot
 } from '@typeracer/shared';
 import { safePlayerName } from './logic';
 import { RaceRankingStore } from './rankings';
@@ -33,9 +33,9 @@ type QuickRace = {
   broadcastTimer: ReturnType<typeof setTimeout> | null;
 };
 
-/** Guest quick matches: public humans share a queue; server-generated robots fill empty lanes.
- * This is a small first-version queue hosted by one DO instance, not ranked matchmaking.
- * No wallet or account is authoritative until a persistent authenticated ledger exists.
+/** Public quick matches share one DO queue with transparent server bots.
+ * Authenticated completed races persist scores/earned rewards, but remain
+ * beta/unverified for prize competition; production anti-cheat is not certified.
  */
 export const QUICK_QUEUE_MS = 5_000;
 export const QUICK_COUNTDOWN_MS = START_COUNTDOWN_MS;
@@ -74,11 +74,10 @@ export function quickBotForSlot(offset: number, slot: number) {
 }
 
 
-const carIds = ['mint', 'sunset', 'purple', 'lime', 'phantom', 'steppe', 'thunder', 'midnight', 'khan', 'dawn', 'cosmic', 'falcon', 'nomad', 'rover', 'sunflare', 'dune', 'cobalt', 'glacier', 'fox', 'streak', 'ghost', 'onyx', 'meteor', 'temple', 'nebula', 'eagle', 'royal', 'aurora-x', 'dragon'];
 const trailIds = ['none','ember','steppe','ice','aurora','gold'];
 const stickerIds = ['none','horse','bolt','star','crown'];
 
-function allowed(input: string | null, options: string[], defaultValue: string): string {
+function allowed(input: string | null, options: readonly string[], defaultValue: string): string {
   return input && options.includes(input) ? input : defaultValue;
 }
 export function quickPlacement(player: Racer, opponents: Racer[]): number {
@@ -228,7 +227,7 @@ export class QuickMatchmaker {
       value && premiumCosmeticAllowed(kind, value, inventory) ? allowed(value, choices, fallback) : fallback;
     const human: Human = {
       id: crypto.randomUUID(), name: safePlayerName(url.searchParams.get('name') || ''),
-      car: allowed(url.searchParams.get('car'), carIds, 'sunset'),
+      car: allowed(url.searchParams.get('car'), CAR_IDS, 'sunset'),
       trail: cosmetic('trail', url.searchParams.get('trail'), trailIds, 'none'),
       sticker: cosmetic('sticker', url.searchParams.get('sticker'), stickerIds, 'none'),
       title: cosmetic('title', url.searchParams.get('title'), ['rookie','swift','khan','legend','supporter'], 'rookie'),
