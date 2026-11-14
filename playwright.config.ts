@@ -2,6 +2,10 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
+  // Specs share one local Cloudflare Durable Object matchmaking queue. Parallel
+  // files can accidentally join each other's races and corrupt expectations.
+  // Keep CI serial; tests within a file already run sequentially.
+  workers: process.env.CI ? 1 : undefined,
   // Generated passages are up to ~205 characters; tests type them at human speed.
   timeout: 60_000,
   retries: process.env.CI ? 1 : 0,
