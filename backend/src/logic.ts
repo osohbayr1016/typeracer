@@ -2,13 +2,14 @@ import { characters, advanceTyping } from '@typeracer/shared';
 
 /** Accept a single Unicode character. The server owns the text and timing. */
 export function acceptKeystroke(
-  prompt: string,
+  prompt: string | readonly string[],
   progress: number,
   mistakes: number,
   strokes: number,
   key: unknown
 ): { progress: number; mistakes: number; strokes: number } {
-  const next = advanceTyping(characters(prompt), { progress, mistakes, strokes, wrong: false }, key);
+  const letters=typeof prompt==='string' ? characters(prompt) : prompt;
+  const next = advanceTyping(letters, { progress, mistakes, strokes, wrong: false }, key);
   return { progress: next.progress, mistakes: next.mistakes, strokes: next.strokes };
 }
 export function safePlayerName(input: string): string {

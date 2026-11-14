@@ -35,6 +35,8 @@ export class RaceRoom {
   private roomExpiresAt=Date.now()+3_600_000;
   private cleanupTimer: ReturnType<typeof setTimeout> | null=null;
   private prompt: Prompt = generatePassage({ mode: 'story' });
+  // Immutable for a race; never re-tokenize Mongolian Unicode on every key.
+  private letters: string[] = characters(this.prompt.text);
   private phase: Phase = 'waiting';
   private startAt: number | null = null;
   private matchId = crypto.randomUUID();
@@ -59,6 +61,7 @@ export class RaceRoom {
     const record=this.checkpoint?.load();
     if (!record)return;
     this.prompt=record.prompt;
+    this.letters=characters(this.prompt.text);
     this.matchId=record.matchId;
     this.phase=record.phase;
     this.startAt=record.startAt;
@@ -385,6 +388,7 @@ export class RaceRoom {
       if (this.phase !== 'finished' || message.matchId !== this.matchId) return;
       // A rematch always gets a passage from a different story.
       this.prompt = generatePassage({ mode: 'story', exclude: this.prompt.text });
+      this.letters = characters(this.prompt.text);
       this.matchId = crypto.randomUUID();
       this.phase = 'waiting';
       this.startAt = null;
@@ -413,12 +417,12 @@ export class RaceRoom {
     const now = Date.now();
     if (now - player.windowStart >= 1_000) { player.windowStart = now; player.windowCount = 0; }
     if (++player.windowCount > 35) return; // per-socket flood guard; additional edge limits required
-    const next = acceptKeystroke(this.prompt.text, player.progress, player.mistakes, player.strokes, message.key);
+    const next = acceptKeystroke(this.letters, player.progress, player.mistakes, player.strokes, message.key);
     if (next.strokes === player.strokes) return;
     player.progress = next.progress;
     player.mistakes = next.mistakes;
     player.strokes = next.strokes;
-    if (player.progress === characters(this.prompt.text).length) player.completedAt = now;
+    if (player.progress === this.letters.length) player.completedAt = now;
     this.savePrivate(); // accepted keystrokes survive a mid-race Worker restart
     this.queueBroadcast();
     if (this.racers.size>=2 && [...this.racers.values()].every(p => p.completedAt !== null)) this.finish();
