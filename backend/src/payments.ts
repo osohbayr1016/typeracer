@@ -33,7 +33,7 @@ export async function verifyWireSignature(body: string, header: string, secret: 
 }
 
 /** Paid-exclusive appearance is read from receipts, never the browser profile. */
-export function purchasedInventory(sql: SqlStorage, playerId: string): string[] {
+export function purchasedInventory(sql: Pick<SqlStorage,'exec'>, playerId: string): string[] {
   if (!first(sql.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='payment_orders'"))) return [];
   const columns = sql.exec('PRAGMA table_info(payment_orders)').toArray();
   const granted = columns.some(column => column.name === 'grants_json')
