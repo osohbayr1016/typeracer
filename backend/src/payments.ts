@@ -45,6 +45,19 @@ export function purchasedInventory(sql: SqlStorage, playerId: string): string[] 
 }
 
 /** Uses the existing SQLite coordinator; no D1 binding or destructive migration. */
+/** Read server-earned items and paid receipts together, without granting any
+ * browser-local practice inventory or implicitly trusting a cosmetic ID. */
+export function ownedAppearance(sql: SqlStorage, playerId: string): {owned:string[];xp:number} {
+  const owned = purchasedInventory(sql, playerId);
+  if (first(sql.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='earned_items'"))) {
+    for (const row of sql.exec('SELECT item_key FROM earned_items WHERE player_id=?',playerId).toArray())
+      owned.push(String(row.item_key));
+  }
+  const xp = first(sql.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='earned_profiles'"))
+    ? Number(first(sql.exec('SELECT xp FROM earned_profiles WHERE player_id=?',playerId))?.xp ?? 0) : 0;
+  return {owned:[...new Set(owned)],xp:Number.isFinite(xp) && xp>0?xp:0};
+}
+
 export class PaymentService {
   // Workerd brand-checks fetch receivers; an arrow keeps the global call unbound.
   constructor(private sql: SqlStorage, private rank: RaceRankingStore, private env: PaymentEnv,
@@ -206,7 +219,7 @@ export class PaymentService {
       const player = await this.rank.fromCookie(request.headers.get('Cookie'));
       if (!player) return Response.json({ error: 'session_required' }, { status: 401 });
       const playerId = String(player.id);
-      if (path === '/payments/appearance') return Response.json({ owned: purchasedInventory(this.sql, playerId) });
+      if (path === '/payments/appearance') return Response.json(ownedAppearance(this.sql, playerId),{headers:{'Cache-Control':'no-store'}});
       if (path === '/payments/wallet') {
         if (this.ready()) {
           const pending = this.sql.exec("SELECT * FROM payment_orders WHERE player_id=? AND credited=0 AND intent_id IS NOT NULL AND status!='canceled' ORDER BY created_at DESC LIMIT 5", playerId).toArray();

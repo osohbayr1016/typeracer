@@ -1,11 +1,11 @@
 import {
   generatePassage, characters, RACE_DURATION_MS, START_COUNTDOWN_MS, wordsPerMinute,
-  advanceTyping, typingKey, premiumCosmeticAllowed, CAR_IDS, type Prompt, type Racer, type RoomSnapshot
+  advanceTyping, typingKey, authorizedCosmetic, CAR_IDS, type Prompt, type Racer, type RoomSnapshot
 } from '@typeracer/shared';
 import { safePlayerName } from './logic';
 import { RaceRankingStore } from './rankings';
 import { EarnedProgressionStore, earnedRaceMetricsEligible } from './earned';
-import { purchasedInventory } from './payments';
+import { ownedAppearance } from './payments';
 import { QuickCheckpointStore, type QuickCheckpoint } from './quickCheckpoint';
 
 type QuickResult = {
@@ -226,12 +226,14 @@ export class QuickMatchmaker {
     }
 
     const account = await this.rankings?.fromCookie(request.headers.get('Cookie')) ?? null;
-    const inventory = this.storage && typeof account?.id === 'string' ? purchasedInventory(this.storage.sql, account.id) : [];
+    const appearance = this.storage && typeof account?.id === 'string'
+      ? ownedAppearance(this.storage.sql,account.id) : {owned:[],xp:0};
     const cosmetic = (kind: string, value: string | null, choices: string[], fallback: string) =>
-      value && premiumCosmeticAllowed(kind, value, inventory) ? allowed(value, choices, fallback) : fallback;
+      value && authorizedCosmetic(kind,value,appearance.owned,appearance.xp)
+        ? allowed(value, choices, fallback) : fallback;
     const human: Human = {
       id: crypto.randomUUID(), name: safePlayerName(url.searchParams.get('name') || ''),
-      car: allowed(url.searchParams.get('car'), CAR_IDS, 'sunset'),
+      car: cosmetic('car',url.searchParams.get('car'), CAR_IDS, 'sunset'),
       trail: cosmetic('trail', url.searchParams.get('trail'), trailIds, 'none'),
       sticker: cosmetic('sticker', url.searchParams.get('sticker'), stickerIds, 'none'),
       title: cosmetic('title', url.searchParams.get('title'), ['rookie','swift','khan','legend','supporter'], 'rookie'),

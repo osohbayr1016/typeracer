@@ -51,3 +51,24 @@ export const CAR_IDS: string[] = [...new Set<string>([
   ...STARTER_CAR_IDS,
   ...SHOP.filter(item => item.kind === 'car').map(item => item.id)
 ])];
+
+/** Server-verifiable appearance entitlements. Local practice inventory and
+ * browser-supplied XP must never unlock cosmetics for other online players. */
+export function authorizedCosmetic(kind: string, id: string, owned: readonly string[], earnedXp = 0): boolean {
+  if (kind === 'car') {
+    if (!CAR_IDS.includes(id)) return false;
+    if (id === 'mint' || id === 'sunset' || id === 'purple') return true;
+    if (id === 'lime') return earnedXp >= 250;
+    if (id === 'phantom') return earnedXp >= 650;
+    return owned.includes('car:' + id);
+  }
+  const defaults: Record<string, string> = {trail:'none',title:'rookie',sticker:'none'};
+  if (!Object.hasOwn(defaults, kind)) return false;
+  if (id === defaults[kind]) return true;
+  const allowed: Record<string, readonly string[]> = {
+    trail:['ember','steppe','ice','aurora','gold'],
+    title:['swift','khan','legend','supporter'],
+    sticker:['horse','bolt','star','crown']
+  };
+  return allowed[kind].includes(id) && owned.includes(kind + ':' + id);
+}

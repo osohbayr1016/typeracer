@@ -60,6 +60,23 @@ beforeEach(() => {
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('Durable Object live quick race reconnect', () => {
+  it('refuses forged premium vehicles and cosmetics on a new public WebSocket', async () => {
+    const matchmaker = new QuickMatchmaker();
+    const response = await matchmaker.fetch(new Request(
+      'https://room.internal/quickplay?car=dragon&trail=gold&title=supporter&sticker=crown',
+      {headers:{Upgrade:'websocket'}}
+    ));
+    expect(response.status).toBe(101);
+    const state = pairs.at(-1)!.server.sent.find(m=>m.type==='state')!;
+    const racer = (state.players as Array<Record<string, unknown>>)[0];
+    expect(racer).toMatchObject({car:'sunset',trail:'none',title:'rookie',sticker:'none'});
+    const free = await matchmaker.fetch(new Request('https://room.internal/quickplay?car=mint',
+      {headers:{Upgrade:'websocket'}}));
+    expect(free.status).toBe(101);
+    const next = pairs.at(-1)!.server.sent.find(m=>m.type==='state')!;
+    expect((next.players as Array<{car:string}>).some(p=>p.car==='mint')).toBe(true);
+  });
+
   it('reschedules an early countdown timer instead of leaving the lobby stuck', async () => {
     const first = await connect(new QuickMatchmaker());
     vi.advanceTimersByTime(5000);
