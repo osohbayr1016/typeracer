@@ -159,11 +159,20 @@ app.post('/api/rooms', async c => {
       'Retry-After':check.headers.get('Retry-After')||'60',
       'Cache-Control':'no-store'}});
   if(!check.ok)return c.json({error:'room_service_unavailable'},503);
-  const code = crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase();
-  const id = c.env.RACE_ROOMS.idFromName(code);
-  const created = await c.env.RACE_ROOMS.get(id).fetch('https://room.internal/create', { method: 'POST' });
-  if (!created.ok) return c.json({ error: 'Room creation failed' }, 503);
-  return c.json({ code, capacity: ROOM_CAPACITY }, 201);
+  // Every code names a persistent DO. Even an expired code must not be reused:
+  // old match checkpoints and reconnect tokens could otherwise be resurrected.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase();
+    const id = c.env.RACE_ROOMS.idFromName(code);
+    let created: Response;
+    try {
+      created = await c.env.RACE_ROOMS.get(id).fetch('https://room.internal/create', { method: 'POST' });
+    } catch { return c.json({ error: 'Room creation unavailable' }, 503); }
+    if (created.status === 409) continue; // already allocated: try a fresh code
+    if (!created.ok) return c.json({ error: 'Room creation failed' }, 503);
+    return c.json({ code, capacity: ROOM_CAPACITY }, 201);
+  }
+  return c.json({ error: 'Unable to allocate a unique room code; try again' }, 503);
 });
 // One queue coordinator supports multiple simultaneous live matches. Guests and bots
 // are identified; no persistent ranked leaderboard or authenticated payout is claimed.

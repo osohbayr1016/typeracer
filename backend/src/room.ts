@@ -280,10 +280,17 @@ export class RaceRoom {
       }
       return Response.json({error:'Invalid action'},{status:400});
     }
-    // Only an API-created room can accept players. Durable storage survives DO eviction.
+    // Room codes are write-once. A random-code collision must never extend or
+    // overwrite an existing invitation or resurrect an expired race checkpoint.
     if (new URL(request.url).pathname === '/create' && request.method === 'POST') {
-      await this.state.storage.put('createdAt', Date.now());
-      return new Response('created', { status: 201 });
+      const created = await this.state.storage.transaction(async transaction => {
+        const existing = await transaction.get<number>('createdAt');
+        if (existing !== undefined) return false;
+        await transaction.put('createdAt', Date.now());
+        return true;
+      });
+      return new Response(created ? 'created' : 'Room code already allocated',
+        { status: created ? 201 : 409 });
     }
     const createdAt = await this.state.storage.get<number>('createdAt');
     if (!createdAt || Date.now() - createdAt > 3_600_000) {
