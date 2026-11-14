@@ -317,17 +317,21 @@ export type GenerateOptions = {
   seed?: number;
   /** Text to avoid (for example the previous race) so a rematch gets fresh words. */
   exclude?: string;
+  /** More than one recent passage to avoid in a public matchmaking rotation. */
+  excludes?: readonly string[];
   min?: number;
   max?: number;
 };
 
-function storyPassage(rng: () => number, min: number, max: number, exclude?: string): RacePassage {
+function storyPassage(rng: () => number, min: number, max: number, exclude?: string,
+  excludes: readonly string[] = []): RacePassage {
   let pool = passageWindows(min, max);
   if (!pool.length) pool = passageWindows(RACE_TEXT_MIN, RACE_TEXT_MAX);
-  if (exclude) {
-    const excludedStory = pool.find(window => window.text === exclude)?.story.id;
-    const fresh = pool.filter(window => window.text !== exclude && window.story.id !== excludedStory);
-    const other = fresh.length ? fresh : pool.filter(window => window.text !== exclude);
+  const blockedTexts = new Set([...excludes, ...(exclude ? [exclude] : [])]);
+  if (blockedTexts.size) {
+    const blockedStories = new Set(pool.filter(window => blockedTexts.has(window.text)).map(window => window.story.id));
+    const fresh = pool.filter(window => !blockedTexts.has(window.text) && !blockedStories.has(window.story.id));
+    const other = fresh.length ? fresh : pool.filter(window => !blockedTexts.has(window.text));
     if (other.length) pool = other;
   }
   const pick = pool[Math.min(pool.length - 1, Math.floor(rng() * pool.length))];
@@ -369,7 +373,8 @@ export function generatePassage(options: GenerateOptions = {}): RacePassage {
   const mode = options.mode === 'words' ? 'words' : 'story';
   const rng = options.seed === undefined ? Math.random : seededRandom(options.seed);
   if (mode === 'words') return wordsPassage(rng, options.min ?? WORDS_TEXT_MIN, options.max ?? WORDS_TEXT_MAX, options.exclude);
-  return storyPassage(rng, options.min ?? RACE_TEXT_MIN, options.max ?? RACE_TEXT_MAX, options.exclude);
+  return storyPassage(rng, options.min ?? RACE_TEXT_MIN, options.max ?? RACE_TEXT_MAX,
+    options.exclude, options.excludes);
 }
 
 /** Distinct story passages the generator can currently produce. */
