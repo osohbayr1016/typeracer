@@ -55,6 +55,29 @@ async function signature(body: string, secret: string, timestamp = Math.floor(Da
 afterEach(() => { vi.unstubAllGlobals(); for (const db of databases.splice(0)) db.close(); });
 
 describe('Wire checkout and durable paid coins', () => {
+  it('persists paid-owned cosmetics as equipped online, including OAuth account merging', async () => {
+    const f=await fixture();
+    const playerId=String(f.account.player.id);
+    const earned=new EarnedProgressionStore(f.sql);
+    expect(earned.equip(playerId,'trail','ember')).toEqual({error:'not_owned'});
+    await f.request('checkout',input());
+    f.setState('succeeded');
+    await f.request('wallet');
+    f.db.exec('UPDATE payment_orders SET coins=500');
+    expect((await f.request('items',{itemKey:'trail:ember'})).status).toBe(200);
+    expect(earned.equip(playerId,'trail','ember')).toMatchObject({
+      profile:{equipped:{trail:'ember'}}
+    });
+    const reload=new EarnedProgressionStore(f.sql);
+    expect(reload.overview(playerId).equipped.trail).toBe('ember');
+    const target=await f.rank.session(null);
+    const targetId=String(target.player.id);
+    f.service.mergeAccount(playerId,targetId);
+    reload.mergeAccount(playerId,targetId);
+    expect(reload.overview(targetId).equipped.trail).toBe('ember');
+    expect(f.service.wallet(targetId).owned).toContain('trail:ember');
+  });
+
   it('prevents cross-ledger purchases of an item already earned or bought', async () => {
     const f=await fixture();
     const playerId=String(f.account.player.id);
