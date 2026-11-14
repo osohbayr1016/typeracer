@@ -1,5 +1,6 @@
 import { COIN_PACKS, SHOP } from '@typeracer/shared';
 import { RaceRankingStore } from './rankings';
+import { readBoundedJsonObject, readBoundedText } from './boundedBody';
 
 export type PaymentEnv = { WIRE_API_KEY?: string; WIRE_WEBHOOK_SECRET?: string };
 type Row = Record<string, unknown>;
@@ -173,11 +174,18 @@ export class PaymentService {
       const path = new URL(request.url).pathname;
       if (path === '/payments/config') return Response.json({ ready: this.ready(), packs: COIN_PACKS });
       if (path === '/payments/webhook') {
-        const body = await request.text();
-        if (body.length > 65_536 || !await verifyWireSignature(body, request.headers.get('WirePayment-Signature') ?? '',
-          this.env.WIRE_WEBHOOK_SECRET ?? '')) return Response.json({ error: 'invalid_signature' }, { status: 400 });
-        const event = JSON.parse(body) as {type?: string; data?: {id?: string}};
-        if (event.type === 'payment_intent.succeeded' && event.data?.id) {
+        const payload = await readBoundedText(request,65_536);
+        if (!payload.ok) return Response.json({error:payload.reason==='too_large'?'payload_too_large':'invalid_payload'},
+          {status:payload.reason==='too_large'?413:400});
+        if (!await verifyWireSignature(payload.text, request.headers.get('WirePayment-Signature') ?? '',
+          this.env.WIRE_WEBHOOK_SECRET ?? '')) return Response.json({error:'invalid_signature'},{status:400});
+        let event: {type?:unknown;data?:{id?:unknown}};
+        try {
+          const decoded:unknown=JSON.parse(payload.text);
+          if (!decoded || typeof decoded!=='object' || Array.isArray(decoded)) throw Error('Invalid event');
+          event=decoded as typeof event;
+        } catch {return Response.json({error:'invalid_payload'},{status:400});}
+        if (event.type === 'payment_intent.succeeded' && typeof event.data?.id === 'string') {
           const order = first(this.sql.exec('SELECT * FROM payment_orders WHERE intent_id=?', event.data.id));
           if (order) await this.reconcile(order, true);
         }
@@ -205,11 +213,11 @@ export class PaymentService {
           wallet: this.wallet(playerId) });
       }
       if (request.method !== 'POST') return new Response(null, { status: 405 });
-      const raw = await request.text();
-      if (raw.length > 2048) return new Response(null, { status: 413 });
-      let input: Record<string, unknown>;
-      try { input = JSON.parse(raw); if (!input || typeof input !== 'object') throw Error(); }
-      catch { return Response.json({ error: 'invalid_request' }, { status: 400 }); }
+      const body=await readBoundedJsonObject(request,2048);
+      if (!body.ok) return body.reason==='too_large'
+        ? new Response(null,{status:413})
+        : Response.json({error:'invalid_request'},{status:400});
+      const input=body.value;
       if (path === '/payments/checkout') {
         if (!this.ready()) throw new PaymentError('payments_not_configured', 503);
         const origin = request.headers.get('X-Payment-Origin');
