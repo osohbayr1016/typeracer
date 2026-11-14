@@ -32,3 +32,16 @@ export const SHOP: Cosmetic[] = [
   { id: 'horse', kind: 'sticker', name: 'Хүлэг', description: 'Машины хажууд харагдах тэмдэг', price: 180, rarity: 'Энгийн', preview: '♞' },
   { id: 'bolt', kind: 'sticker', name: 'Аянга', description: 'Эрч хүчний тэмдэг', price: 220, rarity: 'Ховор', preview: 'ϟ' }
 ];
+
+/** Single server/client allowlist. Shop catalog owns purchasable car IDs; the
+ * starter/season-only cars remain visible even when they are not in the shop.
+ * A Set preserves the historical order without duplicate car IDs.
+ */
+export const STARTER_CAR_IDS = [
+  'mint','sunset','purple','lime','phantom','steppe','thunder','midnight',
+  'khan','dawn','cosmic'
+] as const;
+export const CAR_IDS: string[] = [...new Set<string>([
+  ...STARTER_CAR_IDS,
+  ...SHOP.filter(item => item.kind === 'car').map(item => item.id)
+])];

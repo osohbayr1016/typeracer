@@ -9,7 +9,7 @@ A Mongolian Cyrillic typing-race game, built with the same main stack as the aut
 ## Features available now
 
 - Mongolian-only typing races on **generated passages**: consecutive sentences cut from 22 original Mongolian short stories (so every text has context), plus a Monkeytype-style random-words mode for solo practice. WPM, accuracy and personal best. See [docs/RACE-TEXTS.md](docs/RACE-TEXTS.md).
-- Browser-local practice XP, earned coins, fixed-price cosmetics store, original six-car collection expansion (eleven total), equipped trails/titles/stickers and an eight-tier free seasonal reward pass.
+- Browser-local practice XP, earned coins, fixed-price cosmetics store, 29 original vehicle skins in the starter, season and earned shop catalog, equipped trails/titles/stickers and an eight-tier free seasonal reward pass.
 - Friend-only guest rooms, 2–6 players, 8-character invite code, Ready, countdown and real-time race progress.
 - Server-computed race progress, per-socket abuse limits and same-origin browser API protection.
 - TypeScript, unit/SQLite integrity tests, native Cloudflare Worker runtime and a broad Chromium browser E2E suite; on `main`, the current staging pipeline also runs a live multiplayer WebSocket smoke test.
@@ -112,10 +112,10 @@ The currently active free season is **Эхний гараа** (2026-10-01 to 202
 ## Security, reliability and limits
 
 - Room codes are public invitation codes, **not passwords**. Browser same-origin checks help with cross-site requests but are not authentication and don't stop scripts or bots.
-- The Durable Object stores room creation in persistent storage; current player/game state is **memory-only**, so an object restart can disrupt a race. Hibernation/durable snapshots and reconnect logic are essential before ranked play.
-- Per-isolate room creation limits are not global enforcement; configure account-level Cloudflare WAF/rate limits and watch usage before opening to strangers.
-- Browser localStorage stats are manipulable, unverified and never qualify for money/real prizes.
+- Private rooms and public Quick Races persist serializable race checkpoints to SQLite Durable Objects and support a short token-based reconnect window. WebSockets and timers are reconstructed on resume; this is not yet a full hibernation/load-tested guarantee for high-stakes play.
+- Room creation, checkout and recovery have shared SQLite-backed abuse-limit counters in the coordinator Durable Object. Cloudflare WAF/bot mitigation and load testing remain required before a public paid launch.
+- Browser localStorage practice stats are manipulable and cannot qualify for prizes; completed account-linked Quick Races are written to server ledgers, but the competitive anti-cheat assurance is still beta.
 - D1 migration in `backend/migrations` is only a future scaffold. **No D1 binding/migration and no paid R2 storage are required for this beta.**
-- Before real competition: OAuth, D1 user/score model, rate-limited matchmaking, tamper/bot investigation, moderation, GDPR/privacy requirements where applicable, observability, retries, load and cost measurements, staging-to-prod release gates.
+- Before real-money public competition: validate live OAuth/account-recovery and Wire settlement/refund workflows, implement moderation, account deletion/data exports and privacy requirements where applicable, strengthen anti-cheat and operations telemetry, test sustained load/p95 latency, and retain manual production release approvals.
 
 The experience is original; external typing games inspire interaction patterns but no third-party copyrighted game code/assets are copied.

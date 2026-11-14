@@ -1,6 +1,6 @@
 import {
   generatePassage, characters, ROOM_CAPACITY, RACE_DURATION_MS, START_COUNTDOWN_MS,
-  type Racer, type RoomSnapshot, type Prompt, wordsPerMinute
+  type Racer, type RoomSnapshot, type Prompt, wordsPerMinute, CAR_IDS
 } from '@typeracer/shared';
 import { acceptKeystroke, safePlayerName } from './logic';
 import { QuickMatchmaker } from './quick';
@@ -16,7 +16,6 @@ type Player = Racer & {
 };
 export const PRIVATE_RECONNECT_GRACE_MS=15_000;
 type Phase = RoomSnapshot['phase'];
-const CAR_IDS = ['mint','sunset','purple','lime','phantom','steppe','thunder','midnight','khan','dawn','cosmic', 'falcon', 'nomad', 'rover', 'sunflare', 'dune', 'cobalt', 'glacier', 'fox', 'streak', 'ghost', 'onyx', 'meteor', 'temple', 'nebula', 'eagle', 'royal', 'aurora-x', 'dragon'] as const;
 const TRAIL_IDS = ['none','ember','steppe','ice','aurora','gold'] as const;
 const STICKER_IDS = ['none','horse','bolt','star','crown'] as const;
 const TITLE_IDS = ['rookie','swift','khan','legend','supporter'] as const;
