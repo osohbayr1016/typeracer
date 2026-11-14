@@ -66,6 +66,7 @@ const QuickLane = memo(function QuickLane({ name, mine, rank, done, bot, connect
 export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onReward, onFinish }: Props) {
   const [attempt, setAttempt] = useState(0);
   const [connection, setConnection] = useState<'connecting' | 'connected' | 'error'>('connecting');
+  const [appearanceNotice, setAppearanceNotice] = useState(false);
   const [error, setError] = useState('');
   const [snapshot, setSnapshot] = useState<RoomSnapshot | null>(null);
   const [myId, setMyId] = useState('');
@@ -129,6 +130,7 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
     const controller = new AbortController();
     const accountTimeout = setTimeout(() => controller.abort(), 3000);
     setConnection('connecting'); setError(''); setResult(null); setSnapshot(null); setMyId('');
+    setAppearanceNotice(false);
     latestSnapshot.current = null;
     finishNow.current = null;
     setClock(null);
@@ -193,6 +195,11 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
           if (!latestSnapshot.current || data.startAt !== latestSnapshot.current.startAt) {
             setClock({ serverNow: data.serverNow ?? Date.now(), receivedAt: performance.now() });
           }
+          const self = data.players.find(player => player.id === latestMyId.current);
+          // The backend may replace locally-unlocked or forged browser skins
+          // with the owner's verified online car. Explain it rather than
+          // silently making a purchased-looking car vanish.
+          if (self && self.car !== car) setAppearanceNotice(true);
           latestSnapshot.current = data;
           setSnapshot(data);
         }
@@ -316,6 +323,9 @@ export function QuickRacePage({ car, profile, nickname, onBack, onGarage, onRewa
       </div>
     </header>
 
+    {appearanceNotice && <p className="quick-footer-note" data-testid="quick-appearance-warning" role="status">
+      Сонгосон машин онлайн дансанд нээгдээгүй тул стандарт машинаар уралдана. Серверийн гаражаас машинаа нээгээрэй.
+    </p>}
     {connection === 'error' && !result && <section className="quick-state-panel" role="alert">
       <h2>ХОЛБОЛТ ТАСАРЛАА</h2><p>{error}</p>
       <button className="primary-button" onClick={() => setAttempt(n => n + 1)}>↻ ДАХИН НЭГДЭХ</button>
