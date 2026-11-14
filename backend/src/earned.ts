@@ -1,4 +1,5 @@
 import { SHOP } from '@typeracer/shared';
+import { purchasedInventory } from './payments';
 
 /** Source-of-truth for online rewards. Device-local practice rewards are NOT imported.
  * This prevents arbitrary localStorage balances from becoming transferable items.
@@ -204,7 +205,8 @@ export class EarnedProgressionStore {
       let itemKey=reward.itemKey;
       if(itemKey){
         const alreadyOwned=first(this.sql,
-          'SELECT item_key FROM earned_items WHERE player_id=? AND item_key=?',id,itemKey);
+          'SELECT item_key FROM earned_items WHERE player_id=? AND item_key=?',id,itemKey) ||
+          purchasedInventory(this.sql,id).includes(itemKey);
         if(alreadyOwned) {
           const catalog=SHOP.find(item=>item.kind+':'+item.id===itemKey);
           coins=Math.round((catalog?.price??0)/2);
@@ -274,7 +276,8 @@ export class EarnedProgressionStore {
       if (!item) return {error:'not_found'};
       const state=this.overview(id);
       const key=item.kind+':'+item.id;
-      if (state.owned.includes(key))return {error:'already_owned'};
+      if (state.owned.includes(key)||purchasedInventory(this.sql,id).includes(key))
+        return {error:'already_owned'};
       if (state.level<(item.minLevel??1))return {error:'level_required'};
       if (state.coins<item.price)return {error:'insufficient_earned_coins'};
       this.sql.exec('INSERT INTO earned_items(player_id,item_key,cost,purchased_at) VALUES(?,?,?,?)',

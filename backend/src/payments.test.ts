@@ -55,6 +55,28 @@ async function signature(body: string, secret: string, timestamp = Math.floor(Da
 afterEach(() => { vi.unstubAllGlobals(); for (const db of databases.splice(0)) db.close(); });
 
 describe('Wire checkout and durable paid coins', () => {
+  it('prevents cross-ledger purchases of an item already earned or bought', async () => {
+    const f=await fixture();
+    const playerId=String(f.account.player.id);
+    const earned=new EarnedProgressionStore(f.sql);
+    expect(earned.buy(playerId,'title','swift')).toHaveProperty('profile');
+    await f.request('checkout',input());
+    f.setState('succeeded');
+    await f.request('wallet');
+    f.db.exec('UPDATE payment_orders SET coins=500');
+    const initialPaid=f.service.wallet(playerId).balance;
+    const rejected=await f.request('items',{itemKey:'title:swift'});
+    expect(rejected.status).toBe(409);
+    expect(await rejected.json()).toMatchObject({error:'already_owned'});
+    expect(f.service.wallet(playerId).balance).toBe(initialPaid);
+    expect(f.db.prepare('SELECT COUNT(*) n FROM payment_items').get()?.n).toBe(0);
+    // The inverse direction also rejects a second debit from earned coins.
+    expect((await f.request('items',{itemKey:'trail:ember'})).status).toBe(200);
+    const initialEarned=earned.overview(playerId).coins;
+    expect(earned.buy(playerId,'trail','ember')).toEqual({error:'already_owned'});
+    expect(earned.overview(playerId).coins).toBe(initialEarned);
+  });
+
   it('uses a global fetch receiver compatible with the Workers runtime', async () => {
     const f = await fixture(true, true);
     expect((await f.request('checkout', input())).status).toBe(200);

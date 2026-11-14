@@ -254,6 +254,10 @@ export class PaymentService {
         if (!item) throw new PaymentError('invalid_request', 400);
         const key = item.kind + ':' + item.id;
         if (!purchasedInventory(this.sql, playerId).includes(key)) {
+          // A server-earned item is already owned. Never debit purchased
+          // currency for the same cosmetic via a forged direct API request.
+          if (ownedAppearance(this.sql, playerId).owned.includes(key))
+            throw new PaymentError('already_owned', 409);
           if (this.earnedLevel(playerId) < (item.minLevel ?? 1))
             throw new PaymentError('level_required', 403);
           if (this.wallet(playerId).balance < item.price) throw new PaymentError('insufficient_coins', 409);
