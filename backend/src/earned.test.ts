@@ -62,7 +62,8 @@ describe('server-owned free online economy',()=>{
     expect(store.equip('shopper','title','swift')).toMatchObject({profile:{equipped:{title:'swift'}}});
     expect(store.equip('shopper','title','rookie')).toMatchObject({profile:{equipped:{title:'rookie'}}});
     expect(store.equip('shopper','car','dragon')).toEqual({error:'not_owned'});
-    expect(store.equip('shopper','title','supporter')).toEqual({error:'invalid_item'});
+    expect(store.equip('shopper','title','supporter')).toEqual({error:'not_owned'});
+    expect(store.equip('shopper','title','not-a-title')).toEqual({error:'invalid_item'});
     expect(store.equip('shopper','__proto__','swift')).toEqual({error:'invalid_item'});
     expect(store.buy('shopper','car','dragon')).toEqual({error:'level_required'});
     expect(store.buy('shopper','car','falcon')).toEqual({error:'insufficient_earned_coins'});
