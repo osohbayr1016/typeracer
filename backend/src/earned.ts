@@ -1,4 +1,4 @@
-import { SHOP } from '@typeracer/shared';
+import { SHOP, SUPPORTER_COSMETICS } from '@typeracer/shared';
 import { purchasedInventory } from './payments';
 
 /** Source-of-truth for online rewards. Device-local practice rewards are NOT imported.
@@ -290,10 +290,13 @@ export class EarnedProgressionStore {
     return this.atomic(()=>{
       if (!['car','trail','title','sticker'].includes(kind)) return {error:'invalid_item'};
       const defaults:Record<string,string>={car:'sunset',trail:'none',title:'rookie',sticker:'none'};
-      if (itemId!==defaults[kind] && !SHOP.some(x=>x.kind===kind && x.id===itemId))
+      const key=kind+':'+itemId;
+      if (itemId!==defaults[kind] && !SHOP.some(x=>x.kind===kind && x.id===itemId) &&
+          !(SUPPORTER_COSMETICS as readonly string[]).includes(key))
         return {error:'invalid_item'};
       const state=this.overview(id);
-      if (itemId!==defaults[kind]&&!state.owned.includes(kind+':'+itemId))
+      if (itemId!==defaults[kind]&&!state.owned.includes(key)&&
+          !purchasedInventory(this.sql,id).includes(key))
         return {error:'not_owned'};
       // Table column is selected only from the allowlist, never from raw request.
       this.sql.exec('UPDATE earned_profiles SET '+kind+'=? WHERE player_id=?',itemId,id);
@@ -320,8 +323,8 @@ export class EarnedProgressionStore {
         {car:'sunset',trail:'none',title:'rookie',sticker:'none'})) {
         const selected=String(fromEquipment[kind]??defaultId);
         if (selected!==defaultId &&
-            first(this.sql,'SELECT item_key FROM earned_items WHERE player_id=? AND item_key=?',
-              to,kind+':'+selected))
+            (first(this.sql,'SELECT item_key FROM earned_items WHERE player_id=? AND item_key=?',
+              to,kind+':'+selected) || purchasedInventory(this.sql,to).includes(kind+':'+selected)))
           this.sql.exec('UPDATE earned_profiles SET '+kind+'=? WHERE player_id=? AND '+kind+'=?',
             selected,to,defaultId);
       }

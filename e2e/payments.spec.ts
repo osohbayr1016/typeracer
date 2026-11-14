@@ -64,6 +64,16 @@ test('a purchased-coin buyer can buy and equip a car directly from its preview',
     expect(route.request().postDataJSON()).toEqual({itemKey:'car:falcon'});
     await route.fulfill({json:{balance:200,owned:['car:falcon'],recent:[],recoveryReady:true}});
   });
+  // The wallet mock above represents a successful server purchase. Mirror
+  // that receipt in the server-equipment response; a real unowned item would
+  // correctly be rejected by /api/progression/equip.
+  await page.route('**/api/progression/equip',async route=>{
+    expect(route.request().postDataJSON()).toEqual({kind:'car',id:'falcon'});
+    const response=await page.request.get('/api/progression');
+    expect(response.ok()).toBe(true);
+    const profile=await response.json();
+    await route.fulfill({json:{profile:{...profile,equipped:{...profile.equipped,car:'falcon'}}}});
+  });
   await page.goto('/shop');
   await page.getByRole('button',{name:'Шонхор GT машиныг томоор харах',exact:true}).click();
   const preview=page.getByTestId('shop-car-preview');

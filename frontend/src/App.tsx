@@ -288,7 +288,11 @@ export function App() {
     const defaults:{[K in CosmeticKind]:string}={
       car:'sunset',trail:'none',title:'rookie',sticker:'none'
     };
-    const serverOwned=!!online&&(online.owned.includes(kind+':'+id)||id===defaults[kind]);
+    const serverOwned=!!online&&(
+      online.owned.includes(kind+':'+id) ||
+      paidWallet.owned.includes(kind+':'+id) ||
+      id===defaults[kind]
+    );
     if (serverOwned) {
       setOnlineBusy(true);setOnlineError('');
       void onlineProgressApi<{profile:EarnedOnlineProfile}>('/equip',{kind,id})
