@@ -57,6 +57,12 @@ describe('generatePassage', () => {
     expect(passage.words).toBe(passage.text.split(' ').length);
     expect(passage.language).toBe('mn');
   });
+  it('avoids a recent history of passages and their stories whenever alternatives exist', () => {
+    const prior = [3, 7, 11, 19].map(seed => generatePassage({seed}));
+    const next = generatePassage({seed:41,excludes:prior.map(p=>p.text)});
+    expect(prior.map(p=>p.text)).not.toContain(next.text);
+    expect(prior.map(p=>p.title)).not.toContain(next.title);
+  });
   it('never repeats the excluded text or its story on a rematch', () => {
     for (let seed = 0; seed < 60; seed++) {
       const first = generatePassage({ seed });

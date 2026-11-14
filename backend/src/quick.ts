@@ -263,11 +263,12 @@ export class QuickMatchmaker {
     socket.addEventListener('error', () => this.leave(socket));
   }
 
-  private lastPromptText = '';
+  private recentPrompts: string[] = [];
   private newRace(): QuickRace {
-    // A fresh story excerpt per race; never the same passage twice in a row.
-    const prompt = generatePassage({ mode: 'story', exclude: this.lastPromptText });
-    this.lastPromptText = prompt.text;
+    // Avoid recent story passages instead of relying on random luck. The shared
+    // generator also avoids their source stories while alternatives exist.
+    const prompt = generatePassage({ mode: 'story', excludes: this.recentPrompts });
+    this.recentPrompts = [...this.recentPrompts.slice(-3), prompt.text];
     const race: QuickRace = {
       id: crypto.randomUUID(), prompt, letters: characters(prompt.text), phase: 'waiting',
       humans: new Set(), bots: [], startAt: null,
