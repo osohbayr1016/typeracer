@@ -26,3 +26,12 @@ describe('authoritative multiplayer cosmetic entitlements', () => {
     expect(authorizedCosmetic('__proto__','none',[])).toBe(false);
   });
 });
+
+describe('canonical car ownership parity', () => {
+  it('requires an earned/paid receipt for every non-free shop car', () => {
+    for (const id of CAR_IDS.filter(id=>!['mint','sunset','purple','lime','phantom'].includes(id))) {
+      expect(authorizedCosmetic('car',id,[])).toBe(false);
+      expect(authorizedCosmetic('car',id,['car:'+id])).toBe(true);
+    }
+  });
+});
