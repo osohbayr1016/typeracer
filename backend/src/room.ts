@@ -7,6 +7,7 @@ import { QuickMatchmaker } from './quick';
 import { PrivateCheckpointStore, type PrivateCheckpoint } from './privateCheckpoint';
 import { GlobalAbuseLimiter } from './rateLimits';
 import { PaymentService, type PaymentEnv } from './payments';
+import { readBoundedJsonObject } from './boundedBody';
 
 type Message = { type: 'ready' } | { type: 'key'; key: string } | { type: 'rematch'; matchId: string };
 type Player = Racer & {
@@ -152,13 +153,11 @@ export class RaceRoom {
         return Response.json(earned.overview(id),{headers:{'Cache-Control':'no-store'}});
       if ((path==='/progression/items' || path==='/progression/equip' ||
           path==='/progression/quests/claim' || path==='/progression/season/claim') && request.method==='POST') {
-        let input:Record<string,unknown>;
-        try {
-          const raw=await request.text();
-          if (raw.length>512) return Response.json({error:'payload_too_large'},{status:413});
-          input=JSON.parse(raw) as Record<string,unknown>;
-          if (!input || typeof input!=='object')throw Error('invalid');
-        } catch {return Response.json({error:'invalid_request'},{status:400});}
+        const body=await readBoundedJsonObject(request,512);
+        if (!body.ok) return Response.json({
+          error:body.reason==='too_large'?'payload_too_large':'invalid_request'
+        },{status:body.reason==='too_large'?413:400});
+        const input=body.value;
         if (path==='/progression/season/claim') {
           if(!Number.isInteger(input.tier))return Response.json({error:'invalid_tier'},{status:400});
           const result=earned.claimSeason(id,input.tier as number);
@@ -194,10 +193,9 @@ export class RaceRoom {
       if (path === '/account/recover' && request.method === 'POST') {
         const rejected=await this.checkGlobalLimit(request,'recovery',8);
         if(rejected)return rejected;
-        const raw = await request.text();
-        if (raw.length > 256) return Response.json({error:'invalid_recovery'}, {status:400});
-        let code: unknown;
-        try { code = (JSON.parse(raw) as {code?:unknown}).code; } catch { /* invalid code */ }
+        const body=await readBoundedJsonObject(request,256);
+        if (!body.ok) return Response.json({error:'invalid_recovery'}, {status:400});
+        const code=body.value.code;
         const result = typeof code === 'string' ? await rank.restoreRecovery(code) : null;
         if (!result) return Response.json({error:'invalid_recovery'}, {status:400});
         const secure = new URL(request.url).searchParams.get('secure') === '1';
@@ -214,9 +212,11 @@ export class RaceRoom {
         return new Response(JSON.stringify({player:rank.publicPlayer(out.player)}),{headers});
       }
       if (path.startsWith('/oauth/') && request.method==='POST') {
-        let input:Record<string,unknown>;
-        try { const raw=await request.json(); if (!raw || typeof raw!=='object') throw Error('json'); input=raw as Record<string,unknown>; }
-        catch { return Response.json({error:'Invalid input'},{status:400}); }
+        const body=await readBoundedJsonObject(request,2048);
+        if (!body.ok) return Response.json({
+          error:body.reason==='too_large'?'Payload too large':'Invalid input'
+        },{status:body.reason==='too_large'?413:400});
+        const input=body.value;
         const provider=input.provider;
         if (provider!=='google' && provider!=='facebook') return Response.json({error:'Invalid provider'},{status:400});
         if (typeof input.state!=='string') return Response.json({error:'Invalid state'},{status:400});
@@ -255,11 +255,11 @@ export class RaceRoom {
       if (path === '/ranking/team' && request.method === 'GET')
         return Response.json({team:rank.myTeam(player)});
       if (request.method !== 'POST') return new Response('Method not allowed',{status:405});
-      if (Number(request.headers.get('Content-Length')||0)>4096)
-        return new Response('Payload too large',{status:413});
-      let data:Record<string,unknown>;
-      try { const value=await request.json(); if (!value || typeof value!=='object') throw Error('bad'); data=value as Record<string,unknown>; }
-      catch { return Response.json({error:'Invalid JSON'},{status:400}); }
+      const body=await readBoundedJsonObject(request,4096);
+      if (!body.ok) return body.reason==='too_large'
+        ? new Response('Payload too large',{status:413})
+        : Response.json({error:'Invalid JSON'},{status:400});
+      const data=body.value;
       if (path === '/ranking/name') {
         if (typeof data.name!=='string') return Response.json({error:'Invalid name'},{status:400});
         const next=rank.rename(player,data.name.slice(0,80));

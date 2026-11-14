@@ -22,7 +22,9 @@ function fixture(){
 }
 afterEach(()=>{for(const db of opened.splice(0))db.close();});
 describe('shared checkout and recovery abuse limits',()=>{
-  const base=Date.parse('2026-11-13T10:00:00Z');
+  // Use a current timestamp: constructing a second limiter prunes truly expired
+  // windows using Date.now(), so a historical fixture becomes invalid tomorrow.
+  const base=Date.now();
   it('limits the same IP across independent limiter instances and restores after a minute',async()=>{
     const {db,sql,atomic}=fixture();
     const one=new GlobalAbuseLimiter(sql,atomic);
