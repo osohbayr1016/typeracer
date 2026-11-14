@@ -29,7 +29,7 @@ export async function readBoundedText(request:Request,maxBytes:number):Promise<B
     const bytes=new Uint8Array(size);
     let offset=0;
     for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
-    return {ok:true,text:new TextDecoder('utf-8',{fatal:true}).decode(bytes)};
+    return {ok:true,text:new TextDecoder('utf-8',{fatal:true} as ConstructorParameters<typeof TextDecoder>[1]).decode(bytes)};
   }catch{return {ok:false,reason:'invalid_body'};}
   finally{reader.releaseLock();}
 }
