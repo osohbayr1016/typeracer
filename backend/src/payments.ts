@@ -87,6 +87,18 @@ export class PaymentService {
     }
     return value;
   }
+  /** Paid coins are an alternate currency, not a way around earned-level
+   * requirements. The authoritative XP is server-owned; no browser levels.
+   * Default to level 1 for accounts without an earned profile yet.
+   */
+  private earnedLevel(playerId: string): number {
+    const exists = first(this.sql.exec(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='earned_profiles'"));
+    if (!exists) return 1;
+    const row = first(this.sql.exec('SELECT xp FROM earned_profiles WHERE player_id=?', playerId));
+    const xp = Math.max(0, Number(row?.xp ?? 0));
+    return Number.isFinite(xp) ? Math.floor(xp / 300) + 1 : 1;
+  }
   wallet(playerId: string) {
     const credit = Number(first(this.sql.exec(
       'SELECT COALESCE(SUM(coins),0) AS total FROM payment_orders WHERE player_id=? AND credited=1', playerId))?.total ?? 0);
@@ -229,6 +241,8 @@ export class PaymentService {
         if (!item) throw new PaymentError('invalid_request', 400);
         const key = item.kind + ':' + item.id;
         if (!purchasedInventory(this.sql, playerId).includes(key)) {
+          if (this.earnedLevel(playerId) < (item.minLevel ?? 1))
+            throw new PaymentError('level_required', 403);
           if (this.wallet(playerId).balance < item.price) throw new PaymentError('insufficient_coins', 409);
           // No await between checking the balance and inserting the debit: serialized in this DO.
           this.sql.exec('INSERT INTO payment_items(player_id,item_key,price,created_at) VALUES(?,?,?,?)', playerId, key, item.price, Date.now());

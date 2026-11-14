@@ -12,6 +12,7 @@ const messages: Record<string, string> = {
   session_required: 'Хуудсаа дахин нээгээд оролдоно уу.',
   rate_limit_exceeded: 'Түр хүлээгээд дахин оролдоно уу.',
   insufficient_coins: 'Цэнэглэсэн зоос хүрэлцэхгүй байна.',
+  level_required: 'Энэ гоёлыг авахын тулд серверийн уралдаанаар түвшнээ ахиулна уу.',
   order_not_found: 'Энэ төлбөр өөр бүртгэлд хамаарах эсвэл олдсонгүй.'
 };
 export async function paymentApi<T>(path: string, body?: object): Promise<T> {
