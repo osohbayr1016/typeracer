@@ -1,5 +1,5 @@
 import './ShopPage.css';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CARS, RARITIES, type Rarity, type Skin } from './cars';
 import { SHOP, NEW_CAR_COLLECTION, isOwned, isLevelUnlocked, playerLevel, shopRotation,
   type CosmeticKind, type Profile, type Cosmetic } from '../progression';
@@ -22,11 +22,37 @@ export function ShopPage({ profile, onBuy, onEquip, onRace, paidCoins = 0, paidB
   const [tab, setTab] = useState<'all' | CosmeticKind>('all');
   const [rarity, setRarity] = useState<Rarity | 'all'>('all');
   const [preview, setPreview] = useState<Cosmetic | null>(null);
+  const dialogRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     if (!preview) return;
-    function onEscape(event: KeyboardEvent) { if (event.key === 'Escape') setPreview(null); }
-    window.addEventListener('keydown', onEscape);
-    return () => window.removeEventListener('keydown', onEscape);
+    const previouslyFocused = document.activeElement instanceof HTMLElement
+      ? document.activeElement : null;
+    const dialog = dialogRef.current;
+    const close = dialog?.querySelector<HTMLButtonElement>('.shop-preview-close');
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    close?.focus({preventScroll:true});
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') { event.preventDefault(); setPreview(null); return; }
+      if (event.key !== 'Tab' || !dialog) return;
+      const controls = Array.from(dialog.querySelectorAll<HTMLElement>(
+        'button:not(:disabled), a[href], input:not(:disabled), [tabindex]:not([tabindex="-1"])'
+      )).filter(element => element.getClientRects().length > 0);
+      if (!controls.length) { event.preventDefault(); return; }
+      const first = controls[0], last = controls[controls.length-1];
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || !dialog.contains(active))) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && (active === last || !dialog.contains(active))) {
+        event.preventDefault(); first.focus();
+      }
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      if (previouslyFocused?.isConnected) previouslyFocused.focus({preventScroll:true});
+    };
   }, [preview]);
   const level = playerLevel(profile.xp);
   const rotation = shopRotation();
@@ -159,7 +185,7 @@ export function ShopPage({ profile, onBuy, onEquip, onRace, paidCoins = 0, paidB
     </div>
     {preview && <div className="shop-preview-overlay" role="presentation"
         onMouseDown={(event) => { if (event.target === event.currentTarget) setPreview(null); }}>
-      <section role="dialog" aria-modal="true" aria-label={preview.name + ' машины дэлгэрэнгүй'}
+      <section ref={dialogRef} role="dialog" aria-modal="true" aria-label={preview.name + ' машины дэлгэрэнгүй'}
         className={'shop-preview-dialog '+classFor(preview)} data-testid="shop-car-preview">
         <div className="shop-preview-head">
           <span className="shop-eyebrow">МАШИНЫ ДЭЛГЭРЭНГҮЙ</span>
