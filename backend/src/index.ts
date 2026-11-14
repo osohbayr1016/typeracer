@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { PROMPTS, ROOM_CAPACITY, generatePassage, passageCount, premiumCosmeticAllowed, authorizedRaceCar } from '@typeracer/shared';
+import { PROMPTS, ROOM_CAPACITY, generatePassage, passageCount, authorizedCosmetic } from '@typeracer/shared';
 import { validRoomCode } from './logic';
 import { originAllowed } from './origin';
 import { strictHttpsOrigin } from './oauth-origin';
@@ -183,21 +183,22 @@ app.get('/api/rooms/:code/ws', async c => {
   }
   const id = c.env.RACE_ROOMS.idFromName(code);
   const url = new URL(c.req.url);
-  // Public starter cars are available to guests. Other online cars require
-  // receipts or server-earned inventory from the shared coordinator.
-  const appearance = ['car','trail','title','sticker'].filter(kind =>
-    kind === 'car'
-      ? url.searchParams.has('car') && authorizedRaceCar(url.searchParams.get('car'), []) !== url.searchParams.get('car')
-      : !premiumCosmeticAllowed(kind, url.searchParams.get(kind) ?? '', []));
-  if (appearance.length) {
-    const response = await paymentProxy(c, 'appearance');
-    const owned = response.ok ? (await response.json() as {owned:string[]}).owned : [];
-    for (const kind of appearance) {
-      const requested = url.searchParams.get(kind);
-      const valid = kind === 'car' ? authorizedRaceCar(requested, owned) === requested :
-        premiumCosmeticAllowed(kind, requested ?? '', owned);
-      if (!valid) url.searchParams.delete(kind);
-    }
+  const kinds = ['car','trail','title','sticker'] as const;
+  const requested = kinds.filter(kind => !!url.searchParams.get(kind));
+  // Resolve only if an appearance is not an unrestricted default. The trusted
+  // shared DO combines paid receipts, earned items and authoritative earned XP.
+  if (requested.some(kind => !authorizedCosmetic(kind,url.searchParams.get(kind)!,[],0))) {
+    let owned: string[] = []; let xp = 0;
+    try {
+      const response = await paymentProxy(c, 'appearance');
+      if (response.ok) {
+        const data = await response.json() as {owned?:unknown;xp?:unknown};
+        if (Array.isArray(data.owned)) owned = data.owned.filter((v):v is string => typeof v==='string');
+        if (typeof data.xp==='number' && Number.isFinite(data.xp)) xp = data.xp;
+      }
+    } catch { /* Fail closed for unavailable account/inventory. */ }
+    for (const kind of requested)
+      if (!authorizedCosmetic(kind,url.searchParams.get(kind)!,owned,xp)) url.searchParams.delete(kind);
   }
   return c.env.RACE_ROOMS.get(id).fetch(url.href, {headers:c.req.raw.headers});
 });

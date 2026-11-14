@@ -52,11 +52,30 @@ export const CAR_IDS: string[] = [...new Set<string>([
   ...SHOP.filter(item => item.kind === 'car').map(item => item.id)
 ])];
 
-/** Public/default cars are guest-safe. All other collectible skins require
- * server-owned earned or paid inventory (never localStorage or a URL claim).
+/** Server-verifiable appearance entitlements. Local practice inventory and
+ * browser-supplied XP must never unlock cosmetics for other online players. */
+export function authorizedCosmetic(kind: string, id: string, owned: readonly string[], earnedXp = 0): boolean {
+  if (kind === 'car') {
+    if (!CAR_IDS.includes(id)) return false;
+    if (id === 'mint' || id === 'sunset' || id === 'purple') return true;
+    if (id === 'lime') return earnedXp >= 250;
+    if (id === 'phantom') return earnedXp >= 650;
+    return owned.includes('car:' + id);
+  }
+  const defaults: Record<string, string> = {trail:'none',title:'rookie',sticker:'none'};
+  if (!Object.hasOwn(defaults, kind)) return false;
+  if (id === defaults[kind]) return true;
+  const allowed: Record<string, readonly string[]> = {
+    trail:['ember','steppe','ice','aurora','gold'],
+    title:['swift','khan','legend','supporter'],
+    sticker:['horse','bolt','star','crown']
+  };
+  return allowed[kind].includes(id) && owned.includes(kind + ':' + id);
+}
+
+/** Backwards-compatible car-specific helper. Internal matchmaking uses
+ * authorizedCosmetic so it also validates trails, titles and stickers.
  */
-export function authorizedRaceCar(candidate: string | null, owned: readonly string[]): string {
-  if (!candidate || !CAR_IDS.includes(candidate)) return 'sunset';
-  if ((STARTER_CAR_IDS as readonly string[]).includes(candidate)) return candidate;
-  return owned.includes('car:' + candidate) ? candidate : 'sunset';
+export function authorizedRaceCar(candidate: string | null, owned: readonly string[], earnedXp=0): string {
+  return candidate && authorizedCosmetic('car',candidate,owned,earnedXp) ? candidate : 'sunset';
 }
