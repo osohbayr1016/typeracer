@@ -72,3 +72,10 @@ export function authorizedCosmetic(kind: string, id: string, owned: readonly str
   };
   return allowed[kind].includes(id) && owned.includes(kind + ':' + id);
 }
+
+/** Backwards-compatible car-specific helper. Internal matchmaking uses
+ * authorizedCosmetic so it also validates trails, titles and stickers.
+ */
+export function authorizedRaceCar(candidate: string | null, owned: readonly string[], earnedXp=0): string {
+  return candidate && authorizedCosmetic('car',candidate,owned,earnedXp) ? candidate : 'sunset';
+}

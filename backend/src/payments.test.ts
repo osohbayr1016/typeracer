@@ -78,6 +78,30 @@ describe('Wire checkout and durable paid coins', () => {
     expect(f.service.wallet(targetId).owned).toContain('trail:ember');
   });
 
+
+  it('combines trusted online-earned and paid receipts for WebSocket appearance', async () => {
+    const f = await fixture();
+    const id = String(f.account.player.id);
+    expect(await (await f.request('appearance')).json()).toMatchObject({owned:[]});
+    new EarnedProgressionStore(f.sql);
+    f.db.prepare('INSERT INTO earned_items(player_id,item_key,cost,purchased_at) VALUES(?,?,?,?)')
+      .run(id,'car:side-legend-cyber',0,Date.now());
+    const listed = await (await f.request('appearance')).json() as {owned:string[]};
+    expect(listed.owned).toContain('car:side-legend-cyber');
+    await f.request('checkout', input());
+    f.setState('succeeded');
+    await f.request('wallet');
+    f.db.exec('UPDATE payment_orders SET coins=200');
+    await f.request('items',{itemKey:'trail:ember'});
+    const combined = await (await f.request('appearance')).json() as {owned:string[]};
+    expect(combined.owned).toContain('trail:ember');
+    expect(combined.owned).toContain('car:side-legend-cyber');
+    expect(new Set(combined.owned).size).toBe(combined.owned.length);
+    const outsider = await f.rank.session(null);
+    expect((await f.request('appearance',undefined,outsider.newToken)).status).toBe(200);
+    expect(await (await f.request('appearance',undefined,outsider.newToken)).json()).toMatchObject({owned:[]});
+  });
+
   it('prevents cross-ledger purchases of an item already earned or bought', async () => {
     const f=await fixture();
     const playerId=String(f.account.player.id);
