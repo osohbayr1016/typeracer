@@ -4,7 +4,7 @@ import {
 } from '@typeracer/shared';
 import { safePlayerName } from './logic';
 import { RaceRankingStore } from './rankings';
-import { EarnedProgressionStore } from './earned';
+import { EarnedProgressionStore, earnedRaceMetricsEligible } from './earned';
 import { purchasedInventory } from './payments';
 import { QuickCheckpointStore, type QuickCheckpoint } from './quickCheckpoint';
 
@@ -87,6 +87,10 @@ export function quickPlacement(player: Racer, opponents: Racer[]): number {
 }
 export function quickPrize(place: number, finished: boolean): number {
   return finished ? QUICK_PRIZES[place - 1] ?? 0 : 0;
+}
+/** A displayed prize must obey the same metric gate as the durable ledger. */
+export function quickAwardCoins(place:number,finished:boolean,wpm:number,accuracy:number):number {
+  return earnedRaceMetricsEligible(wpm,accuracy) ? quickPrize(place,finished) : 0;
 }
 /** PvP beta: count only live, distinct human accounts at the start signal.
  * Two tabs on the same account cannot create a human-vs-human match.
@@ -397,11 +401,14 @@ export class QuickMatchmaker {
     if (human.paid || human.completedAt === null || race.startAt === null) return;
     const place = quickPlacement(human, [...race.humans, ...race.bots]);
     const result: QuickResult = {
-      type: 'quick-result', raceId: race.id, place, coins: quickPrize(place, true),
+      type: 'quick-result', raceId: race.id, place, coins: 0,
       wpm: wordsPerMinute(human.progress, Math.max(1, human.completedAt - race.startAt)),
       accuracy: human.strokes ? Math.round((human.strokes - human.mistakes) / human.strokes * 100) : 100,
       elapsedMs: Math.max(1, human.completedAt - race.startAt), verified: false, standings: this.receiveSnapshot(race).players
     };
+    // The ledger rejects implausible rates and low accuracy. Do not report
+    // a phantom prize in the result while awarding zero coins in SQLite.
+    result.coins = quickAwardCoins(place,true,result.wpm,result.accuracy);
     // The only leaderboard writer is the authoritative Durable Object finish.
     // Guest clients cannot submit WPM, accuracy, points, or bots to this store.
     if (human.accountId) {

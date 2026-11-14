@@ -58,6 +58,13 @@ export const ONLINE_DAILY_QUESTS=[
 const SEASON_START=Date.parse('2026-10-01T00:00:00+08:00');
 const SEASON_END=Date.parse('2026-12-01T00:00:00+08:00');
 
+/** Same eligibility boundary for the server ledger and the race result sent to
+ * the browser. Ineligible finishes must not claim coins that are never credited.
+ */
+export function earnedRaceMetricsEligible(wpm:number,accuracy:number):boolean {
+  return Number.isFinite(wpm) && wpm>=0 && wpm<=210 &&
+    Number.isFinite(accuracy) && accuracy>=70 && accuracy<=100;
+}
 export function earnedXp(wpm:number,accuracy:number):number {
   return Math.max(25,Math.min(160,Math.round(wpm*.6+accuracy*.45)));
 }
@@ -246,8 +253,7 @@ export class EarnedProgressionStore {
     if (!/^[a-f0-9-]{36}$/i.test(raceId) || !playerId ||
         !Number.isInteger(place) || place<1 || place>5 ||
         !Number.isInteger(coins) || coins<0 || coins>30 ||
-        !Number.isFinite(wpm) || wpm<0 || wpm>210 ||
-        !Number.isFinite(accuracy) || accuracy<70 || accuracy>100 ||
+        !earnedRaceMetricsEligible(wpm,accuracy) ||
         !Number.isFinite(finishedAt)) return {awarded:false,xp:0,coins:0};
     return this.atomic(()=>{
       this.ensure(playerId);
