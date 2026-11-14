@@ -217,6 +217,11 @@ describe('Wire checkout and durable paid coins', () => {
     f.setState('succeeded');
     const wallet=await (await f.request('wallet')).json();
     expect(wallet).toMatchObject({balance:2000,supporter:true,owned:['trail:gold','sticker:crown','title:supporter']});
+    const earned=new EarnedProgressionStore(f.sql);
+    expect(earned.equip(String(f.account.player.id),'title','supporter'))
+      .toMatchObject({profile:{equipped:{title:'supporter'}}});
+    expect(earned.equip(String(f.account.player.id),'sticker','crown'))
+      .toMatchObject({profile:{equipped:{sticker:'crown'}}});
     expect((await f.request('checkout',{packId:'supporter',requestId:crypto.randomUUID()})).status).toBe(409);
     expect(await (await f.request('orders/'+first.orderId)).json()).toMatchObject({credited:true,grants:['trail:gold','sticker:crown','title:supporter']});
   });
